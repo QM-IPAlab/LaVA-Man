@@ -1,7 +1,7 @@
 # TODO list
 
 ### Deadlines
-Abstract submission: 15 May
+Abstract submission: 15 May \\
 Paper submission: 22 May
 ### Tasks:
 
