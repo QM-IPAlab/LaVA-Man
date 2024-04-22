@@ -1,3 +1,32 @@
+# TODO list
+
+### Deadlines
+Abstract submission: 15 May
+Paper submission: 22 May
+### Tasks:
+
+Research & coding:
+- [ ] Generate Concept-fusion feature (CLIP) on our map (segmentation + clip embedding)
+- [ ] Generate Lseg-feature and DINO feature on our map
+- [ ] How to add text embedding ? 
+- [ ] How to finalize the heatmap (or turn the cos-similarity map into heatmap)
+
+Experiments:
+- [ ] Upper-bound experiments using trained heatmap as ground truth 
+- [ ] Experiment for all methods in the simulator.
+- [ ] Prove high validation loss = high robot performance
+- [ ] New textured objects in simulator ? 
+- [ ] Better performance on few demonstrations ? 
+- [ ] Use segmentation mask and central point to do the pick and place 
+
+Writing:
+- [ ] Abstract
+- [ ] Motivation
+- [ ] Other part 
+
+
+
+
 # CLIPort
 
 [**CLIPort: What and Where Pathways for Robotic Manipulation**](https://arxiv.org/pdf/2109.12098.pdf)  
