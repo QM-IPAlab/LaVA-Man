@@ -1,3 +1,8 @@
+#ours
+data/
+data_image/
+data_hdf5/
+
 # Folders
 cliport/data/
 cliport/outputs/

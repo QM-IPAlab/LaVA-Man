@@ -1,0 +1,4 @@
+- n=1
+- task=packing-unseen-google-objects-group
+- mode=train
+- save_type=hdf5

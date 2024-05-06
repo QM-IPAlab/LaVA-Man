@@ -66,6 +66,24 @@ class Oracle():
         'noise': False
     }]
 
+class Oracle310():
+    """Top-down noiseless image used only by the oracle demonstrator."""
+
+    # Near-orthographic projection.
+    image_size = (310, 620)
+    intrinsics = (63e4, 0, 320., 0, 63e4, 240., 0, 0, 1)
+    position = (0.5, 0, 1000.)
+    rotation = p.getQuaternionFromEuler((0, np.pi, -np.pi / 2))
+
+    # Camera config.
+    CONFIG = [{
+        'image_size': image_size,
+        'intrinsics': intrinsics,
+        'position': position,
+        'rotation': rotation,
+        'zrange': (999.7, 1001.),
+        'noise': False
+    }]
 
 class RS200Gazebo():
     """Gazebo Camera"""

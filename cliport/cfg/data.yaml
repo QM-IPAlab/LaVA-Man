@@ -1,5 +1,7 @@
 # Data Generation
 
+save_type: hdf5
+
 defaults:
   - config
 

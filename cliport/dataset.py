@@ -106,6 +106,19 @@ class RavensDataset(Dataset):
         self.sample_set = episodes
 
     def load(self, episode_id, images=True, cache=False):
+        """Load data from a saved episode.
+        
+        Args:
+            episode_id: the ID of the episode to be loaded.
+            images: load image data if True.
+            cache: load data from memory if True.
+
+        Returns:
+            episode: list of (obs, act, reward, info) tuples.
+            seed: random seed used to initialize the episode.
+        """
+        
+        
         def load_field(episode_id, field, fname):
 
             # Check if sample is in cache.
