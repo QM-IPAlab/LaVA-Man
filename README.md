@@ -4,6 +4,7 @@
 - [ ] Cross attention 原图不挖空，结果图挖空。原图是Q，还是K V？
 - [ ] 不同的视角？？ （contribution）
 - [ ] decoder 要不要丢掉？
+- [ ] 更换文字模版 （why:更伟大的贡献）
 
 ### Deadlines
 NIPS:
@@ -11,7 +12,23 @@ Abstract submission: 15 May \
 Paper submission: 22 May
 
 CORL:
-Paper submission: 6 June (including supp)
+Paper submission: 6th
+
+RAL: JULY
+
+ICRA: Sep
+ICLR: Sep
+
+### Timelines
+9-May, Thursday: 
+    The new network structure (ssl)
+10-May, Friday:
+    Train on simulation tasks
+11-May, Saturday:
+    拿到初步结果
+13-May, Monday:
+    Changjae 回国, 正好和他汇报
+
 
 ### Baselines
 - CLIPort from https://github.com/cliport/cliport
