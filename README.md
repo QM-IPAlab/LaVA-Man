@@ -1,4 +1,9 @@
 # TODO list
+- [ ] 像croco一样，需要两张图片+text 作为一个pair
+- [ ] 用stable diffusion的方式跑mae
+- [ ] Cross attention 原图不挖空，结果图挖空。原图是Q，还是K V？
+- [ ] 不同的视角？？ （contribution）
+- [ ] decoder 要不要丢掉？
 
 ### Deadlines
 NIPS:
