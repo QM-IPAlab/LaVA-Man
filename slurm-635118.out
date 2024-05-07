@@ -1,0 +1,4 @@
+	Python3 anaconda is now loaded in your environment.
+	For all commands you should now do the following:
+	source $condaDotFile
+

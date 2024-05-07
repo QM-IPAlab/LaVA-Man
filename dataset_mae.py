@@ -1,5 +1,5 @@
 """
-load dataset from cliport for mae training
+load dataset from Cliport for mae training
 modified from https://github.com/google-research/ravens/blob/master/ravens/dataset.py
 """
 
