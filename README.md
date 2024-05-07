@@ -21,13 +21,13 @@ ICLR: Sep
 
 ### Timelines
 9-May, Thursday: 
-    The new network structure (ssl)
+    The new network structure (ssl)\
 10-May, Friday:
-    Train on simulation tasks
+    Train on simulation tasks\
 11-May, Saturday:
-    拿到初步结果
+    拿到初步结果\
 13-May, Monday:
-    Changjae 回国, 正好和他汇报
+    Changjae 回国, 正好和他汇报\
 
 
 ### Baselines
