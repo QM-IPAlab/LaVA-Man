@@ -7,7 +7,7 @@ import h5py
 PATH = "/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/exist_dataset.hdf5"
 
 class MAEDataset(Dataset):
-    def __init__(self, data_path=PATH):
+    def __init__(self, data_path=PATH, transform=None):
         super().__init__()
         self.data_path = data_path
         self.file = None
@@ -15,6 +15,8 @@ class MAEDataset(Dataset):
         with h5py.File(self.data_path, 'r') as f:
             self.length = len(f['image_s1'])
             print("Length of the dataset: ", self.length)
+        
+        self.transform = transform
 
 
     def __len__(self):
@@ -30,6 +32,10 @@ class MAEDataset(Dataset):
         lang = self.file['language'][idx]
         pick = self.file['gt_pick'][idx]
         place = self.file['gt_place'][idx]
+
+        if self.transform:
+            img1 = self.transform(img1)
+            img2 = self.transform(img2)
 
         return img1, img2, lang, pick, place
 

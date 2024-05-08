@@ -2,6 +2,10 @@
 data/
 data_image/
 data_hdf5/
+exps/
+/output_dir
+*.out
+*.yaml
 
 # Folders
 cliport/data/
