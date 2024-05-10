@@ -338,3 +338,49 @@ def all_reduce_mean(x):
         return x_reduce.item()
     else:
         return x
+
+
+def dynamic_load_pretrain(model, checkpoint_path, dict_name='model'):
+
+    # load checkpoint
+    checkpoint_dict = torch.load(checkpoint_path)
+    if dict_name in checkpoint_dict:
+        checkpoint_dict = checkpoint_dict[dict_name]
+
+    # check model state
+    model_dict = model.state_dict()
+
+    # initialize statistics
+    loaded_params = 0
+    missed_params = 0
+    extra_params = 0
+    size_mismatched_params = 0
+
+    for ck_name, ck_param in checkpoint_dict.items():
+        if ck_name in model_dict:
+            if model_dict[ck_name].shape == ck_param.shape:
+                model_dict[ck_name].copy_(ck_param)
+                loaded_params += 1
+            else:
+                # size mismatch
+                size_mismatched_params += 1
+                # print(
+                #    f"Size mismatch for {name}: checkpoint shape {param.shape}, model shape {current_state[name].shape}")
+        else:
+            extra_params += 1
+
+    # 更新模型状态
+    model.load_state_dict(model_dict, strict=True)
+
+    for model_name in model_dict:
+        if model_name not in checkpoint_dict:
+            missed_params += 1
+            # print(model_name)
+            # input()
+
+    # 输出统计信息
+    print(f"Total loaded parameters: {loaded_params}")
+    print(f"Total missed parameters: {missed_params}")
+    print(f"Total size mismatched parameters: {size_mismatched_params}")
+    print(f"Total extra parameters in checkpoint: {extra_params}")
+
