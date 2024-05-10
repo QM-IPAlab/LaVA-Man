@@ -7,6 +7,7 @@ from timm.models.vision_transformer import PatchEmbed, Block
 
 from util.pos_embed import get_2d_varsize_sincos_pos_embed
 from blocks import DecoderBlock
+from transformers import AutoTokenizer, CLIPTextModel
 
 
 class MAERobotLang(nn.Module):
@@ -53,7 +54,10 @@ class MAERobotLang(nn.Module):
 
         self.initialize_weights()
 
-        # TODO Implement the language encoder here
+        # The CLIP model
+        self.text_processor = AutoTokenizer.from_pretrained("openai/clip-vit-base-patch32")
+        self.clip_text = CLIPTextModel.from_pretrained("openai/clip-vit-base-patch32")
+        self.clip_text.requires_grad_(False)
 
     def initialize_weights(self):
 
@@ -156,8 +160,8 @@ class MAERobotLang(nn.Module):
 
         # add positional embedding
         if self.decoder_pos_embed is not None:
-            fea1 = fea1 + self.dec_pos_embed
-            fea2 = fea2 + self.dec_pos_embed
+            fea1 = fea1 + self.decoder_pos_embed
+            fea2 = fea2 + self.decoder_pos_embed
 
         out1 = fea1
         out2 = fea2
@@ -230,13 +234,16 @@ class MAERobotLang(nn.Module):
 
         # encoder of the language goal
         # use clip
-        # TODO: Implement the language encoder here
-        lang_emb = 'pass'
+        with torch.no_grad():
+            decoded_strings = [s.decode('ascii') for s in lang]
+            input_lang = self.text_processor(text=decoded_strings, padding="max_length", return_tensors='pt')
+            input_lang.to(self.clip_text.device)
+            lang_emb = self.clip_text(**input_lang, return_dict=False)
 
-        # decoder 
+        # decoder
         pred = self.forward_decoder(latent1, latent2, ids_restore2, lang_emb)
 
-        # TODO: also need a prediction head for Cliport here
+        # TODO: Do we need a prediction head for Cliport here ?
         loss = self.forward_loss(img2, pred, mask2)
 
         return loss, pred, mask2

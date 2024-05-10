@@ -149,6 +149,7 @@ class DecoderBlock(nn.Module):
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
         self.norm2 = norm_layer(dim)
         self.norm3 = norm_layer(dim)
+        self.norm4 = norm_layer(dim)
         mlp_hidden_dim = int(dim * mlp_ratio)
         self.mlp = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, act_layer=act_layer, drop=drop)
         self.norm_y = norm_layer(dim) if norm_mem else nn.Identity()
@@ -157,14 +158,16 @@ class DecoderBlock(nn.Module):
         """
         x: norm -> self_attn -> drop -> norm -> cross_attn -> drop
         """
+        lang = lang[0]
         x = x + self.drop_path(self.attn(self.norm1(x)))
         y = self.norm_y(y)
 
         # cross attention between current (K,V) ang goal image (Q)
-        x = x + self.drop_path(self.cross_attn(y, self.norm2(x)))
+        x = x + self.drop_path(self.cross_attn(y, self.norm2(x), self.norm2(x)))
 
         # cross attention between current (Q) and language (K,V)
+        x = x + self.drop_path(self.cross_attn(self.norm3(x), lang, lang))
 
         # final output
-        x = x + self.drop_path(self.mlp(self.norm3(x)))
+        x = x + self.drop_path(self.mlp(self.norm4(x)))
         return x, y

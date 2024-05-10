@@ -7,4 +7,4 @@ echo "MASTER_ADDR set to $MASTER_ADDR"
 echo "MASTER_PORT set to $MASTER_PORT"
 
 python mae/main_pretrain_ours.py \
-    --batch_size 16 \
+    --batch_size 16

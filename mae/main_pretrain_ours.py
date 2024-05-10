@@ -30,7 +30,7 @@ import timm.optim.optim_factory as optim_factory
 import util.misc as misc
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
 
-from engine_pretrain import train_one_epoch_ours
+from engine_pretrain_ours import train_one_epoch_ours
 from dataset_mae import MAEDataset
 from models_mae_rl import MAERobotLang
 
