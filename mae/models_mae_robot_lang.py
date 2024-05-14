@@ -186,7 +186,7 @@ class MAERobotLang(nn.Module):
         # apply Transformer blocks
         for blk in self.decoder_blocks:
             out1, out2 = blk(out1, out2, lang_emb)
-        out = self.decoder_norm(out2)
+        out = self.decoder_norm(out1)
 
         out = self.decoder_pred(out)
         out = out[:, 1:, :]

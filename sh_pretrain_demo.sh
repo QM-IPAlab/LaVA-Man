@@ -5,7 +5,7 @@ echo "MASTER_ADDR set to $MASTER_ADDR"
 echo "MASTER_PORT set to $MASTER_PORT"
 
 python mae/main_pretrain_ours.py \
-    --model mae_robot_lang \
+    --model mae_robot \
     --batch_size 1 \
     --demo \
-    --resume /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang/checkpoint-100.pth
+    --resume /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot/checkpoint-20.pth

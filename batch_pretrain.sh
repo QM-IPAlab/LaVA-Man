@@ -3,7 +3,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --job-name=gen_data
 #SBATCH --cpus-per-task=16
-#SBATCH --time=24:00:00
+#SBATCH --time=12:00:00
 module load python/anaconda3
 source activate mae-cliport
 export MASTER_ADDR=$(hostname)
@@ -13,8 +13,8 @@ echo "MASTER_ADDR set to $MASTER_ADDR"
 echo "MASTER_PORT set to $MASTER_PORT"
 
 python mae/main_pretrain_ours.py \
-    --model mae_robot_lang \
+    --model mae_robot \
     --batch_size 64 \
-    --output_dir output_mae_robot_lang \
-    --pretrain /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/checkpoints/mae_pretrain_vit_base.pth \
+    --output_dir output_mae_robot \
+    --resume /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot/checkpoint-20.pth \
     --log

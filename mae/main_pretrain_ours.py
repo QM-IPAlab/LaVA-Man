@@ -221,10 +221,9 @@ def main(args):
         if args.distributed:
             data_loader_train.sampler.set_epoch(epoch)
 
-        validate_vis_img2(model_without_ddp, data_loader_vis, device, epoch, log_writer=log_writer, args=args)
         train_stats = train_one_epoch_ours(
             model, data_loader_train,
-            optimizer, device, (epoch + 1) * 1000, loss_scaler,
+            optimizer, device, epoch, loss_scaler,
             log_writer=log_writer,
             args=args
         )
@@ -234,7 +233,7 @@ def main(args):
                 args=args, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer,
                 loss_scaler=loss_scaler, epoch=epoch)
 
-            validate_vis_img2(model_without_ddp, data_loader_vis, device, epoch, log_writer=log_writer, args=args)
+            validate_vis_img2(model_without_ddp, data_loader_vis, device, (epoch + 1)*1000, log_writer=log_writer, args=args)
 
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                      'epoch': epoch, }
