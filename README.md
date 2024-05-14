@@ -1,10 +1,20 @@
 # TODO list
-- [ ] 像croco一样，需要两张图片+text 作为一个pair
-- [ ] 用stable diffusion的方式跑mae
-- [ ] Cross attention 原图不挖空，结果图挖空。原图是Q，还是K V？
+## task: the netowork structure (ssl) 
+9-May, Thursday
+- [x] 像croco一样，需要两张图片+text 作为一个pair
+- [x] 用stable diffusion的方式跑mae
+- [x] Cross attention 原图不挖空，结果图挖空。原图是Q，还是K V？
+
+## task: use pretrain model in simulator tasks
+12-May, Sunday
+- [ ] write the model in cliport agent
+- [ ] run the experiment
+
+### 其他想法
 - [ ] 不同的视角？？ （contribution）
 - [ ] decoder 要不要丢掉？
 - [ ] 更换文字模版 （why:更伟大的贡献）
+- [ ] encoder里也加上text cross attention
 
 ### Deadlines
 NIPS:
@@ -18,16 +28,6 @@ RAL: JULY
 
 ICRA: Sep
 ICLR: Sep
-
-### Timelines
-9-May, Thursday: 
-    The new network structure (ssl)\
-10-May, Friday:
-    Train on simulation tasks\
-11-May, Saturday:
-    拿到初步结果\
-13-May, Monday:
-    Changjae 回国, 正好和他汇报\
 
 
 ### Baselines

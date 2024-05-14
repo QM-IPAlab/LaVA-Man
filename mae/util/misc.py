@@ -20,6 +20,8 @@ import torch
 import torch.distributed as dist
 from torch._six import inf
 
+from timm.models.vision_transformer import PatchEmbed
+
 
 class SmoothedValue(object):
     """Track a series of values and provide access to smoothed values over a
@@ -288,7 +290,8 @@ def get_grad_norm_(parameters, norm_type: float = 2.0) -> torch.Tensor:
     if norm_type == inf:
         total_norm = max(p.grad.detach().abs().max().to(device) for p in parameters)
     else:
-        total_norm = torch.norm(torch.stack([torch.norm(p.grad.detach(), norm_type).to(device) for p in parameters]), norm_type)
+        total_norm = torch.norm(torch.stack([torch.norm(p.grad.detach(), norm_type).to(device) for p in parameters]),
+                                norm_type)
     return total_norm
 
 
@@ -341,7 +344,6 @@ def all_reduce_mean(x):
 
 
 def dynamic_load_pretrain(model, checkpoint_path, dict_name='model'):
-
     # load checkpoint
     checkpoint_dict = torch.load(checkpoint_path)
     if dict_name in checkpoint_dict:
@@ -384,3 +386,23 @@ def dynamic_load_pretrain(model, checkpoint_path, dict_name='model'):
     print(f"Total size mismatched parameters: {size_mismatched_params}")
     print(f"Total extra parameters in checkpoint: {extra_params}")
 
+
+class PatchEmbedVarSize(PatchEmbed):
+    """ Image to Patch Embedding with variable size image support
+    """
+
+    def __init__(self, img_size, patch_size=16, in_chans=3, embed_dim=768):
+        super().__init__()
+        patch_size = (patch_size, patch_size)
+        num_patches = (img_size[1] // patch_size[1]) * (img_size[0] // patch_size[0])
+        self.img_size = img_size
+        self.patch_size = patch_size
+        self.num_patches = num_patches
+        self.proj = torch.nn.Conv2d(in_chans, embed_dim, kernel_size=patch_size, stride=patch_size)
+
+    def forward(self, x):
+        B, C, H, W = x.shape
+        assert H == self.img_size[0] and W == self.img_size[1], \
+            f"Input image size ({H}*{W}) doesn't match model ({self.img_size[0]}*{self.img_size[1]})."
+        x = self.proj(x).flatten(2).transpose(1, 2)
+        return x

@@ -3,9 +3,11 @@ data/
 data_image/
 data_hdf5/
 exps/
-/output_dir
+output*/
 *.out
 *.yaml
+wandb/
+*.png
 
 # Folders
 cliport/data/

@@ -6,8 +6,24 @@ import torch.nn as nn
 from timm.models.vision_transformer import PatchEmbed, Block
 
 from util.pos_embed import get_2d_varsize_sincos_pos_embed
-from blocks import DecoderBlock
+from blocks import DecoderBlockLang
 from transformers import AutoTokenizer, CLIPTextModel
+from matplotlib import pyplot as plt
+
+
+def show_image(image, title=''):
+
+    clip_color_mean = [0.48145466, 0.4578275, 0.40821073]
+    clip_color_mean = torch.tensor(clip_color_mean).view(1, 1, 3)
+    clip_color_std = [0.26862954, 0.26130258, 0.27577711]
+    clip_color_std = torch.tensor(clip_color_std).view(1, 1, 3)
+
+    # image is [H, W, 3]
+    assert image.shape[2] == 3
+    plt.imshow(torch.clip((image * clip_color_std + clip_color_mean) * 255, 0, 255).int())
+    plt.title(title, fontsize=16)
+    plt.axis('off')
+    return
 
 
 class MAERobotLang(nn.Module):
@@ -41,9 +57,11 @@ class MAERobotLang(nn.Module):
 
         self.decoder_pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, decoder_embed_dim),
                                               requires_grad=False)  # fixed sin-cos embedding
+        self.decoder_pos_embed2 = nn.Parameter(torch.zeros(1, num_patches + 1, decoder_embed_dim),
+                                               requires_grad=False)  # fixed sin-cos embedding
 
         self.decoder_blocks = nn.ModuleList([
-            DecoderBlock(decoder_embed_dim, decoder_num_heads, mlp_ratio, qkv_bias=True, norm_layer=norm_layer,
+            DecoderBlockLang(decoder_embed_dim, decoder_num_heads, mlp_ratio, qkv_bias=True, norm_layer=norm_layer,
                          norm_mem=norm_im2_in_dec)
             for _ in range(decoder_depth)])
         self.decoder_norm = norm_layer(decoder_embed_dim)
@@ -161,7 +179,7 @@ class MAERobotLang(nn.Module):
         # add positional embedding
         if self.decoder_pos_embed is not None:
             fea1 = fea1 + self.decoder_pos_embed
-            fea2 = fea2 + self.decoder_pos_embed
+            fea2 = fea2 + self.decoder_pos_embed2
 
         out1 = fea1
         out2 = fea2
@@ -192,12 +210,11 @@ class MAERobotLang(nn.Module):
 
     def unpatchify(self, x):
         """
-        x: (N, L, patch_size**2 *3)
         imgs: (N, 3, H, W)
         """
         p = self.patch_embed.patch_size[0]
-        h = self.img_size // p
-        w = self.original_width // p
+        h = self.img_size[0] // p
+        w = self.img_size[1] // p
         assert h * w == x.shape[1]
 
         x = x.reshape(shape=(x.shape[0], h, w, p, p, 3))
@@ -247,6 +264,46 @@ class MAERobotLang(nn.Module):
         loss = self.forward_loss(img2, pred, mask2)
 
         return loss, pred, mask2
+
+    def vis_one_result(self, img1, img2, pick, place, lang, mask_ratio=0.75):
+
+        # run MAE
+        loss, y, mask = self(img1, img2, pick, place, lang, mask_ratio)
+        y = self.unpatchify(y)
+        y = torch.einsum('nchw->nhwc', y).detach().cpu()
+
+        # visualize the mask
+        mask = mask.detach()
+        mask = mask.unsqueeze(-1).repeat(1, 1, self.patch_embed.patch_size[0] ** 2 * 3)  # (N, H*W, p*p*3)
+        mask = self.unpatchify(mask)  # 1 is removing, 0 is keeping
+        mask = torch.einsum('nchw->nhwc', mask).detach().cpu()
+
+        x = torch.einsum('nchw->nhwc', img2)
+        x = x.detach().cpu()
+
+        # masked image
+        im_masked = x * (1 - mask)
+
+        # MAE reconstruction pasted with visible patches
+        im_paste = x * (1 - mask) + y * mask
+
+        # make the plt figure larger
+        plt.rcParams['figure.figsize'] = [24, 24]
+
+        plt.subplot(1, 4, 1)
+        show_image(x[0], "original")
+
+        plt.subplot(1, 4, 2)
+        show_image(im_masked[0], "masked")
+
+        plt.subplot(1, 4, 3)
+        show_image(y[0], "reconstruction")
+
+        plt.subplot(1, 4, 4)
+        show_image(im_paste[0], "reconstruction + visible")
+
+        plt.savefig("results.png", bbox_inches='tight', pad_inches=0)
+        print("Save image to results.png")
 
 
 class PatchEmbedVarSize(PatchEmbed):

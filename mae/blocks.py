@@ -13,6 +13,7 @@ def _ntuple(n):
         if isinstance(x, collections.abc.Iterable) and not isinstance(x, str):
             return x
         return tuple(repeat(x, n))
+
     return parse
 
 
@@ -50,6 +51,7 @@ class DropPath(nn.Module):
 
 class Mlp(nn.Module):
     """ MLP as used in Vision Transformer, MLP-Mixer and related networks"""
+
     def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, bias=True, drop=0.):
         super().__init__()
         out_features = out_features or in_features
@@ -136,7 +138,7 @@ class CrossAttention(nn.Module):
         return x
 
 
-class DecoderBlock(nn.Module):
+class DecoderBlockLang(nn.Module):
 
     def __init__(self, dim, num_heads, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop=0., attn_drop=0.,
                  drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm, norm_mem=True, rope=None):
@@ -170,4 +172,36 @@ class DecoderBlock(nn.Module):
 
         # final output
         x = x + self.drop_path(self.mlp(self.norm4(x)))
+        return x, y
+
+
+class DecoderCABlock(nn.Module):
+
+    def __init__(self, dim, num_heads, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop=0., attn_drop=0.,
+                 drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm, norm_mem=True, rope=None):
+        super().__init__()
+        self.norm1 = norm_layer(dim)
+        self.attn = Attention(
+            dim, num_heads=num_heads, qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=drop)
+        self.cross_attn = CrossAttention(dim, rope=rope, num_heads=num_heads, qkv_bias=qkv_bias, attn_drop=attn_drop,
+                                         proj_drop=drop)
+        self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
+        self.norm2 = norm_layer(dim)
+        self.norm3 = norm_layer(dim)
+        mlp_hidden_dim = int(dim * mlp_ratio)
+        self.mlp = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, act_layer=act_layer, drop=drop)
+        self.norm_y = norm_layer(dim) if norm_mem else nn.Identity()
+
+    def forward(self, x, y, lang=None):
+        """
+        x: norm -> self_attn -> drop -> norm -> cross_attn -> drop
+        """
+        x = x + self.drop_path(self.attn(self.norm1(x)))
+        y = self.norm_y(y)
+
+        # cross attention between current (K,V) ang goal image (Q)
+        x = x + self.drop_path(self.cross_attn(y, self.norm2(x), self.norm2(x)))
+
+        # final output
+        x = x + self.drop_path(self.mlp(self.norm3(x)))
         return x, y

@@ -15,24 +15,28 @@ import numpy as np
 import os
 import time
 from pathlib import Path
+import wandb
 
 import torch
 import torch.backends.cudnn as cudnn
-from torch.utils.tensorboard import SummaryWriter
 import torchvision.transforms as transforms
-import torchvision.datasets as datasets
+from torch.utils.data import Subset
 
 import timm
-
-assert timm.__version__ == "0.3.2"  # version check
 import timm.optim.optim_factory as optim_factory
 
 import util.misc as misc
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
-
-from engine_pretrain_ours import train_one_epoch_ours
+from engine_pretrain_ours import train_one_epoch_ours, validate_vis_img2
 from dataset_mae import MAEDataset
-from models_mae_rl import MAERobotLang
+import models_lib
+
+assert timm.__version__ == "0.3.2"  # version check
+MEAN = [0.1867, 0.1683, 0.1569]
+STD = [0.1758, 0.1402, 0.1236]
+MEAN_CLIPORT = [0.48145466, 0.4578275, 0.40821073]
+STD_CLIPORT = [0.26862954, 0.26130258, 0.27577711]
+
 
 def get_args_parser():
     parser = argparse.ArgumentParser('MAE pre-training', add_help=False)
@@ -74,10 +78,10 @@ def get_args_parser():
     parser.add_argument('--data_path', default='/datasets01/imagenet_full_size/061417/', type=str,
                         help='dataset path')
 
-    parser.add_argument('--output_dir', default='./output_dir',
+    parser.add_argument('--output_dir', default='./debug',
                         help='path where to save, empty for no saving')
-    parser.add_argument('--log_dir', default='./output_dir',
-                        help='path where to tensorboard log')
+    parser.add_argument('--log', action='store_true',
+                        help='log training process')
     parser.add_argument('--device', default='cuda',
                         help='device to use for training / testing')
     parser.add_argument('--seed', default=0, type=int)
@@ -100,22 +104,26 @@ def get_args_parser():
     parser.add_argument('--dist_url', default='env://',
                         help='url used to set up distributed training')
     parser.add_argument('--pretrain', default=None, type=str)
+    parser.add_argument('--demo', action='store_true')
 
     return parser
+
 
 def get_fix_transform():
     trasform_fix = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.48145466, 0.4578275, 0.40821073], std=[0.26862954, 0.26130258, 0.27577711])])
+        transforms.Normalize(mean=MEAN_CLIPORT, std=STD_CLIPORT)])
     return trasform_fix
+
 
 def get_aug_transform(input_size):
     transform_train = transforms.Compose([
         transforms.RandomResizedCrop(args.input_size, scale=(0.2, 1.0), interpolation=3),  # 3 is bicubic
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.48145466, 0.4578275, 0.40821073], std=[0.26862954, 0.26130258, 0.27577711])])
+        transforms.Normalize(mean=MEAN_CLIPORT, std=STD_CLIPORT)])
     return transform_train
+
 
 def main(args):
     misc.init_distributed_mode(args)
@@ -135,6 +143,8 @@ def main(args):
     # simple augmentation
     transform_train = get_fix_transform()
     dataset_train = MAEDataset(transform=transform_train)
+    dataset_vis = Subset(dataset_train, range(1))
+
     if True:  # args.distributed:
         num_tasks = misc.get_world_size()
         global_rank = misc.get_rank()
@@ -145,9 +155,9 @@ def main(args):
     else:
         sampler_train = torch.utils.data.RandomSampler(dataset_train)
 
-    if global_rank == 0 and args.log_dir is not None:
-        os.makedirs(args.log_dir, exist_ok=True)
-        log_writer = SummaryWriter(log_dir=args.log_dir)
+    if global_rank == 0 and args.log:
+        wandb.init(project='MAE', name=args.model, entity='cxz', mode='offline')
+        log_writer = wandb
     else:
         log_writer = None
 
@@ -156,16 +166,20 @@ def main(args):
         batch_size=args.batch_size,
         num_workers=2,
         pin_memory=args.pin_mem,
-        drop_last=True,
+        drop_last=True
+    )
+
+    data_loader_vis = torch.utils.data.DataLoader(
+        dataset_vis, batch_size=1, shuffle=False,
+        num_workers=1, pin_memory=args.pin_mem
     )
 
     # define the model
-    model = MAERobotLang(norm_pix_loss=args.norm_pix_loss)
-
+    model = models_lib.__dict__[args.model](norm_pix_loss=args.norm_pix_loss)
+    print("Imported model: %s" % args.model)
     model.to(device)
-
     model_without_ddp = model
-    print("Model = %s" % str(model_without_ddp))
+    # print("Model = %s" % str(model_without_ddp))
 
     eff_batch_size = args.batch_size * args.accum_iter * misc.get_world_size()
 
@@ -193,28 +207,39 @@ def main(args):
     else:
         misc.load_model(args=args, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler)
 
+    if args.demo:
+        validate_vis_img2(model_without_ddp,
+                          data_loader_vis,
+                          device, 0,
+                          log_writer=log_writer,
+                          args=args)
+        input()
+
     print(f"Start training for {args.epochs} epochs")
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             data_loader_train.sampler.set_epoch(epoch)
+
+        validate_vis_img2(model_without_ddp, data_loader_vis, device, epoch, log_writer=log_writer, args=args)
         train_stats = train_one_epoch_ours(
             model, data_loader_train,
-            optimizer, device, epoch, loss_scaler,
+            optimizer, device, (epoch + 1) * 1000, loss_scaler,
             log_writer=log_writer,
             args=args
         )
+
         if args.output_dir and (epoch % 20 == 0 or epoch + 1 == args.epochs):
             misc.save_model(
                 args=args, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer,
                 loss_scaler=loss_scaler, epoch=epoch)
 
+            validate_vis_img2(model_without_ddp, data_loader_vis, device, epoch, log_writer=log_writer, args=args)
+
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
-                        'epoch': epoch,}
+                     'epoch': epoch, }
 
         if args.output_dir and misc.is_main_process():
-            if log_writer is not None:
-                log_writer.flush()
             with open(os.path.join(args.output_dir, "log.txt"), mode="a", encoding="utf-8") as f:
                 f.write(json.dumps(log_stats) + "\n")
 
