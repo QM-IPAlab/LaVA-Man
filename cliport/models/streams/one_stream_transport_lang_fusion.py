@@ -31,15 +31,18 @@ class OneStreamTransportMAE(TwoStreamTransportLangFusion):
     """Transport (a.k.a) Place module with language features fused at the bottleneck"""
 
     def __init__(self, stream_fcn, in_shape, n_rotations, crop_size, preprocess, cfg, device):
+        self.pretrain = cfg['pretrain_path']
         super().__init__(stream_fcn, in_shape, n_rotations, crop_size, preprocess, cfg, device)
         self.fusion_type = cfg['train']['trans_stream_fusion_type']
+
 
     def _build_nets(self):
         stream_one_fcn, _ = self.stream_fcn
         stream_one_model = models.names[stream_one_fcn]
-        self.key_stream_one = stream_one_model((384, 224), self.output_dim, self.cfg, self.device, self.preprocess)
-        self.query_stream_one = stream_one_model(self.kernel_shape, self.kernel_dim, self.cfg, self.device,
-                                                 self.preprocess)
+        self.key_stream_one = stream_one_model((384, 224), self.output_dim, self.cfg,
+                                               self.device, self.preprocess, pretrain_path=self.pretrain)
+        self.query_stream_one = stream_one_model(self.kernel_shape, self.kernel_dim, self.cfg,
+                                                 self.device, self.preprocess, pretrain_path=self.pretrain)
 
         print(f"Transport FCN: {stream_one_fcn}")
 

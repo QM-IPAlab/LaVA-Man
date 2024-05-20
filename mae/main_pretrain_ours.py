@@ -36,7 +36,7 @@ MEAN = [0.1867, 0.1683, 0.1569]
 STD = [0.1758, 0.1402, 0.1236]
 MEAN_CLIPORT = [0.48145466, 0.4578275, 0.40821073]
 STD_CLIPORT = [0.26862954, 0.26130258, 0.27577711]
-PATH = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/exist_dataset_no_aug_test.hdf5'
+PATH = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/exist_dataset_no_aug.hdf5'
 
 def get_args_parser():
     parser = argparse.ArgumentParser('MAE pre-training', add_help=False)

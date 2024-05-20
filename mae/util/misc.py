@@ -21,6 +21,8 @@ import torch.distributed as dist
 from torch._six import inf
 
 from timm.models.vision_transformer import PatchEmbed
+from mae.util.pos_embed import interpolate_pos_embed
+
 
 class SmoothedValue(object):
     """Track a series of values and provide access to smoothed values over a
@@ -349,7 +351,7 @@ def dynamic_load_pretrain(model, checkpoint_path, dict_name='model', interpolate
         checkpoint_dict = checkpoint_dict[dict_name]
 
     if interpolate:
-        interpolate_pos_embed_ours(model, checkpoint_dict)
+        interpolate_pos_embed(model, checkpoint_dict)
     # check model state
     model_dict = model.state_dict()
 
@@ -358,6 +360,8 @@ def dynamic_load_pretrain(model, checkpoint_path, dict_name='model', interpolate
     missed_params = 0
     extra_params = 0
     size_mismatched_params = 0
+    size_mismatch_names = []
+    miss_names = []
 
     for ck_name, ck_param in checkpoint_dict.items():
         if ck_name in model_dict:
@@ -367,8 +371,7 @@ def dynamic_load_pretrain(model, checkpoint_path, dict_name='model', interpolate
             else:
                 # size mismatch
                 size_mismatched_params += 1
-                # print(
-                #    f"Size mismatch for {name}: checkpoint shape {param.shape}, model shape {current_state[name].shape}")
+                size_mismatch_names.append(ck_name)
         else:
             extra_params += 1
 
@@ -378,13 +381,17 @@ def dynamic_load_pretrain(model, checkpoint_path, dict_name='model', interpolate
     for model_name in model_dict:
         if model_name not in checkpoint_dict:
             missed_params += 1
-            # print(model_name)
+            miss_names.append(model_name)
             # input()
 
     # 输出统计信息
     print(f"Total loaded parameters: {loaded_params}")
     print(f"Total missed parameters: {missed_params}")
+    if 0 < len(miss_names) < 10:
+        print(f"Missed parameters: {miss_names}")
     print(f"Total size mismatched parameters: {size_mismatched_params}")
+    if 0 < len(size_mismatch_names) < 10:
+        print(f"Size mismatched parameters: {size_mismatch_names}")
     print(f"Total extra parameters in checkpoint: {extra_params}")
 
 

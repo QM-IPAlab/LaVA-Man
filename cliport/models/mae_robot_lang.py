@@ -19,8 +19,8 @@ class MAEModel(nn.Module):
             norm_pix_loss=False)
 
         # load pretrain model
-        #if pretrain_path is not None:
-        #    misc.dynamic_load_pretrain(self.model, pretrain_path)
+        if pretrain_path is not None:
+            misc.dynamic_load_pretrain(self.model, pretrain_path, interpolate=True)
 
         self.preprocess = preprocess
         self.output_dim = output_dim

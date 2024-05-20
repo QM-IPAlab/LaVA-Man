@@ -4,6 +4,9 @@ import torch.nn as nn
 from transformers import AutoTokenizer, CLIPTextModel
 from blocks import DecoderCABlockLang
 from models_mae_robot import MAERobot
+import transformers
+
+transformers.logging.set_verbosity_error()
 
 
 class MAERobotLang(MAERobot):

@@ -24,7 +24,7 @@ from cliport.agents.mae_transporter import MAETransporterAgent,MAESegTransporter
 names = {
 
          ### OURS MAE
-         'mae_robot_lang': MAETransporterAgent,
+         'mae': MAETransporterAgent,
          'mae_seg': MAESegTransporterAgent,
 
 

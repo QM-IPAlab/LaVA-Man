@@ -1,4 +1,6 @@
 # Training
+# Ours parameter
+pretrain_path: /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/checkpoints/mae_pretrain_vit_base.pth
 
 defaults:
   - config
