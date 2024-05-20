@@ -106,16 +106,23 @@ hydra:
   overrides:
     hydra: []
     task:
-    - n=1
-    - task=packing-unseen-google-objects-group
-    - mode=train
-    - save_type=hdf5
+    - model_task=packing-unseen-google-objects-seq
+    - eval_task=packing-unseen-google-objects-seq
+    - agent=mae_seg
+    - mode=test
+    - n_demos=100
+    - train_demos=100
+    - exp_folder=debug
+    - checkpoint_type=best
+    - update_results=True
+    - disp=False
+    - record.save_video=False
   job:
-    name: demos_top_down
-    override_dirname: mode=train,n=1,save_type=hdf5,task=packing-unseen-google-objects-group
+    name: eval
+    override_dirname: agent=mae_seg,checkpoint_type=best,disp=False,eval_task=packing-unseen-google-objects-seq,exp_folder=debug,mode=test,model_task=packing-unseen-google-objects-seq,n_demos=100,record.save_video=False,train_demos=100,update_results=True
     id: ???
     num: ???
-    config_name: data
+    config_name: eval
     env_set: {}
     env_copy: []
     config:

@@ -16,8 +16,14 @@ from cliport.models.clip_unet_lat import CLIPUNetLat
 from cliport.models.clip_lingunet_lat import CLIPLingUNetLat
 from cliport.models.clip_film_lingunet_lat import CLIPFilmLingUNet
 
+# ours
+from cliport.models.mae_robot_lang import MAEModel, MAESegModel
 
 names = {
+
+    'mae': MAEModel,
+    'mae_seg': MAESegModel,
+
     # resnet
     'plain_resnet': ResNet43_8s,
     'plain_resnet_lang': ResNet43_8s_lang,

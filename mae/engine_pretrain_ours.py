@@ -123,8 +123,10 @@ def validate_vis_img2(model: torch.nn.Module,
             if log_writer is not None:
                 combined_image = combined_image.permute(1, 2, 0).numpy()
                 log_writer.log({'validation_vis': [wandb.Image(combined_image)]}, epoch)
+                break
 
             else:
                 import torchvision.utils as vutils
-                vutils.save_image(combined_image, f'vis_{args.model}.png', normalize=True, range=(0, 1))
+                vutils.save_image(combined_image, f'vis_{args.model}_{data_iter_step}.png', normalize=True, range=(0, 1))
+                print("saved image to vis_{}.png".format(data_iter_step))
 

@@ -10,6 +10,8 @@ from cliport.models.streams.two_stream_transport_lang_fusion import TwoStreamTra
 from cliport.models.streams.two_stream_attention_lang_fusion import TwoStreamAttentionLangFusionLat
 from cliport.models.streams.two_stream_transport_lang_fusion import TwoStreamTransportLangFusionLat
 
+# from visualizer import get_local
+
 
 class TwoStreamClipLingUNetTransporterAgent(TransporterAgent):
     def __init__(self, name, cfg, train_ds, test_ds):
@@ -56,7 +58,6 @@ class TwoStreamClipLingUNetTransporterAgent(TransporterAgent):
         inp_img = inp['inp_img']
         p0 = inp['p0']
         lang_goal = inp['lang_goal']
-
         out = self.transport.forward(inp_img, p0, lang_goal, softmax=softmax)
         return out
 
@@ -71,6 +72,7 @@ class TwoStreamClipLingUNetTransporterAgent(TransporterAgent):
         err, loss = self.transport_criterion(backprop, compute_err, inp, out, p0, p1, p1_theta)
         return loss, err
 
+    # @get_local('img', 'lang_goal', 'pick_conf', 'place_conf')
     def act(self, obs, info, goal=None):  # pylint: disable=unused-argument
         """Run inference and return best action given visual observations."""
         # Get heightmap from RGB-D images.
@@ -135,7 +137,6 @@ class TwoStreamClipFilmLingUNetLatTransporterAgent(TwoStreamClipLingUNetTranspor
             cfg=self.cfg,
             device=self.device_type,
         )
-
 
 class TwoStreamClipLingUNetLatTransporterAgent(TwoStreamClipLingUNetTransporterAgent):
     def __init__(self, name, cfg, train_ds, test_ds):

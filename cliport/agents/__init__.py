@@ -17,8 +17,17 @@ from cliport.agents.transporter import TwoStreamClipUNetLatTransporterAgent
 from cliport.agents.transporter_lang_goal import TwoStreamClipLingUNetLatTransporterAgent
 from cliport.agents.transporter_lang_goal import TwoStreamClipFilmLingUNetLatTransporterAgent
 
+# Ours
+from cliport.agents.mae_transporter import MAETransporterAgent,MAESegTransporterAgent
+
 
 names = {
+
+         ### OURS MAE
+         'mae_robot_lang': MAETransporterAgent,
+         'mae_seg': MAESegTransporterAgent,
+
+
          ################################
          ### CLIPort ###
          'cliport': TwoStreamClipLingUNetLatTransporterAgent,

@@ -2,17 +2,11 @@
 Save existing dataset to hdf5 format
 """
 
-from scipy.fftpack import dstn
 from cliport.dataset import RavensDataset
 import h5py
 import os
 import numpy as np
 from tqdm import tqdm
-
-from pathlib import Path
-
-import torch
-from cliport import agents
 import hydra
 
 
@@ -29,8 +23,9 @@ class RavensDatasetToHdf5(RavensDataset):
         data_gt_pick = []
         data_gt_place = []
 
+        # TODO: save to different file name
         f = h5py.File(os.path.join('/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5',
-                                   'exist_dataset.hdf5'), 'a')
+                                   'exist_dataset_no_aug_test.hdf5'), 'a')
 
         for idx in tqdm(range(len(self))):
 
@@ -122,6 +117,7 @@ def main(cfg):
     if 'multi' in dataset_type:
         ds = RavensDatasetToHdf5(data_dir, cfg, group=task, mode='train', n_demos=n_demos, augment=False)
     else:
+        #TODO: save train set, test set and val set separately
         ds = RavensDatasetToHdf5(os.path.join(data_dir, '{}-train'.format(task)), cfg, n_demos=n_demos, augment=False)
     ds.save_to_hdf5()
 

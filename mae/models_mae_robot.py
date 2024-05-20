@@ -1,14 +1,11 @@
-from functools import partial
-
 import torch
 import torch.nn as nn
 
 from timm.models.vision_transformer import Block
 
+from util.misc import PatchEmbedVarSize
 from util.pos_embed import get_2d_varsize_sincos_pos_embed
 from blocks import DecoderCABlock
-from transformers import AutoTokenizer, CLIPTextModel
-from util.misc import PatchEmbedVarSize
 
 
 class MAERobotBase(nn.Module):
@@ -208,7 +205,11 @@ class MAERobotBase(nn.Module):
         loss = (loss * mask).sum() / mask.sum()  # mean loss on removed patches
         return loss
 
-    def forward(self, img1, img2=None, pick=None, place=None, lang=None, mask_ratio=0.75):
+    def forward(self, img1, img2, pick=None, place=None, lang=None, mask_ratio=0.75):
+        """
+        img1 : visible image
+        img2 : goal image, with mask
+        """
         latent, mask, ids_restore = self.forward_encoder(img2, mask_ratio)
         pred = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
         loss = self.forward_loss(img2, pred, mask)
@@ -267,7 +268,7 @@ class MAERobot(MAERobotBase):
 
         return out
 
-    def forward(self, img1, img2=None, pick=None, place=None, lang=None, mask_ratio=0.75):
+    def forward(self, img1, img2, pick=None, place=None, lang=None, mask_ratio=0.75):
         # encoder of the first observed image (no mask)
         latent1, mask1, ids_restore2 = self.forward_encoder(img1, mask_ratio=0.0)
         latent2, mask2, ids_restore2 = self.forward_encoder(img2, mask_ratio)

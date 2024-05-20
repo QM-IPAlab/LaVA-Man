@@ -36,7 +36,7 @@ MEAN = [0.1867, 0.1683, 0.1569]
 STD = [0.1758, 0.1402, 0.1236]
 MEAN_CLIPORT = [0.48145466, 0.4578275, 0.40821073]
 STD_CLIPORT = [0.26862954, 0.26130258, 0.27577711]
-
+PATH = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/exist_dataset_no_aug_test.hdf5'
 
 def get_args_parser():
     parser = argparse.ArgumentParser('MAE pre-training', add_help=False)
@@ -75,7 +75,7 @@ def get_args_parser():
                         help='epochs to warmup LR')
 
     # Dataset parameters
-    parser.add_argument('--data_path', default='/datasets01/imagenet_full_size/061417/', type=str,
+    parser.add_argument('--data_path', default=PATH, type=str,
                         help='dataset path')
 
     parser.add_argument('--output_dir', default='./debug',
@@ -142,8 +142,8 @@ def main(args):
 
     # simple augmentation
     transform_train = get_fix_transform()
-    dataset_train = MAEDataset(transform=transform_train)
-    dataset_vis = Subset(dataset_train, range(1))
+    dataset_train = MAEDataset(transform=transform_train, data_path=args.data_path)
+    dataset_vis = Subset(dataset_train, range(10))
 
     if True:  # args.distributed:
         num_tasks = misc.get_world_size()
@@ -213,7 +213,6 @@ def main(args):
                           device, 0,
                           log_writer=log_writer,
                           args=args)
-        input()
 
     print(f"Start training for {args.epochs} epochs")
     start_time = time.time()

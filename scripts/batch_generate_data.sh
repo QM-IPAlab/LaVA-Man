@@ -24,6 +24,6 @@ for task in "${tasks[@]}"
 do
     echo "Running data colloection for task: $task"
     python -m cliport.dataset_to_hdf5 \
-                            train.task=${task}\
-                            train.n_demos=1000
+                            train.task="${task}"\
+                            train.n_demos=100
 done

@@ -138,7 +138,7 @@ class CrossAttention(nn.Module):
         return x
 
 
-class DecoderBlockLang(nn.Module):
+class DecoderCABlockLang(nn.Module):
 
     def __init__(self, dim, num_heads, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop=0., attn_drop=0.,
                  drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm, norm_mem=True, rope=None):
@@ -156,19 +156,21 @@ class DecoderBlockLang(nn.Module):
         self.mlp = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, act_layer=act_layer, drop=drop)
         self.norm_y = norm_layer(dim) if norm_mem else nn.Identity()
 
-    def forward(self, x, y, lang=None):
+    def forward(self, x, y=None, lang=None):
         """
         x: norm -> self_attn -> drop -> norm -> cross_attn -> drop
         """
-        lang = lang[0]
         x = x + self.drop_path(self.attn(self.norm1(x)))
-        y = self.norm_y(y)
 
         # cross attention between current (K,V) ang goal image (Q)
-        x = x + self.drop_path(self.cross_attn(y, self.norm2(x), self.norm2(x)))
+        if y is not None:
+            y = self.norm_y(y)
+            x = x + self.drop_path(self.cross_attn(y, self.norm2(x), self.norm2(x)))
 
         # cross attention between current (Q) and language (K,V)
-        x = x + self.drop_path(self.cross_attn(self.norm3(x), lang, lang))
+        if lang is not None:
+            lang = lang[0] if type(lang) is tuple else lang
+            x = x + self.drop_path(self.cross_attn(self.norm3(x), lang, lang))
 
         # final output
         x = x + self.drop_path(self.mlp(self.norm4(x)))
