@@ -9,7 +9,7 @@ from cliport.models.core.clip import build_model, load_clip, tokenize
 
 from cliport.models.core import fusion
 from cliport.models.core.fusion import FusionConvLat
-
+from visualizer import get_local
 
 class CLIPLingUNetLat(nn.Module):
     """ CLIP RN50 with U-Net skip connections and lateral connections """
@@ -98,12 +98,14 @@ class CLIPLingUNetLat(nn.Module):
         text_mask = torch.where(tokens==0, tokens, 1)  # [1, max_token_len]
         return text_feat, text_emb, text_mask
 
+    @get_local('out', 'img')
     def forward(self, x, lat, l):
         x = self.preprocess(x, dist='clip')
 
         in_type = x.dtype
         in_shape = x.shape
         x = x[:,:3]  # select RGB
+        img=x
         x, im = self.encode_image(x)
         x = x.to(in_type)
 
@@ -138,4 +140,5 @@ class CLIPLingUNetLat(nn.Module):
         x = self.conv2(x)
 
         x = F.interpolate(x, size=(in_shape[-2], in_shape[-1]), mode='bilinear')
+        out=x
         return x

@@ -148,7 +148,7 @@ def save_feature_map(image, mask, folder_name, file_name=None, prompt=None):
     #     save = utils.save_tensor_with_heatmap(crop_img, kernel[0,i,...], f"vis_12_Dec/vis_trans_logits_crop{i}.png", "")
 
 
-def save_tensor_with_heatmap(image: np.ndarray, heatmap: np.ndarray, filename, l=None):
+def save_tensor_with_heatmap(image: np.ndarray, heatmap: np.ndarray, filename, l=None, return_img=False):
     """
     Save an original image, its heatmap, and the overlay of both to a local file using OpenCV.
     """
@@ -187,10 +187,11 @@ def save_tensor_with_heatmap(image: np.ndarray, heatmap: np.ndarray, filename, l
         position = (10, 50)  # 设置文字的开始位置
         cv2.putText(combined, text, position, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1, cv2.LINE_AA)
 
-    folder_name = os.path.dirname(filename)
-
-    # Save heatmap
-    return cv2.imwrite(filename, combined)
+    if return_img:
+        return combined
+    else:
+        #folder_name = os.path.dirname(filename)
+        return cv2.imwrite(filename, combined)
 
 
 def move_to_device(batch, device):

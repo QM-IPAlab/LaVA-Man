@@ -154,14 +154,16 @@ def main(vcfg):
                         break
 
                     cache = get_local.cache
-                    import pdb; pdb.set_trace()
 
+                    #image = cache['CLIPLingUNetLat.forward.img'][0]  # torch.Size([1, 3, 320, 320])
                     image = cache['MAEModel.forward.rgb'][0]  # torch.Size([1, 3, 320, 320])
                     image = vu.tensor_to_cv2_img(image, to_rgb=False)
 
+                    #heatmap = cache['CLIPLingUNetLat.forward.out'][0]  # torch.Size([1, 3, 320, 320])
                     heatmap = cache['MAEModel.forward.predict'][0]
                     heatmap = heatmap.squeeze()
 
+                    os.makedirs(f'{save_path}/../vis', exist_ok=True)
                     save = vu.save_tensor_with_heatmap(image, heatmap,
                                                        f'{save_path}/../vis/heatmap_video{i + 1:06d}_step{idx}.png',
                                                        l=lang_goal)

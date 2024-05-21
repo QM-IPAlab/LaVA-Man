@@ -108,18 +108,18 @@ hydra:
     task:
     - model_task=packing-unseen-google-objects-seq
     - eval_task=packing-unseen-google-objects-seq
-    - agent=mae_seg
+    - agent=mae_fixed
     - mode=test
     - n_demos=100
     - train_demos=100
-    - exp_folder=debug
+    - exp_folder=mae_fix_pos
     - checkpoint_type=best
     - update_results=True
     - disp=False
     - record.save_video=False
   job:
     name: eval
-    override_dirname: agent=mae_seg,checkpoint_type=best,disp=False,eval_task=packing-unseen-google-objects-seq,exp_folder=debug,mode=test,model_task=packing-unseen-google-objects-seq,n_demos=100,record.save_video=False,train_demos=100,update_results=True
+    override_dirname: agent=mae_fixed,checkpoint_type=best,disp=False,eval_task=packing-unseen-google-objects-seq,exp_folder=mae_fix_pos,mode=test,model_task=packing-unseen-google-objects-seq,n_demos=100,record.save_video=False,train_demos=100,update_results=True
     id: ???
     num: ???
     config_name: eval

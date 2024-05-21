@@ -346,12 +346,14 @@ def all_reduce_mean(x):
 
 def dynamic_load_pretrain(model, checkpoint_path, dict_name='model', interpolate=False):
     # load checkpoint
+    print("Load pretrain from %s" % checkpoint_path)
+
     checkpoint_dict = torch.load(checkpoint_path)
     if dict_name in checkpoint_dict:
         checkpoint_dict = checkpoint_dict[dict_name]
 
     if interpolate:
-        interpolate_pos_embed(model, checkpoint_dict)
+        interpolate_pos_embed_ours(model, checkpoint_dict)
     # check model state
     model_dict = model.state_dict()
 
@@ -426,16 +428,17 @@ def interpolate_pos_embed_ours(model, checkpoint_model):
         # height (== width) for the checkpoint position embedding
         orig_size = (20, 10)
         # height (== width) for the new position embedding
-        new_size = int(num_patches ** 0.5)
+        p = model.patch_embed.patch_size[0]
+        new_size = (int(model.img_size[0] // p), model.img_size[1] // p)
         # class_token and dist_token are kept unchanged
         if orig_size != new_size:
-            print("Position interpolate from %dx%d to %dx%d" % (orig_size[0], orig_size[1], new_size, new_size))
+            print("Position interpolate from %dx%d to %dx%d" % (orig_size[0], orig_size[1], new_size[0], new_size[1]))
             extra_tokens = pos_embed_checkpoint[:, :num_extra_tokens]
             # only the position tokens are interpolated
             pos_tokens = pos_embed_checkpoint[:, num_extra_tokens:]
             pos_tokens = pos_tokens.reshape(-1, orig_size[0], orig_size[1], embedding_size).permute(0, 3, 1, 2)
             pos_tokens = torch.nn.functional.interpolate(
-                pos_tokens, size=(new_size, new_size), mode='bicubic', align_corners=False)
+                pos_tokens, size=(new_size[0], new_size[1]), mode='bicubic', align_corners=False)
             pos_tokens = pos_tokens.permute(0, 2, 3, 1).flatten(1, 2)
             new_pos_embed = torch.cat((extra_tokens, pos_tokens), dim=1)
             checkpoint_model['pos_embed'] = new_pos_embed
@@ -448,16 +451,17 @@ def interpolate_pos_embed_ours(model, checkpoint_model):
         # height (== width) for the checkpoint position embedding
         orig_size = (20, 10)
         # height (== width) for the new position embedding
-        new_size = int(num_patches ** 0.5)
+        p = model.patch_embed.patch_size[0]
+        new_size = (int(model.img_size[0] // p), model.img_size[1] // p)
         # class_token and dist_token are kept unchanged
         if orig_size != new_size:
-            print("Position interpolate from %dx%d to %dx%d" % (orig_size[0], orig_size[1], new_size, new_size))
+            print("Position interpolate from %dx%d to %dx%d" % (orig_size[0], orig_size[1], new_size[0], new_size[1]))
             extra_tokens = pos_embed_checkpoint[:, :num_extra_tokens]
             # only the position tokens are interpolated
             pos_tokens = pos_embed_checkpoint[:, num_extra_tokens:]
             pos_tokens = pos_tokens.reshape(-1, orig_size[0], orig_size[1], embedding_size).permute(0, 3, 1, 2)
             pos_tokens = torch.nn.functional.interpolate(
-                pos_tokens, size=(new_size, new_size), mode='bicubic', align_corners=False)
+                pos_tokens, size=(new_size[0], new_size[1]), mode='bicubic', align_corners=False)
             pos_tokens = pos_tokens.permute(0, 2, 3, 1).flatten(1, 2)
             new_pos_embed = torch.cat((extra_tokens, pos_tokens), dim=1)
             checkpoint_model['decoder_pos_embed'] = new_pos_embed

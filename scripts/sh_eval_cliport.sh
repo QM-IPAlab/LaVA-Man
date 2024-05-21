@@ -2,8 +2,8 @@ export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 
-exps_name="debug"
-agent_name="mae_robot_lang"
+exps_name="exps_mae_no_pretrain"
+agent_name="mae"
 
 # ======== task name ========= #
 
@@ -24,7 +24,7 @@ python cliport/vis_heatmap.py model_task=${task_name}\
                        n_demos=100 \
                        train_demos=100 \
                        exp_folder=${exps_name} \
-                       checkpoint_type=best \
+                       checkpoint_type=last \
                        update_results=True \
                        disp=False\
                        record.save_video=False

@@ -12,11 +12,12 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 
+WANDB_DIR = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/wandb_cliport'
 
 @hydra.main(config_path="./cfg", config_name='train')
 def main(cfg):
     # Logger
-    wandb_logger = WandbLogger(name=cfg['tag'], offline=True) if cfg['train']['log'] else None
+    wandb_logger = WandbLogger(name=cfg['tag'], offline=True, save_dir=WANDB_DIR) if cfg['train']['log'] else None
 
     # Checkpoint saver
     hydra_dir = Path(os.getcwd())
@@ -39,7 +40,7 @@ def main(cfg):
         checkpoint_callback=checkpoint_callback,
         max_epochs=max_epochs,
         automatic_optimization=False,
-        check_val_every_n_epoch=max_epochs // 50,
+        check_val_every_n_epoch=max_epochs // 100,
         resume_from_checkpoint=last_checkpoint,
     )
 

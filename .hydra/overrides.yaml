@@ -1,10 +1,10 @@
 - model_task=packing-unseen-google-objects-seq
 - eval_task=packing-unseen-google-objects-seq
-- agent=mae_seg
+- agent=mae_fixed
 - mode=test
 - n_demos=100
 - train_demos=100
-- exp_folder=debug
+- exp_folder=mae_fix_pos
 - checkpoint_type=best
 - update_results=True
 - disp=False

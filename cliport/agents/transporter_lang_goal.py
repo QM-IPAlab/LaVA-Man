@@ -1,4 +1,5 @@
 import numpy as np
+import wandb
 
 from cliport.utils import utils
 from cliport.agents.transporter import TransporterAgent
@@ -9,6 +10,8 @@ from cliport.models.streams.two_stream_attention_lang_fusion import TwoStreamAtt
 from cliport.models.streams.two_stream_transport_lang_fusion import TwoStreamTransportLangFusion
 from cliport.models.streams.two_stream_attention_lang_fusion import TwoStreamAttentionLangFusionLat
 from cliport.models.streams.two_stream_transport_lang_fusion import TwoStreamTransportLangFusionLat
+
+import cliport.utils.visual_utils as vu
 
 # from visualizer import get_local
 
@@ -52,6 +55,16 @@ class TwoStreamClipLingUNetTransporterAgent(TransporterAgent):
 
         inp = {'inp_img': inp_img, 'lang_goal': lang_goal}
         out = self.attn_forward(inp, softmax=False)
+
+        # save attention map in validation
+        if backprop is False and compute_err is True:
+            image = inp_img[:, :, :3]
+            image = vu.tensor_to_cv2_img(image, to_rgb=False)
+            heatmap = out.reshape(image.shape[0], image.shape[1]).detach().cpu().numpy()
+            combined = vu.save_tensor_with_heatmap(image, heatmap,
+                                                   filename=None, return_img=True)
+            combined = combined[:, :, ::-1]
+            self.logger.log_image(key='attention_map', images=[combined], caption=[lang_goal])
         return self.attn_criterion(backprop, compute_err, inp, out, p0, p0_theta)
 
     def trans_forward(self, inp, softmax=True):

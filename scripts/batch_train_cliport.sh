@@ -1,8 +1,6 @@
 #!/bin/bash
-#SBATCH --time=6:00:00
-#SBATCH --partition=small
-#SBATCH --gres=gpu:1
-#SBATCH --job-name=cliport
+#SBATCH --gres=gpu:4
+#SBATCH --job-name=clip_fix
 #SBATCH --cpus-per-task=16
 module load python/anaconda3
 source activate mae-cliport
@@ -10,8 +8,8 @@ export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 
-exps_name="exps_mae_rl2"
-agent_name="mae"
+exps_name="mae_fix_pos"
+agent_name="mae_fixed"
 
 # ======== task name ========= #
 
@@ -36,7 +34,8 @@ python -m cliport.train  train.task=${task_name}\
                          dataset.cache=True \
                          train.load_from_last_ckpt=False \
                          train.n_rotations=36\
-                         train.log=False \
+                         train.log=True \
+                         pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang2/checkpoint-160.pth
 
 
 python -m cliport.eval model_task=${task_name}\

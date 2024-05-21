@@ -6,7 +6,7 @@ exps/
 output*/
 *.out
 *.yaml
-wandb/
+wandb*/
 *.png
 
 # Folders
