@@ -1,5 +1,5 @@
 mode: test
-agent: mae_fixed
+agent: mae_seg2_renor
 n_demos: 100
 train_demos: 100
 n_repeats: 1
@@ -11,11 +11,11 @@ checkpoint_type: best
 val_on_heldout: true
 disp: false
 shared_memory: false
-eval_task: packing-unseen-google-objects-seq
-model_task: packing-unseen-google-objects-seq
+eval_task: stack-block-pyramid-seq-seen-colors
+model_task: stack-block-pyramid-seq-seen-colors
 type: single
 model_dir: ${root_dir}
-exp_folder: mae_fix_pos
+exp_folder: exps_mae_seg_fix_renor
 data_dir: ${root_dir}/data
 assets_root: ${root_dir}/cliport/environments/assets/
 model_path: ${model_dir}/${exp_folder}/${model_task}-${agent}-n${train_demos}-train/checkpoints/
@@ -23,7 +23,7 @@ train_config: ${model_dir}/${exp_folder}/${model_task}-${agent}-n${train_demos}-
 save_path: ${model_dir}/${exp_folder}/${eval_task}-${agent}-n${train_demos}-train/checkpoints/
 results_path: ${model_dir}/${exp_folder}/${eval_task}-${agent}-n${train_demos}-train/checkpoints/
 record:
-  save_video: false
+  save_video: true
   save_video_path: ${model_dir}/${exp_folder}/${eval_task}-${agent}-n${train_demos}-train/videos/
   add_text: true
   fps: 20

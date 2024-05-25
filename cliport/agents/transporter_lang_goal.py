@@ -57,14 +57,15 @@ class TwoStreamClipLingUNetTransporterAgent(TransporterAgent):
         out = self.attn_forward(inp, softmax=False)
 
         # save attention map in validation
-        if backprop is False and compute_err is True:
+        if backprop is False and compute_err is True and self.logger is not None and self.save_visuals == 0:
             image = inp_img[:, :, :3]
             image = vu.tensor_to_cv2_img(image, to_rgb=False)
             heatmap = out.reshape(image.shape[0], image.shape[1]).detach().cpu().numpy()
             combined = vu.save_tensor_with_heatmap(image, heatmap,
                                                    filename=None, return_img=True)
             combined = combined[:, :, ::-1]
-            self.logger.log_image(key='attention_map', images=[combined], caption=[lang_goal])
+            self.logger.log_image(key='heatmap', images=[combined], caption=[lang_goal])
+            self.save_visuals += 1
         return self.attn_criterion(backprop, compute_err, inp, out, p0, p0_theta)
 
     def trans_forward(self, inp, softmax=True):

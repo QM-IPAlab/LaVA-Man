@@ -15,12 +15,13 @@ from cliport.models.streams.two_stream_transport import TwoStreamTransport
 from cliport.models.streams.two_stream_attention import TwoStreamAttentionLat
 from cliport.models.streams.two_stream_transport import TwoStreamTransportLat
 
+
 class TransporterAgent(LightningModule):
     def __init__(self, name, cfg, train_ds, test_ds):
         super().__init__()
         utils.set_seed(0)
 
-        self.device_type = torch.device('cuda' if torch.cuda.is_available() else 'cpu') # this is bad for PL :(
+        self.device_type = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # this is bad for PL :(
         self.name = name
         self.cfg = cfg
         self.train_ds = train_ds
@@ -39,6 +40,7 @@ class TransporterAgent(LightningModule):
 
         self.val_repeats = cfg['train']['val_repeats']
         self.save_steps = cfg['train']['save_steps']
+        self.save_visuals = 0
 
         self._build_model()
         self._optimizers = {
@@ -221,6 +223,9 @@ class TransporterAgent(LightningModule):
         checkpoint_path = os.path.join(self.cfg['train']['train_dir'], 'checkpoints')
         ckpt_path = os.path.join(checkpoint_path, 'last.ckpt')
         self.trainer.save_checkpoint(ckpt_path)
+
+    def on_validation_epoch_start(self) -> None:
+        self.save_visuals = 0
 
     def validation_step(self, batch, batch_idx):
         self.attention.eval()

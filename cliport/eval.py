@@ -138,7 +138,7 @@ def main(vcfg):
                     if done:
                         break
 
-                results.append((total_reward, info))
+                results.append((total_reward))
                 mean_reward = np.mean([r for r, i in results])
                 print(f'Mean: {mean_reward} | Task: {task_name} | Ckpt: {ckpt}')
 

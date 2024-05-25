@@ -2,12 +2,13 @@
 data/
 data_image/
 data_hdf5/
-exps/
+exps*/
 output*/
 *.out
 *.yaml
 wandb*/
 *.png
+debug/
 
 # Folders
 cliport/data/

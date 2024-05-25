@@ -352,8 +352,13 @@ def dynamic_load_pretrain(model, checkpoint_path, dict_name='model', interpolate
     if dict_name in checkpoint_dict:
         checkpoint_dict = checkpoint_dict[dict_name]
 
+    if os.path.basename(checkpoint_path) == 'mae_pretrain_vit_base.pth':
+        ori = True
+    else :
+        ori = False
+
     if interpolate:
-        interpolate_pos_embed_ours(model, checkpoint_dict)
+        interpolate_pos_embed_ours(model, checkpoint_dict, ori=ori)
     # check model state
     model_dict = model.state_dict()
 
@@ -418,7 +423,7 @@ class PatchEmbedVarSize(PatchEmbed):
         return x
 
 
-def interpolate_pos_embed_ours(model, checkpoint_model):
+def interpolate_pos_embed_ours(model, checkpoint_model, ori=False):
     # FIXME: this is a temporary solution for loading models with different positional embedding sizes
     if 'pos_embed' in checkpoint_model:
         pos_embed_checkpoint = checkpoint_model['pos_embed']
@@ -426,7 +431,10 @@ def interpolate_pos_embed_ours(model, checkpoint_model):
         num_patches = model.patch_embed.num_patches
         num_extra_tokens = model.pos_embed.shape[-2] - num_patches
         # height (== width) for the checkpoint position embedding
-        orig_size = (20, 10)
+        if ori:
+            orig_size = (14, 14)
+        else:
+            orig_size = (20, 10)
         # height (== width) for the new position embedding
         p = model.patch_embed.patch_size[0]
         new_size = (int(model.img_size[0] // p), model.img_size[1] // p)

@@ -314,6 +314,14 @@ def apply_transform(transform_to_from, points_from):
 # IMAGE UTILS
 # -----------------------------------------------------------------------------
 
+def preprocess_norm(img, dist=None):
+    rgb = img[:, :3, :, :]
+    rgb = rgb/255.0
+    rgb = (rgb - rgb.max()) / (rgb.max() - rgb.min())
+    rgb = rgb * 2 - 1
+    img[:, :3, :, :] = rgb
+    return img
+
 
 def preprocess(img, dist='transporter'):
     """Pre-process input (subtract mean, divide by std)."""

@@ -17,7 +17,10 @@ WANDB_DIR = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/wandb_cliport'
 @hydra.main(config_path="./cfg", config_name='train')
 def main(cfg):
     # Logger
-    wandb_logger = WandbLogger(name=cfg['tag'], offline=True, save_dir=WANDB_DIR) if cfg['train']['log'] else None
+    wandb_logger = WandbLogger(name=cfg['wandb']['run_name'],
+                               tags=cfg['wandb']['logger']['tags'],
+                               offline=True,
+                               save_dir=WANDB_DIR) if cfg['train']['log'] else None
 
     # Checkpoint saver
     hydra_dir = Path(os.getcwd())
@@ -40,7 +43,7 @@ def main(cfg):
         checkpoint_callback=checkpoint_callback,
         max_epochs=max_epochs,
         automatic_optimization=False,
-        check_val_every_n_epoch=max_epochs // 100,
+        check_val_every_n_epoch=max_epochs // 20,
         resume_from_checkpoint=last_checkpoint,
     )
 

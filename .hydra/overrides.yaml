@@ -1,11 +1,11 @@
-- model_task=packing-unseen-google-objects-seq
-- eval_task=packing-unseen-google-objects-seq
-- agent=mae_fixed
+- model_task=stack-block-pyramid-seq-seen-colors
+- eval_task=stack-block-pyramid-seq-seen-colors
+- agent=mae_seg2_renor
 - mode=test
 - n_demos=100
 - train_demos=100
-- exp_folder=mae_fix_pos
+- exp_folder=exps_mae_seg_fix_renor
 - checkpoint_type=best
 - update_results=True
 - disp=False
-- record.save_video=False
+- record.save_video=True

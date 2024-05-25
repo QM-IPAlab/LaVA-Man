@@ -25,7 +25,7 @@ class RavensDatasetToHdf5(RavensDataset):
 
         # TODO: save to different file name
         f = h5py.File(os.path.join('/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5',
-                                   'exist_dataset_no_aug_test.hdf5'), 'a')
+                                   'hanoi'), 'a')
 
         for idx in tqdm(range(len(self))):
 
