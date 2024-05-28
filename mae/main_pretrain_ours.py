@@ -37,6 +37,7 @@ STD = [0.1758, 0.1402, 0.1236]
 MEAN_CLIPORT = [0.48145466, 0.4578275, 0.40821073]
 STD_CLIPORT = [0.26862954, 0.26130258, 0.27577711]
 PATH = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/exist_dataset_no_aug.hdf5'
+TEST_PATH = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/exist_dataset_no_aug_test.hdf5'
 
 def get_args_parser():
     parser = argparse.ArgumentParser('MAE pre-training', add_help=False)
@@ -90,19 +91,20 @@ def get_args_parser():
 
     parser.add_argument('--start_epoch', default=0, type=int, metavar='N',
                         help='start epoch')
-    parser.add_argument('--num_workers', default=10, type=int)
+    parser.add_argument('--num_workers', default=2, type=int)
     parser.add_argument('--pin_mem', action='store_true',
                         help='Pin CPU memory in DataLoader for more efficient (sometimes) transfer to GPU.')
     parser.add_argument('--no_pin_mem', action='store_false', dest='pin_mem')
     parser.set_defaults(pin_mem=True)
 
     # distributed training parameters
-    parser.add_argument('--world_size', default=1, type=int,
+    parser.add_argument('--world_size', default=4, type=int,
                         help='number of distributed processes')
-    parser.add_argument('--local_rank', default=-1, type=int)
+    parser.add_argument('--local_rank', default=0, type=int)
     parser.add_argument('--dist_on_itp', action='store_true')
     parser.add_argument('--dist_url', default='env://',
                         help='url used to set up distributed training')
+
     parser.add_argument('--pretrain', default=None, type=str)
     parser.add_argument('--demo', action='store_true')
 
@@ -143,7 +145,8 @@ def main(args):
     # simple augmentation
     transform_train = get_fix_transform()
     dataset_train = MAEDataset(transform=transform_train, data_path=args.data_path)
-    dataset_vis = Subset(dataset_train, range(10))
+    dataset_test = MAEDataset(transform=transform_train, data_path=TEST_PATH)
+    dataset_vis = Subset(dataset_test, range(10))
 
     if True:  # args.distributed:
         num_tasks = misc.get_world_size()

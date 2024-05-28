@@ -139,7 +139,7 @@ def main(vcfg):
                         break
 
                 results.append((total_reward))
-                mean_reward = np.mean([r for r, i in results])
+                mean_reward = np.mean([r for r in results])
                 print(f'Mean: {mean_reward} | Task: {task_name} | Ckpt: {ckpt}')
 
                 # End recording video

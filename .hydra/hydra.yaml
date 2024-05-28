@@ -106,20 +106,20 @@ hydra:
   overrides:
     hydra: []
     task:
-    - model_task=stack-block-pyramid-seq-seen-colors
-    - eval_task=stack-block-pyramid-seq-seen-colors
+    - model_task=towers-of-hanoi-seq-seen-colors
+    - eval_task=towers-of-hanoi-seq-seen-colors
     - agent=mae_seg2_renor
     - mode=test
     - n_demos=100
     - train_demos=100
     - exp_folder=exps_mae_seg_fix_renor
-    - checkpoint_type=best
+    - checkpoint_type=val_missing
     - update_results=True
     - disp=False
-    - record.save_video=True
+    - record.save_video=False
   job:
-    name: vis_failure
-    override_dirname: agent=mae_seg2_renor,checkpoint_type=best,disp=False,eval_task=stack-block-pyramid-seq-seen-colors,exp_folder=exps_mae_seg_fix_renor,mode=test,model_task=stack-block-pyramid-seq-seen-colors,n_demos=100,record.save_video=True,train_demos=100,update_results=True
+    name: eval
+    override_dirname: agent=mae_seg2_renor,checkpoint_type=val_missing,disp=False,eval_task=towers-of-hanoi-seq-seen-colors,exp_folder=exps_mae_seg_fix_renor,mode=test,model_task=towers-of-hanoi-seq-seen-colors,n_demos=100,record.save_video=False,train_demos=100,update_results=True
     id: ???
     num: ???
     config_name: eval

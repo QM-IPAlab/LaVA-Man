@@ -8,7 +8,6 @@ import util.misc as misc
 import util.lr_sched as lr_sched
 import wandb
 
-
 def train_one_epoch_ours(model: torch.nn.Module,
                          data_loader: Iterable, optimizer: torch.optim.Optimizer,
                          device: torch.device, epoch: int, loss_scaler,
@@ -122,7 +121,9 @@ def validate_vis_img2(model: torch.nn.Module,
 
             if log_writer is not None:
                 combined_image = combined_image.permute(1, 2, 0).numpy()
-                log_writer.log({'validation_vis': [wandb.Image(combined_image)]}, epoch)
+                image = wandb.Image(combined_image, caption=lang)
+                log_writer.log({'validation_vis': [image]}, epoch)
+                log_writer.log({'validation_loss': loss.item()}, epoch)
                 break
 
             else:
