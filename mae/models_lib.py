@@ -22,6 +22,12 @@ def mae_vit_base_patch16_rl(**kwargs):
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
+def mae_vit_base_patch8_rl(**kwargs):
+    model = MAERobotLang(
+        patch_size=8, embed_dim=768, depth=12, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
 
 def mae_vit_base_patch16_robot(**kwargs):
     model = MAERobot(
@@ -43,5 +49,6 @@ def mae_vit_base_patch16_robot_base(**kwargs):
 mae_robot_base = mae_vit_base_patch16_robot_base  # original mae model with cliport image
 mae_robot = mae_vit_base_patch16_robot  # two state mae without language
 mae_robot_lang = mae_vit_base_patch16_rl
+mae_robot_lang_p8 = mae_vit_base_patch8_rl
 mae_robot_lang_encoder = ''  # two state with language in both encoder and decoder
 mae_robot_lang_noref = mae_vit_base_patch16_rl_noref  # two state mae with language in decoder only

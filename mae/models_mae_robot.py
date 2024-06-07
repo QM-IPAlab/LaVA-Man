@@ -57,15 +57,17 @@ class MAERobotBase(nn.Module):
         self.initialize_weights()
 
     def initialize_weights(self):
-
+        
+        patch_size = self.patch_embed.patch_size[0]
         # initialize (and freeze) pos_embed by sin-cos embedding
         pos_embed = get_2d_varsize_sincos_pos_embed(self.pos_embed.shape[-1],
-                                                    int(self.img_size[0] // 16), int(self.img_size[1] // 16),
+                                                    int(self.img_size[0] // patch_size), int(self.img_size[1] // patch_size),
                                                     cls_token=True)
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
 
+
         decoder_pos_embed = get_2d_varsize_sincos_pos_embed(self.decoder_pos_embed.shape[-1],
-                                                            int(self.img_size[0] // 16), int(self.img_size[1] // 16),
+                                                            int(self.img_size[0] // patch_size), int(self.img_size[1] // patch_size),
                                                             cls_token=True)
         self.decoder_pos_embed.data.copy_(torch.from_numpy(decoder_pos_embed).float().unsqueeze(0))
 

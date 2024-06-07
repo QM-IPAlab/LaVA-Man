@@ -50,6 +50,7 @@ class OneStreamAttentionMAEFixSize(TwoStreamAttentionLangFusion):
     def __init__(self, stream_fcn, in_shape, n_rotations, preprocess, cfg, device):
         self.pretrain = cfg['pretrain_path']
         self.ori_inshape = in_shape
+        self.mae_model = cfg['mae_model']
         super().__init__(stream_fcn, in_shape, n_rotations, preprocess, cfg, device)
         self.fusion_type = cfg['train']['attn_stream_fusion_type']
 
@@ -59,6 +60,7 @@ class OneStreamAttentionMAEFixSize(TwoStreamAttentionLangFusion):
         stream_one_model = models.names[stream_one_fcn]
         self.attn_stream_one = stream_one_model(self.ori_inshape, 1, self.cfg,
                                                 self.device, self.preprocess,
+                                                model_name=self.mae_model,
                                                 pretrain_path=self.pretrain)
         print(f"Attn FCN: {stream_one_fcn}")
 

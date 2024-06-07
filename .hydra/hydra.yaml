@@ -106,20 +106,20 @@ hydra:
   overrides:
     hydra: []
     task:
-    - model_task=multi-language-conditioned
-    - eval_task=packing-unseen-google-objects-seq
-    - agent=cliport
+    - model_task=towers-of-hanoi-seq-seen-colors
+    - eval_task=towers-of-hanoi-seq-seen-colors
+    - agent=mae_seg2
     - mode=test
     - n_demos=100
     - train_demos=100
-    - exp_folder=exps_all_0601
+    - exp_folder=debug
     - checkpoint_type=test_best
     - update_results=True
     - disp=False
     - record.save_video=False
   job:
     name: eval
-    override_dirname: agent=cliport,checkpoint_type=test_best,disp=False,eval_task=packing-unseen-google-objects-seq,exp_folder=exps_all_0601,mode=test,model_task=multi-language-conditioned,n_demos=100,record.save_video=False,train_demos=100,update_results=True
+    override_dirname: agent=mae_seg2,checkpoint_type=test_best,disp=False,eval_task=towers-of-hanoi-seq-seen-colors,exp_folder=debug,mode=test,model_task=towers-of-hanoi-seq-seen-colors,n_demos=100,record.save_video=False,train_demos=100,update_results=True
     id: ???
     num: ???
     config_name: eval

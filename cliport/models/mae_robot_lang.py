@@ -158,8 +158,8 @@ class MAESegModel(nn.Module):
 
 class MAESeg2Model(nn.Module):
 
-    def __init__(self, input_shape, output_dim, cfg, device, preprocess, model_name='mae_robot_lang',
-                 pretrain_path='/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang/checkpoint-399.pth'):
+    def __init__(self, input_shape, output_dim, cfg, 
+                 device, preprocess, model_name, pretrain_path):
         super(MAESeg2Model, self).__init__()
         self.model = models_lib.__dict__[model_name](
             img_size=input_shape[:2],
@@ -258,6 +258,10 @@ class MAESeg2Model(nn.Module):
         out = self.cat3(out, rgb)
         out = self.layer4(out)
         out = self.cat4(out, rgb)
+
+        # incase of different size (patch size = 8)
+        if out.shape[-2:] != in_shape[-2:]:
+            out = F.interpolate(out, size=(in_shape[-2], in_shape[-1]), mode='bilinear')
 
         predict = self.conv(out)
         return predict
