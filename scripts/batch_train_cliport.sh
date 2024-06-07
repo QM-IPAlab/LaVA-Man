@@ -1,16 +1,17 @@
 #!/bin/bash
 #SBATCH --partition=small
 #SBATCH --gres=gpu:1
-#SBATCH --job-name=seg2
+#SBATCH --job-name=test
 #SBATCH --cpus-per-task=16
+
 module load python/anaconda3
 source activate mae-cliport
 export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 
-exps_name="exps_mae_seg_fix_renor"
-agent_name="mae_seg2_renor"
+exps_name="exps_all_0601"
+agent_name="mae_seg2"
 
 # ======== task name ========= #
 
@@ -43,18 +44,16 @@ task_name="towers-of-hanoi-seq-seen-colors"
 # "packing-seen-google-objects-seq"
 
 
- python -m cliport.train  train.task=${task_name}\
-                          train.agent=${agent_name}\
-                          train.n_demos=100 \
-                          train.n_steps=20100 \
-                          train.exp_folder=${exps_name} \
-                          dataset.cache=True \
-                          train.load_from_last_ckpt=false \
-                          train.n_rotations=36\
-                          train.log=false \
-                          wandb.run_name=${agent_name}_${exps_name} \
-                          wandb.logger.tags=${task_name} \
-                          pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang2/checkpoint-160.pth
+# python -m cliport.train  train.task=${task_name}\
+#                          train.agent=${agent_name}\
+#                          train.n_demos=100 \
+#                          train.n_steps=20100 \
+#                          train.exp_folder=${exps_name} \
+#                          dataset.cache=True \
+#                          train.load_from_last_ckpt=false \
+#                          train.n_rotations=36\
+#                          train.log=false \
+#                          pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big/checkpoint-160.pth
 
 
 python -m cliport.eval model_task=${task_name}\
@@ -64,7 +63,7 @@ python -m cliport.eval model_task=${task_name}\
                       n_demos=100 \
                       train_demos=100 \
                       exp_folder=${exps_name} \
-                      checkpoint_type=val_missing \
+                      checkpoint_type=test_best \
                       update_results=True \
                       disp=False\
                       record.save_video=False

@@ -231,8 +231,8 @@ class MAERobot(MAERobotBase):
                            norm_mem=norm_im2_in_dec)
             for _ in range(decoder_depth)])
 
-        self.decoder_pos_embed_2 = nn.Parameter(torch.zeros(1, self.patch_embed.num_patches + 1, decoder_embed_dim),
-                                                requires_grad=False)
+        #self.decoder_pos_embed_2 = nn.Parameter(torch.zeros(1, self.patch_embed.num_patches + 1, decoder_embed_dim),
+        #                                        requires_grad=False)
 
     def forward_ca_decoder(self, latent1, masked_latent2, ids_restore2, lang_emb):
         """
@@ -254,7 +254,7 @@ class MAERobot(MAERobotBase):
         # add positional embedding
         if self.decoder_pos_embed is not None:
             fea1 = fea1 + self.decoder_pos_embed
-            fea2 = fea2 + self.decoder_pos_embed_2
+            fea2 = fea2 + self.decoder_pos_embed
 
         out1 = fea1
         out2 = fea2

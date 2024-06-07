@@ -24,7 +24,24 @@ export CLIPORT_ROOT=$(pwd)
 
 
 declare -a tasks=(
-    "towers-of-hanoi-seq-unseen-colors"
+    "align-rope"\
+    #"assembling-kits-seq-unseen-colors"\
+    "assembling-kits-seq-seen-colors"\
+    "packing-boxes-pairs-seen-colors"\
+    #"packing-boxes-pairs-unseen-colors"\
+    "packing-seen-google-objects-group"\
+    "packing-seen-google-objects-seq"\
+    "packing-shapes"\
+    #"packing-unseen-google-objects-group"\
+    #"packing-unseen-google-objects-seq"\
+    "put-block-in-bowl-seen-colors"\
+    #"put-block-in-bowl-unseen-colors"\
+    "separating-piles-seen-colors"\
+    #"separating-piles-unseen-colors"\
+    "stack-block-pyramid-seq-seen-colors"\
+    #"stack-block-pyramid-seq-unseen-colors"\
+    "towers-of-hanoi-seq-seen-colors"\
+    #"towers-of-hanoi-seq-unseen-colors"\
 )
 
 for task in "${tasks[@]}"
@@ -32,5 +49,5 @@ do
     echo "Running data colloection for task: $task"
     python -m cliport.dataset_to_hdf5 \
                             train.task="${task}"\
-                            train.n_demos=100
+                            train.n_demos=1000
 done

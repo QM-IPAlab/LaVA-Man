@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import collections.abc
 from itertools import repeat
-
+from visualizer import get_local
 
 def _ntuple(n):
     def parse(x):
@@ -119,6 +119,7 @@ class CrossAttention(nn.Module):
 
         self.rope = rope
 
+    @get_local('attn')
     def forward(self, query, key, value):
         B, Nq, C = query.shape
         Nk = key.shape[1]
@@ -132,8 +133,8 @@ class CrossAttention(nn.Module):
         attn = attn.softmax(dim=-1)
         attn = self.attn_drop(attn)
 
-        x = (attn @ v).transpose(1, 2).reshape(B, Nq, C)
-        x = self.proj(x)
+        out = (attn @ v).transpose(1, 2).reshape(B, Nq, C)
+        x = self.proj(out)
         x = self.proj_drop(x)
         return x
 
@@ -178,6 +179,36 @@ class DecoderCABlockLang(nn.Module):
         x = x + self.drop_path(self.mlp(self.norm4(x)))
         return x, y
 
+
+class DecoderCABlockLangNoRef(nn.Module):
+
+    def __init__(self, dim, num_heads, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop=0., attn_drop=0.,
+                 drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm, norm_mem=True, rope=None):
+        super().__init__()
+        self.norm1 = norm_layer(dim)
+        self.attn = Attention(
+            dim, num_heads=num_heads, qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=drop)
+        self.cross_attn_lang = CrossAttention(dim, rope=rope, num_heads=num_heads, qkv_bias=qkv_bias, attn_drop=attn_drop,
+                                              proj_drop=drop)
+        self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
+        self.norm3 = norm_layer(dim)
+        self.norm4 = norm_layer(dim)
+        mlp_hidden_dim = int(dim * mlp_ratio)
+        self.mlp = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, act_layer=act_layer, drop=drop)
+        self.norm_y = norm_layer(dim) if norm_mem else nn.Identity()
+
+    def forward(self, x, y=None, lang=None):
+        """
+        x: norm -> self_attn -> drop -> norm -> cross_attn -> drop
+        """
+        x = x + self.drop_path(self.attn(self.norm1(x)))
+        # cross attention between current (Q) and language (K,V)
+        if lang is not None:
+            lang = lang[0] if type(lang) is tuple else lang
+            x = x + self.drop_path(self.cross_attn_lang(self.norm3(x), lang, lang))
+        # final output
+        x = x + self.drop_path(self.mlp(self.norm4(x)))
+        return x, y
 
 class DecoderCABlock(nn.Module):
 

@@ -30,14 +30,16 @@ from util.misc import NativeScalerWithGradNormCount as NativeScaler
 from engine_pretrain_ours import train_one_epoch_ours, validate_vis_img2
 from dataset_mae import MAEDataset
 import models_lib
+from transformers import AutoTokenizer
+
 
 assert timm.__version__ == "0.3.2"  # version check
 MEAN = [0.1867, 0.1683, 0.1569]
 STD = [0.1758, 0.1402, 0.1236]
 MEAN_CLIPORT = [0.48145466, 0.4578275, 0.40821073]
 STD_CLIPORT = [0.26862954, 0.26130258, 0.27577711]
-PATH = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/exist_dataset_no_aug.hdf5'
-TEST_PATH = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/exist_dataset_no_aug_test.hdf5'
+PATH = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/exist_dataset_no_aug_all.hdf5'
+TEST_PATH = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/exist_dataset_no_aug_all_test.hdf5'
 
 def get_args_parser():
     parser = argparse.ArgumentParser('MAE pre-training', add_help=False)
@@ -98,15 +100,18 @@ def get_args_parser():
     parser.set_defaults(pin_mem=True)
 
     # distributed training parameters
-    parser.add_argument('--world_size', default=4, type=int,
+    parser.add_argument('--world_size', default=1, type=int,
                         help='number of distributed processes')
-    parser.add_argument('--local_rank', default=0, type=int)
+    parser.add_argument('--local_rank', default=-1, type=int)
     parser.add_argument('--dist_on_itp', action='store_true')
     parser.add_argument('--dist_url', default='env://',
                         help='url used to set up distributed training')
 
+    # ours parameters
     parser.add_argument('--pretrain', default=None, type=str)
     parser.add_argument('--demo', action='store_true')
+    parser.add_argument('--save_ca', action='store_true', help='save cross attention maps')
+    parser.add_argument('--wandb_resume', default=None, type=str)
 
     return parser
 
@@ -145,12 +150,13 @@ def main(args):
     # simple augmentation
     transform_train = get_fix_transform()
     dataset_train = MAEDataset(transform=transform_train, data_path=args.data_path)
-    dataset_test = MAEDataset(transform=transform_train, data_path=TEST_PATH)
-    dataset_vis = Subset(dataset_test, range(10))
+    dataset_vis = MAEDataset(transform=transform_train, data_path=TEST_PATH)
+    #dataset_vis = Subset(dataset_test, range(10))
 
     if True:  # args.distributed:
         num_tasks = misc.get_world_size()
         global_rank = misc.get_rank()
+        print("num tasks and global rank:", num_tasks, global_rank)
         sampler_train = torch.utils.data.DistributedSampler(
             dataset_train, num_replicas=num_tasks, rank=global_rank, shuffle=True
         )
@@ -159,7 +165,7 @@ def main(args):
         sampler_train = torch.utils.data.RandomSampler(dataset_train)
 
     if global_rank == 0 and args.log:
-        wandb.init(project='MAE', name=args.model, entity='cxz', mode='offline')
+        wandb.init(project='MAE', name=args.model, entity='cxz', mode='offline', id=args.wandb_resume)
         log_writer = wandb
     else:
         log_writer = None
@@ -183,6 +189,8 @@ def main(args):
     model.to(device)
     model_without_ddp = model
     # print("Model = %s" % str(model_without_ddp))
+
+    text_processor = AutoTokenizer.from_pretrained("openai/clip-vit-base-patch32")
 
     eff_batch_size = args.batch_size * args.accum_iter * misc.get_world_size()
 
@@ -209,13 +217,16 @@ def main(args):
         misc.dynamic_load_pretrain(model_without_ddp, args.pretrain)
     else:
         misc.load_model(args=args, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler)
-
+    
     if args.demo:
         validate_vis_img2(model_without_ddp,
                           data_loader_vis,
                           device, 0,
                           log_writer=log_writer,
-                          args=args)
+                          args=args,
+                          text_processor=text_processor)
+        import sys
+        sys.exit(0)
 
     print(f"Start training for {args.epochs} epochs")
     start_time = time.time()
@@ -227,7 +238,8 @@ def main(args):
             model, data_loader_train,
             optimizer, device, epoch, loss_scaler,
             log_writer=log_writer,
-            args=args
+            args=args,
+            text_processor=text_processor
         )
 
         if args.output_dir and (epoch % 20 == 0 or epoch + 1 == args.epochs):
@@ -235,7 +247,12 @@ def main(args):
                 args=args, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer,
                 loss_scaler=loss_scaler, epoch=epoch)
 
-            validate_vis_img2(model_without_ddp, data_loader_vis, device, (epoch + 1)*1000, log_writer=log_writer, args=args)
+            validate_vis_img2(model_without_ddp, 
+                              data_loader_vis, device, 
+                              (epoch + 1)*1000, 
+                              log_writer=log_writer, 
+                              args=args,
+                              text_processor=text_processor)
 
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                      'epoch': epoch, }

@@ -409,15 +409,15 @@ class RavensMultiTaskDataset(RavensDataset):
         'multi-language-conditioned': {
             'train': [
                 'align-rope',
-                'assembling-kits-seq-unseen-colors', # unseen here refers to training only seen splits to be consitent with single-task setting
-                'packing-boxes-pairs-unseen-colors',
+                'assembling-kits-seq-seen-colors', # unseen here refers to training only seen splits to be consitent with single-task setting
+                'packing-boxes-pairs-seen-colors',
                 'packing-shapes',
-                'packing-unseen-google-objects-seq',
-                'packing-unseen-google-objects-group',
-                'put-block-in-bowl-unseen-colors',
-                'stack-block-pyramid-seq-unseen-colors',
-                'separating-piles-unseen-colors',
-                'towers-of-hanoi-seq-unseen-colors',
+                'packing-seen-google-objects-seq',
+                'packing-seen-google-objects-group',
+                'put-block-in-bowl-seen-colors',
+                'stack-block-pyramid-seq-seen-colors',
+                'separating-piles-seen-colors',
+                'towers-of-hanoi-seq-seen-colors',
             ],
             'val': [
                 'align-rope',

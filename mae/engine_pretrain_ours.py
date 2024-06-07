@@ -1,5 +1,6 @@
 import math
 import sys
+from tkinter import N
 from typing import Iterable
 
 import torch
@@ -7,12 +8,25 @@ import torch
 import util.misc as misc
 import util.lr_sched as lr_sched
 import wandb
+import torchvision.utils as vutils
+import os
+TESTSET_IDX = [0,716,1216,1716,2205,2694,2928,3205,3305,3535,3757,3924,4091,5015,5933,6570,7207,7920,8633]
+
+def generate_token(text_processor, lang, device):
+    if type(lang) is str:
+        decoded_strings = [lang]
+    else:
+        decoded_strings = [s.decode('ascii') for s in lang]
+    processed_lang = text_processor(text=decoded_strings, padding="max_length", return_tensors='pt')
+    processed_lang = processed_lang.to(device)
+    return processed_lang
 
 def train_one_epoch_ours(model: torch.nn.Module,
                          data_loader: Iterable, optimizer: torch.optim.Optimizer,
                          device: torch.device, epoch: int, loss_scaler,
                          log_writer=None,
-                         args=None):
+                         args=None,
+                         text_processor=None):
     model.train(True)
     metric_logger = misc.MetricLogger(delimiter="  ")
     metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
@@ -35,8 +49,11 @@ def train_one_epoch_ours(model: torch.nn.Module,
         pick = pick.to(device, non_blocking=True).half()
         place = place.to(device, non_blocking=True).half()
 
+        # put the tokenizer here to avoid deadlock caused by the fork of the tokenizer
+        processed_lang = generate_token(text_processor, lang, device)       
+
         with torch.cuda.amp.autocast():
-            loss, _, _ = model(img1, img2, pick, place, lang, mask_ratio=args.mask_ratio)
+            loss, _, _ = model(img1, img2, pick, place, processed_lang, mask_ratio=args.mask_ratio)
 
         loss_value = loss.item()
 
@@ -76,8 +93,10 @@ def validate_vis_img2(model: torch.nn.Module,
                       device: torch.device,
                       epoch: int,
                       log_writer=None,
-                      args=None):
+                      args=None,
+                      text_processor=None):
     model.eval()
+    loss = 0
 
     for data_iter_step, batch in enumerate(data_loader):
         img1, img2, lang, pick, place = batch
@@ -87,47 +106,52 @@ def validate_vis_img2(model: torch.nn.Module,
         place = place.to(device, non_blocking=True).float()
 
         with torch.no_grad():
-            loss, predict, mask = model(img1, img2, pick, place, lang, mask_ratio=args.mask_ratio)
+            
+            processed_lang = generate_token(text_processor, lang, device)       
+            loss, predict, mask = model(img1, img2, pick, place, processed_lang, mask_ratio=args.mask_ratio)
+            loss += loss.item()
 
-            img1 = img1.detach().cpu()
-            img1 = img1[0]
-            # normalize to [0, 1]
-            img1 = (img1 - img1.min()) / (img1.max() - img1.min())
+            if data_iter_step in TESTSET_IDX or data_iter_step-1 in TESTSET_IDX:
+                img1 = img1.detach().cpu()
+                img1 = img1[0]
+                # normalize to [0, 1]
+                img1 = (img1 - img1.min()) / (img1.max() - img1.min())
 
-            # original image
-            img2 = img2.detach().cpu()
-            img2 = img2[0]
-            img2 = (img2 - img2.min()) / (img2.max() - img2.min())
+                # original image
+                img2 = img2.detach().cpu()
+                img2 = img2[0]
+                img2 = (img2 - img2.min()) / (img2.max() - img2.min())
 
-            # masked image
-            mask = mask.detach().cpu()
-            mask = mask.detach()
-            mask = mask.unsqueeze(-1).repeat(1, 1, model.patch_embed.patch_size[0] ** 2 * 3)  # (N, H*W, p*p*3)
-            mask = model.unpatchify(mask)  # 1 is removing, 0 is keeping
-            mask = torch.einsum('nchw->nhwc', mask).detach().cpu()
-            mask = mask[0]
-            mask = mask.permute(2, 0, 1)
-            im_masked = img2 * (1 - mask)
+                # masked image
+                mask = mask.detach().cpu()
+                mask = mask.detach()
+                mask = mask.unsqueeze(-1).repeat(1, 1, model.patch_embed.patch_size[0] ** 2 * 3)  # (N, H*W, p*p*3)
+                mask = model.unpatchify(mask)  # 1 is removing, 0 is keeping
+                mask = torch.einsum('nchw->nhwc', mask).detach().cpu()
+                mask = mask[0]
+                mask = mask.permute(2, 0, 1)
+                im_masked = img2 * (1 - mask)
 
-            # MAE reconstruction
+                # MAE reconstruction
+                predict = model.unpatchify(predict)
+                predict = predict.detach().cpu()
+                predict = predict[0]
+                predict = (predict - predict.min()) / (predict.max() - predict.min())
+                im_paste = img2 * (1 - mask) + predict * mask
 
-            predict = model.unpatchify(predict)
-            predict = predict.detach().cpu()
-            predict = predict[0]
-            predict = (predict - predict.min()) / (predict.max() - predict.min())
-            im_paste = img2 * (1 - mask) + predict * mask
+                combined_image = torch.cat((img1, img2, im_masked, predict, im_paste), dim=2)
+                    
+                if log_writer is not None:
+                    combined_image = combined_image.permute(1, 2, 0).numpy()
+                    image = wandb.Image(combined_image, caption=lang)
+                    log_writer.log({f'validation_vis_{data_iter_step}': [image]}, epoch)
+                
+                else:
+                    os.makedirs('vis_tmp', exist_ok=True)
+                    vutils.save_image(combined_image, f'vis_tmp/vis_{args.model}_{data_iter_step}.png', normalize=True, range=(0, 1))
+                    print("saved image to vis_tmp/vis_{}.png".format(data_iter_step))
 
-            combined_image = torch.cat((img1, img2, im_masked, predict, im_paste), dim=2)
-
-            if log_writer is not None:
-                combined_image = combined_image.permute(1, 2, 0).numpy()
-                image = wandb.Image(combined_image, caption=lang)
-                log_writer.log({'validation_vis': [image]}, epoch)
-                log_writer.log({'validation_loss': loss.item()}, epoch)
-                break
-
-            else:
-                import torchvision.utils as vutils
-                vutils.save_image(combined_image, f'vis_{args.model}_{data_iter_step}.png', normalize=True, range=(0, 1))
-                print("saved image to vis_{}.png".format(data_iter_step))
+    loss /= len(data_loader)
+    if log_writer is not None:
+        log_writer.log({'validation_loss': loss}, epoch)
 

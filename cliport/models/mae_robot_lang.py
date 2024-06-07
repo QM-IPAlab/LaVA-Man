@@ -8,7 +8,7 @@ from cliport.models.core.unet import Cat
 from visualizer import get_local
 from einops import rearrange
 from cliport.models.resnet import IdentityBlock, ConvBlock
-
+from transformers import AutoTokenizer
 class MAEModel(nn.Module):
 
     def __init__(self, input_shape, output_dim, cfg, device, preprocess, model_name='mae_robot_lang',
@@ -172,6 +172,7 @@ class MAESeg2Model(nn.Module):
         self.preprocess = preprocess
         self.output_dim = output_dim
         self.batchnorm = False
+        self.text_processor = AutoTokenizer.from_pretrained("openai/clip-vit-base-patch32")
 
         self.layer1 = nn.Sequential(
             ConvBlock(512, [256, 256, 256], kernel_size=3, stride=1, batchnorm=self.batchnorm),
@@ -212,15 +213,26 @@ class MAESeg2Model(nn.Module):
         x = rearrange(x, 'b (nh nw) c -> b c nh nw', nh=h, nw=w)
         return x
 
+    def get_lang_embed(self, lang, device):
+        if type(lang) is str:
+            decoded_strings = [lang]
+        else:
+            decoded_strings = [s.decode('ascii') for s in lang]
+        processed_lang = self.text_processor(text=decoded_strings, padding="max_length", return_tensors='pt')
+        processed_lang = processed_lang.to(device)
+        lang_emb = self.model.clip_text(**processed_lang, return_dict=False)
+        return lang_emb
+
     @get_local('predict', 'rgb')
     def forward(self, x, lang):
         x = self.preprocess(x, dist='clip')
 
         in_type = x.dtype
         in_shape = x.shape
+        device = x.device
         rgb = x[:, :3]  # select RGB
         latent, mask, ids_restore = self.model.forward_encoder(rgb, mask_ratio=0)
-        lang_emb = self.model.get_lang_embed(lang)
+        lang_emb = self.get_lang_embed(lang,device)
 
         fea = self.model.decoder_embed(latent)
         fea = fea + self.model.decoder_pos_embed

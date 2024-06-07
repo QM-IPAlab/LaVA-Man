@@ -25,7 +25,7 @@ class RavensDatasetToHdf5(RavensDataset):
 
         # TODO: save to different file name
         f = h5py.File(os.path.join('/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5',
-                                   'exist_dataset_no_aug_seen.hdf5'), 'a')
+                                   'exist_dataset_no_aug_all_test.hdf5'), 'a')
 
         for idx in range(len(self)):
 
@@ -115,10 +115,10 @@ def main(cfg):
     # Datasets
     dataset_type = cfg['dataset']['type']
     if 'multi' in dataset_type:
-        ds = RavensDatasetToHdf5(data_dir, cfg, group=task, mode='train', n_demos=n_demos, augment=False)
+        ds = RavensDatasetToHdf5(data_dir, cfg, group=task, mode='test', n_demos=n_demos, augment=False)
     else:
         #TODO: save train set, test set and val set separately
-        ds = RavensDatasetToHdf5(os.path.join(data_dir, '{}-train'.format(task)), cfg, n_demos=n_demos, augment=False)
+        ds = RavensDatasetToHdf5(os.path.join(data_dir, '{}-test'.format(task)), cfg, n_demos=n_demos, augment=False)
     ds.save_to_hdf5()
 
 
