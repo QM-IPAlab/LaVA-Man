@@ -1,20 +1,20 @@
-#!/bin/bash
-#SBATCH --partition=small
-#SBATCH --gres=gpu:1
-#SBATCH --job-name=failure
-#SBATCH --cpus-per-task=16
-module load python/anaconda3
-source activate mae-cliport
+# #!/bin/bash
+# #SBATCH --partition=small
+# #SBATCH --gres=gpu:1
+# #SBATCH --job-name=failure
+# #SBATCH --cpus-per-task=16
+# module load python/anaconda3
+# source activate mae-cliport
 export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 
-exps_name="exps_mae_seg_fix_renor"
-agent_name="mae_seg2_renor"
+exps_name="exps_all_relevance"
+agent_name="mae_seg_base"
 
 # ======== task name ========= #
 
-task_name="stack-block-pyramid-seq-seen-colors"
+task_name="towers-of-hanoi-seq-seen-colors"
 #task_name="put-block-in-bowl-seen-colors"
 
 #task_name="packing-seen-google-objects-group"
@@ -32,6 +32,8 @@ python cliport/vis_failure.py model_task=${task_name}\
                        train_demos=100 \
                        exp_folder=${exps_name} \
                        checkpoint_type=best \
-                       update_results=True \
+                       update_results=Trues \
                        disp=False\
-                       record.save_video=True
+                       record.save_video=False
+
+

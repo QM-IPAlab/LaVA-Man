@@ -456,7 +456,7 @@ def convert_weights(model: nn.Module):
     model.apply(_convert_weights_to_fp16)
 
 
-def build_model(state_dict: dict):
+def build_model(state_dict: dict, dtype=None):
     vit = "visual.proj" in state_dict
 
     if vit:
@@ -490,7 +490,8 @@ def build_model(state_dict: dict):
     for key in ["input_resolution", "context_length", "vocab_size"]:
         del state_dict[key]
 
-    convert_weights(model)
+    if dtype is not torch.float32:
+        convert_weights(model)
     model.load_state_dict(state_dict)
     return model.eval()
 

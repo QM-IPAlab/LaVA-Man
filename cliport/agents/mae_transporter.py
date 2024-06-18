@@ -84,6 +84,32 @@ class MAESeg2TransporterAgent(TwoStreamClipLingUNetTransporterAgent):
             device=self.device_type,
         )
 
+
+class MAESeg2DepthTransporterAgent(TwoStreamClipLingUNetTransporterAgent):
+    def __init__(self, name, cfg, train_ds, test_ds):
+        super().__init__(name, cfg, train_ds, test_ds)
+
+    def _build_model(self):
+        stream_fcn = 'mae_seg2_depth'
+        self.attention = OneStreamAttentionMAEFixSize(
+            stream_fcn=(stream_fcn, None),
+            in_shape=self.in_shape,
+            n_rotations=1,
+            preprocess=utils.preprocess,
+            cfg=self.cfg,
+            device=self.device_type,
+        )
+        self.transport = OneStreamTransportMAEFixSize(
+            stream_fcn=(stream_fcn, None),
+            in_shape=self.in_shape,
+            n_rotations=self.n_rotations,
+            crop_size=self.crop_size,
+            preprocess=utils.preprocess,
+            cfg=self.cfg,
+            device=self.device_type,
+        )
+
+
 class MAESeg2TransporterAgentRenor(TwoStreamClipLingUNetTransporterAgent):
     def __init__(self, name, cfg, train_ds, test_ds):
         super().__init__(name, cfg, train_ds, test_ds)
@@ -270,3 +296,30 @@ class MAEFixBloss(MAEFixTransporterAgent):
                 'theta': np.absolute((theta - p0_theta) % np.pi)
             }
         return loss, err
+    
+
+class MAESegBaseAgent(TwoStreamClipLingUNetTransporterAgent):
+    """ The agent that can use different mae models"""
+
+    def __init__(self, name, cfg, train_ds, test_ds):
+        super().__init__(name, cfg, train_ds, test_ds)
+
+    def _build_model(self):
+        stream_fcn = 'mae_seg_base'
+        self.attention = OneStreamAttentionMAEFixSize(
+            stream_fcn=(stream_fcn, None),
+            in_shape=self.in_shape,
+            n_rotations=1,
+            preprocess=utils.preprocess,
+            cfg=self.cfg,
+            device=self.device_type,
+        )
+        self.transport = OneStreamTransportMAEFixSize(
+            stream_fcn=(stream_fcn, None),
+            in_shape=self.in_shape,
+            n_rotations=self.n_rotations,
+            crop_size=self.crop_size,
+            preprocess=utils.preprocess,
+            cfg=self.cfg,
+            device=self.device_type,
+        ) 

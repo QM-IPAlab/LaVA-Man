@@ -11,7 +11,7 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 
 exps_name="exps_all_0601"
-agent_name="cliport"
+agent_name="mae_seg2"
 
 # ======== task name ========= #
 
@@ -35,17 +35,17 @@ declare -a tasks=("align-rope"\
     "packing-unseen-google-objects-seq"\
 )
 
-python -m cliport.train  train.task=multi-language-conditioned\
-                         train.agent=${agent_name}\
-                         dataset.type=multi\
-                         train.n_demos=100 \
-                         train.n_steps=60100 \
-                         train.exp_folder=${exps_name} \
-                         dataset.cache=True \
-                         train.load_from_last_ckpt=false \
-                         train.n_rotations=36\
-                         train.log=false \
-                         pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big/checkpoint-160.pth
+# python -m cliport.train  train.task=multi-language-conditioned\
+#                          train.agent=${agent_name}\
+#                          dataset.type=multi\
+#                          train.n_demos=100 \
+#                          train.n_steps=60100 \
+#                          train.exp_folder=${exps_name} \
+#                          dataset.cache=True \
+#                          train.load_from_last_ckpt=false \
+#                          train.n_rotations=36\
+#                          train.log=false \
+#                          pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big/checkpoint-160.pth
 
 
 for task in "${tasks[@]}"
@@ -58,7 +58,7 @@ do
                         n_demos=100 \
                         train_demos=100 \
                         exp_folder=${exps_name} \
-                        checkpoint_type=test_best \
+                        checkpoint_type=best \
                         update_results=True \
                         disp=False\
                         record.save_video=False

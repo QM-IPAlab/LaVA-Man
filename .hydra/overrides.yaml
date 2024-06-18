@@ -1,10 +1,10 @@
-- model_task=towers-of-hanoi-seq-seen-colors
-- eval_task=towers-of-hanoi-seq-seen-colors
+- model_task=packing-seen-google-objects-group
+- eval_task=packing-seen-google-objects-group
 - agent=mae_seg2
 - mode=test
 - n_demos=100
 - train_demos=100
-- exp_folder=debug
+- exp_folder=exps_all_linearprobe
 - checkpoint_type=test_best
 - update_results=True
 - disp=False

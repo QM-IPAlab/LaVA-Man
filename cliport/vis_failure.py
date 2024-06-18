@@ -109,7 +109,8 @@ def main(vcfg):
             agent = agents.names[vcfg['agent']](name, tcfg, None, ds)
 
             # Load checkpoint
-            agent.load(model_file)
+            #agent.load(model_file)
+            agent.to('cuda')
             print(f"Loaded: {model_file}")
 
             record = vcfg['record']['save_video']
@@ -176,17 +177,26 @@ def main(vcfg):
                             cache = get_local.cache
 
                             #image = cache['CLIPLingUNetLat.forward.img'][0]  # torch.Size([1, 3, 320, 320])
-                            image = cache['MAESeg2Model.forward.rgb'][0]  # torch.Size([1, 3, 320, 320])
+                            image = cache['MAESegBaseModel.forward.rgb'][0]  # torch.Size([1, 3, 320, 320])
                             image = vu.tensor_to_cv2_img(image, to_rgb=False)
 
                             #heatmap = cache['CLIPLingUNetLat.forward.out'][0]  # torch.Size([1, 3, 320, 320])
-                            heatmap = cache['MAESeg2Model.forward.predict'][0]
+                            heatmap = cache['MAESegBaseModel.forward.predict'][0]
                             heatmap = heatmap.squeeze()
 
-                            os.makedirs(f'{save_path}/../failure', exist_ok=True)
+                            # relevance map
+                            relevance_map = cache['MAESegBaseModel.forward.relevance'][0]
+                            relevance_map = relevance_map.squeeze()
+
+                            os.makedirs(f'{save_path}/../failure2', exist_ok=True)
                             save = vu.save_tensor_with_heatmap(image, heatmap,
-                                                               f'{save_path}/../failure/heatmap_video{i + 1:06d}_step{idx}.png',
+                                                               f'{save_path}/../failure2/heatmap_video{i + 1:06d}_step{idx}.png',
                                                                l=lang_goal)
+
+                            save = vu.save_tensor_with_heatmap(image, relevance_map,
+                                                               f'{save_path}/../failure2/relevancemap_video{i + 1:06d}_step{idx}.png',
+                                                               l=lang_goal)
+
                             print(f'save to {save_path}: {save}')
                             get_local.clear()
 

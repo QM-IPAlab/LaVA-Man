@@ -11,11 +11,11 @@ checkpoint_type: test_best
 val_on_heldout: true
 disp: false
 shared_memory: false
-eval_task: towers-of-hanoi-seq-seen-colors
-model_task: towers-of-hanoi-seq-seen-colors
+eval_task: packing-seen-google-objects-group
+model_task: packing-seen-google-objects-group
 type: single
 model_dir: ${root_dir}
-exp_folder: debug
+exp_folder: exps_all_linearprobe
 data_dir: ${root_dir}/data
 assets_root: ${root_dir}/cliport/environments/assets/
 model_path: ${model_dir}/${exp_folder}/${model_task}-${agent}-n${train_demos}-train/checkpoints/

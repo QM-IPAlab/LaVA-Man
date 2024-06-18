@@ -1,7 +1,7 @@
 # Training
 # Ours parameter
 pretrain_path: /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/checkpoints/mae_pretrain_vit_base.pth
-mae_model: mae_robot_lang
+mae_model: mae_robot_lang # pre-train mae model wrapped in downstream model
 
 defaults:
   - config
@@ -16,6 +16,7 @@ dataset:
   cache: True # load episodes to memory instead of reading from disk
   augment:
     theta_sigma: 60 # rotation sigma in degrees; N(mu = 0, sigma = theta_sigma).
+  mode: 'train' # 'train' or 'val' or 'test'
 
 train:
   # folders
@@ -43,9 +44,10 @@ train:
   log: False # log metrics and stats to wandb
   n_val: 100
   val_repeats: 1
-  save_steps: [5000, 10000, 20000]
-  #save_steps: [1000, 2000, 3000, 4000, 5000, 7000, 10000, 20000, 40000, 80000, 120000, 160000, 200000, 300000, 400000, 500000, 600000, 800000, 1000000, 1200000]
+  save_steps: [3000, 5000, 7000, 10000, 20000, 40000, 80000, 120000, 160000, 200000, 300000, 400000, 500000, 600000, 800000, 1000000, 1200000]
   load_from_last_ckpt: True
+  accumulate_grad_batches: 1
+  linear_probe: False
 
 wandb:
   run_name: 'cliport0'

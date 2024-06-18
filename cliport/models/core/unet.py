@@ -86,6 +86,11 @@ class Cat(nn.Module):
         out = self.conv(cat)
         return out
 
+class CatDepth(Cat):
+    def __init__(self, in_channels, out_channels):
+        super().__init__(in_channels, out_channels)
+        self.conv_g = nn.Conv2d(4, in_channels, kernel_size=1)
+
 
 class OutConv(nn.Module):
     def __init__(self, in_channels, out_channels):

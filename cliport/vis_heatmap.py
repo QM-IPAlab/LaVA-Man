@@ -156,19 +156,41 @@ def main(vcfg):
                     cache = get_local.cache
 
                     #image = cache['CLIPLingUNetLat.forward.img'][0]  # torch.Size([1, 3, 320, 320])
-                    image = cache['MAEModel.forward.rgb'][0]  # torch.Size([1, 3, 320, 320])
-                    image = vu.tensor_to_cv2_img(image, to_rgb=False)
+                    image = cache['MAESeg2Model.forward.x'][0]  # torch.Size([1, 3, 320, 320])
+                    #image = vu.tensor_to_cv2_img(image, to_rgb=False)
 
                     #heatmap = cache['CLIPLingUNetLat.forward.out'][0]  # torch.Size([1, 3, 320, 320])
-                    heatmap = cache['MAEModel.forward.predict'][0]
-                    heatmap = heatmap.squeeze()
+                    #heatmap = cache['MAESeg2Model.forward.x'][0]
+                    #heatmap = heatmap.squeeze()
 
-                    os.makedirs(f'{save_path}/../vis', exist_ok=True)
-                    save = vu.save_tensor_with_heatmap(image, heatmap,
-                                                       f'{save_path}/../vis/heatmap_video{i + 1:06d}_step{idx}.png',
-                                                       l=lang_goal)
-                    input(f'save to {save_path}: {save}')
-                    get_local.clear()
+                    # os.makedirs(f'{save_path}/../vis', exist_ok=True)
+                    # save = vu.save_tensor_with_heatmap(image, heatmap,
+                    #                                    f'{save_path}/../vis/heatmap_video{i + 1:06d}_step{idx}.png',
+                    #                                    l=lang_goal)
+                    # input(f'save to {save_path}: {save}')
+                    # get_local.clear()
+
+                    # save samples
+                    image = image.squeeze().transpose(1, 2, 0)
+                    rgb = image[:,:,:3]
+                    depth = image[:,:,3]
+
+                    rgb = (rgb - rgb.min())/ (rgb.max() - rgb.min())
+                    rgb = (rgb * 255).astype(np.uint8)
+                    rgb = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+
+                    depth_std = 0.00903967
+                    depth_mean = 0.00509261
+                    depth = np.uint8(((depth * depth_std) + depth_mean) * 255)
+                    depth2 = np.uint8(((depth * depth_std) + depth_mean) * 255)
+                    
+                    depth2 = (depth2 - depth2.min())/ (depth2.max() - depth2.min())
+                    depth2 = (depth2 * 255).astype(np.uint8)
+                    cv2.imwrite('depth2.png', depth2)
+
+                    cv2.imwrite('rgb.png', rgb)
+                    cv2.imwrite('depth.png', depth)
+                    input('save rgb and depth')
 
                 results.append((total_reward, info))
                 mean_reward = np.mean([r for r, i in results])

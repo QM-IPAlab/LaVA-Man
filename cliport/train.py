@@ -36,6 +36,7 @@ def main(cfg):
 
     # Trainer
     max_epochs = cfg['train']['n_steps'] // cfg['train']['n_demos']
+    acc = cfg['train']['accumulate_grad_batches'] if cfg['train']['accumulate_grad_batches'] else 1
     trainer = Trainer(
         gpus=cfg['train']['gpu'],
         fast_dev_run=cfg['debug'],
@@ -45,6 +46,7 @@ def main(cfg):
         automatic_optimization=False,
         check_val_every_n_epoch=max_epochs // 20,
         resume_from_checkpoint=last_checkpoint,
+        accumulate_grad_batches=acc,
     )
 
     # Resume epoch and global_steps

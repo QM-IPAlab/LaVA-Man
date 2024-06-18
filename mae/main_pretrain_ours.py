@@ -28,9 +28,11 @@ import timm.optim.optim_factory as optim_factory
 import util.misc as misc
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
 from engine_pretrain_ours import train_one_epoch_ours, validate_vis_img2
+from save_relevance import save_relevance_maps
 from dataset_mae import MAEDataset
 import models_lib
 from transformers import AutoTokenizer
+import sys
 
 
 assert timm.__version__ == "0.3.2"  # version check
@@ -107,11 +109,12 @@ def get_args_parser():
     parser.add_argument('--dist_url', default='env://',
                         help='url used to set up distributed training')
 
-    # ours parameters
+    # ours parameters and other function
     parser.add_argument('--pretrain', default=None, type=str)
     parser.add_argument('--demo', action='store_true')
     parser.add_argument('--save_ca', action='store_true', help='save cross attention maps')
     parser.add_argument('--wandb_resume', default=None, type=str)
+    parser.add_argument('--save_relevance', action='store_true')
 
     return parser
 
@@ -218,6 +221,7 @@ def main(args):
     else:
         misc.load_model(args=args, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler)
     
+# ============== Demo mode ==============
     if args.demo:
         validate_vis_img2(model_without_ddp,
                           data_loader_vis,
@@ -225,9 +229,24 @@ def main(args):
                           log_writer=log_writer,
                           args=args,
                           text_processor=text_processor)
-        import sys
+        sys.exit(0)
+        
+
+# ============== Save relevance maps ==============
+    if args.save_relevance:
+        
+        data_loader_vis = torch.utils.data.DataLoader(
+            dataset_vis, batch_size=128, num_workers=2, drop_last=False, shuffle=False, pin_memory=True
+        )
+
+        data_loader_train = torch.utils.data.DataLoader(
+            dataset_train, batch_size=128, num_workers=2, drop_last=False, shuffle=False, pin_memory=True
+        )
+        
+        save_relevance_maps(model_without_ddp, data_loader_train, data_loader_vis, device, args, text_processor)
         sys.exit(0)
 
+# ============== Training ==============
     print(f"Start training for {args.epochs} epochs")
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):

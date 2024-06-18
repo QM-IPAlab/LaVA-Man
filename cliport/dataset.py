@@ -53,7 +53,6 @@ class RavensDataset(Dataset):
                     self.max_seed = max(self.max_seed, seed)
 
         self._cache = {}
-
         if self.n_demos > 0:
             self.images = self.cfg['dataset']['images']
             self.cache = self.cfg['dataset']['cache']
