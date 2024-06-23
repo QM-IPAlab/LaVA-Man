@@ -1,4 +1,4 @@
-mode: test
+mode: val
 agent: mae_seg2
 n_demos: 100
 train_demos: 100
@@ -7,15 +7,15 @@ gpu:
 - 0
 save_results: true
 update_results: true
-checkpoint_type: test_best
+checkpoint_type: val_missing
 val_on_heldout: true
 disp: false
 shared_memory: false
-eval_task: packing-seen-google-objects-group
-model_task: packing-seen-google-objects-group
+eval_task: stack-block-pyramid-seq-unseen-colors
+model_task: stack-block-pyramid-seq-unseen-colors
 type: single
 model_dir: ${root_dir}
-exp_folder: exps_all_linearprobe
+exp_folder: exps_all_gradacc
 data_dir: ${root_dir}/data
 assets_root: ${root_dir}/cliport/environments/assets/
 model_path: ${model_dir}/${exp_folder}/${model_task}-${agent}-n${train_demos}-train/checkpoints/

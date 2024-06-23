@@ -11,7 +11,7 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 
 # Define the experiment name
-exps_name="exps_all_0601"
+exps_name="exps_all_gradacc"
 
 # Array of agent names
 declare -a agents=("mae_seg2")

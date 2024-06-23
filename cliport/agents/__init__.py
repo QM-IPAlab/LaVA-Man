@@ -19,7 +19,7 @@ from cliport.agents.transporter_lang_goal import TwoStreamClipFilmLingUNetLatTra
 
 # Ours
 from cliport.agents.mae_transporter import MAETransporterAgent, MAESegTransporterAgent, MAEFixTransporterAgent
-from cliport.agents.mae_transporter import MAEFixGloss, MAESeg2TransporterAgent, MAESeg2TransporterAgentRenor
+from cliport.agents.mae_transporter import MAEFixGloss, MAESeg2TransporterAgent, MAESeg2TransporterAgentRenor, MAESeg2ModelFullMaskAgent
 from cliport.agents.mae_transporter import MAESeg2DepthTransporterAgent, MAESegBaseAgent
 
 names = {
@@ -33,6 +33,7 @@ names = {
          'mae_seg2_renor':MAESeg2TransporterAgentRenor,
          'mae_seg2_depth': MAESeg2DepthTransporterAgent,
          'mae_seg_base': MAESegBaseAgent,
+         'mae_seg2_fm': MAESeg2ModelFullMaskAgent,
 
 
          ################################

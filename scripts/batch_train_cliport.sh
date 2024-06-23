@@ -1,7 +1,7 @@
 # #!/bin/bash
-# #SBATCH --partition=small
+# #SBATCH --partition=devel
 # #SBATCH --gres=gpu:1
-# #SBATCH --job-name=cliport
+# #SBATCH --job-name=debug
 # #SBATCH --cpus-per-task=16
 
 # module load python/anaconda3
@@ -10,12 +10,12 @@ export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 
-exps_name="debug"
+exps_name="cliport_pretrained"
 agent_name="cliport"
 
 # ======== task name ========= #
 
-task_name="assembling-kits-seq-unseen-colors"
+task_name="towers-of-hanoi-seq-seen-colors"
 #task_name="put-block-in-bowl-seen-colors"
 
 #task_name="packing-seen-google-objects-group"
@@ -53,21 +53,21 @@ python -m cliport.train  train.task=${task_name}\
                          train.load_from_last_ckpt=False \
                          train.n_rotations=36\
                          train.log=False \
-                         #wandb.run_name=${exps_name}_${task_name} \
+                         wandb.run_name=${exps_name}_${task_name} \
                          #mae_model=mae_robot_lang \
-                         #train.accumulate_grad_batches=4 \
-                         #train.linear_probe=True \
-                         #pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big/checkpoint-160.pth
-
+                         #train.linear_probe=False \
+                         #train.accumulate_grad_batches=1 \
+                         #pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big/checkpoint-160.pth\
+                        
 
 # python -m cliport.eval model_task=${task_name}\
 #                       eval_task=${task_name} \
 #                       agent=${agent_name} \
-#                       mode=test \
+#                       mode=val \
 #                       n_demos=100 \
 #                       train_demos=100 \
 #                       exp_folder=${exps_name} \
-#                       checkpoint_type=best \
+#                       checkpoint_type=val_missing \
 #                       update_results=True \
 #                       disp=False\
 #                       record.save_video=False
@@ -80,7 +80,7 @@ python -m cliport.train  train.task=${task_name}\
 #                       n_demos=100 \
 #                       train_demos=100 \
 #                       exp_folder=${exps_name} \
-#                       checkpoint_type=val_missing \
+#                       checkpoint_type=test_best \
 #                       update_results=True \
 #                       disp=False\
 #                       record.save_video=False

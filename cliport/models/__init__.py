@@ -17,7 +17,7 @@ from cliport.models.clip_lingunet_lat import CLIPLingUNetLat
 from cliport.models.clip_film_lingunet_lat import CLIPFilmLingUNet
 
 # ours
-from cliport.models.mae_robot_lang import MAEModel, MAESegModel, MAESeg2Model, MAESegBaseModel
+from cliport.models.mae_robot_lang import MAEModel, MAESegModel, MAESeg2Model, MAESegBaseModel, MAESeg2ModelFullMask
 from cliport.models.mae_robot_lang_lat import MAESeg2DepthModel
 
 names = {
@@ -27,7 +27,8 @@ names = {
     'mae_seg2': MAESeg2Model,
     'mae_seg2_depth': MAESeg2DepthModel,
     'mae_seg_base': MAESegBaseModel,
-
+    'mae_seg2_fm': MAESeg2ModelFullMask,
+    
     # resnet
     'plain_resnet': ResNet43_8s,
     'plain_resnet_lang': ResNet43_8s_lang,

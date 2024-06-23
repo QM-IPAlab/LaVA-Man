@@ -106,20 +106,20 @@ hydra:
   overrides:
     hydra: []
     task:
-    - model_task=packing-seen-google-objects-group
-    - eval_task=packing-seen-google-objects-group
+    - model_task=stack-block-pyramid-seq-unseen-colors
+    - eval_task=stack-block-pyramid-seq-unseen-colors
     - agent=mae_seg2
-    - mode=test
+    - mode=val
     - n_demos=100
     - train_demos=100
-    - exp_folder=exps_all_linearprobe
-    - checkpoint_type=test_best
+    - exp_folder=exps_all_gradacc
+    - checkpoint_type=val_missing
     - update_results=True
     - disp=False
     - record.save_video=False
   job:
     name: eval
-    override_dirname: agent=mae_seg2,checkpoint_type=test_best,disp=False,eval_task=packing-seen-google-objects-group,exp_folder=exps_all_linearprobe,mode=test,model_task=packing-seen-google-objects-group,n_demos=100,record.save_video=False,train_demos=100,update_results=True
+    override_dirname: agent=mae_seg2,checkpoint_type=val_missing,disp=False,eval_task=stack-block-pyramid-seq-unseen-colors,exp_folder=exps_all_gradacc,mode=val,model_task=stack-block-pyramid-seq-unseen-colors,n_demos=100,record.save_video=False,train_demos=100,update_results=True
     id: ???
     num: ???
     config_name: eval

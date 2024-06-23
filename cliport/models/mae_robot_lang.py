@@ -273,6 +273,53 @@ class MAESeg2Model(nn.Module):
         return predict
 
 
+class MAESeg2ModelFullMask(MAESeg2Model):
+    """MAESeg2 model, but feed the 100 percent masked image to the decoder"""
+    def forward(self, x, lang):
+        x = self.preprocess(x, dist='clip')
+
+        in_type = x.dtype
+        in_shape = x.shape
+        device = x.device
+        rgb = x[:, :3]  # select RGB
+        latent1, mask1, ids_restore1 = self.model.forward_encoder(rgb, mask_ratio=0)
+        latent2, mask2, ids_restore2 = self.model.forward_encoder(rgb, mask_ratio=1.0)
+        lang_emb = self.get_lang_embed(lang,device)
+
+        fea1 = self.model.decoder_embed(latent1)
+        fea2 = self.model.decoder_embed(latent2)
+        fea1 = fea1 + self.model.decoder_pos_embed
+        fea2 = fea2 + self.model.decoder_pos_embed
+
+        out1 = fea1
+        out2 = fea2
+
+        if out1.shape[0] != lang_emb[0].shape[0]:
+            lang_emb = lang_emb[0].repeat([out1.shape[0], 1, 1])
+
+        for blk in self.model.decoder_blocks:
+            out1, out2 = blk(out1, out2, lang_emb)
+        out = self.model.decoder_norm(out1)
+        out = out[:, 1:, :]  # 1, 400, 512
+        out = self.unpatchify(out)
+
+        out = self.layer1(out)
+        out = self.cat1(out, rgb)
+        out = self.layer2(out)
+        out = self.cat2(out, rgb)
+        out = self.layer3(out)
+        out = self.cat3(out, rgb)
+        out = self.layer4(out)
+        out = self.cat4(out, rgb)
+
+        # incase of different size (patch size = 8)
+        if out.shape[-2:] != in_shape[-2:]:
+            out = F.interpolate(out, size=(in_shape[-2], in_shape[-1]), mode='bilinear')
+
+        predict = self.conv(out)
+        return predict
+
+
 class MAEFeatUpModel(nn.Module):
 
     def __init__(self, input_shape, output_dim, cfg, device, preprocess, model_name='mae_robot_lang',
@@ -451,7 +498,7 @@ class MAESegBaseModel(nn.Module):
         rgb = img_processed[:, :3]  # select RGB
 
         mae_output = self.model.cliport_forward(rgb, lang_processed)
-        relevance = self.model.show_relevance_map(rgb, lang_processed)
+        #relevance = self.model.show_relevance_map(rgb, lang_processed)
         mae_feamap = self.unpatchify(mae_output)
 
         out = self.layer1(mae_feamap)

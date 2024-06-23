@@ -1,11 +1,11 @@
-- model_task=packing-seen-google-objects-group
-- eval_task=packing-seen-google-objects-group
+- model_task=stack-block-pyramid-seq-unseen-colors
+- eval_task=stack-block-pyramid-seq-unseen-colors
 - agent=mae_seg2
-- mode=test
+- mode=val
 - n_demos=100
 - train_demos=100
-- exp_folder=exps_all_linearprobe
-- checkpoint_type=test_best
+- exp_folder=exps_all_gradacc
+- checkpoint_type=val_missing
 - update_results=True
 - disp=False
 - record.save_video=False

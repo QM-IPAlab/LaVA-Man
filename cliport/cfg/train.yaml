@@ -2,6 +2,7 @@
 # Ours parameter
 pretrain_path: /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/checkpoints/mae_pretrain_vit_base.pth
 mae_model: mae_robot_lang # pre-train mae model wrapped in downstream model
+cliport_checkpoint: /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/checkpoints/steps=400000-val_loss=0.00013902.ckpt
 
 defaults:
   - config

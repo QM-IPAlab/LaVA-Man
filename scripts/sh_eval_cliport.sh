@@ -9,12 +9,12 @@ export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 
-exps_name="exps_all_relevance"
-agent_name="mae_seg_base"
+exps_name="exps_all_linearprobe"
+agent_name="mae_seg2"
 
 # ======== task name ========= #
 
-task_name="towers-of-hanoi-seq-seen-colors"
+task_name="towers-of-hanoi-seq-unseen-colors"
 #task_name="put-block-in-bowl-seen-colors"
 
 #task_name="packing-seen-google-objects-group"
@@ -34,6 +34,6 @@ python cliport/vis_failure.py model_task=${task_name}\
                        checkpoint_type=best \
                        update_results=Trues \
                        disp=False\
-                       record.save_video=False
+                       record.save_video=True
 
 

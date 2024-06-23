@@ -319,7 +319,7 @@ class DecoderCABlockVisionLang(nn.Module):
             x = x + self.drop_path(self.cross_attn_img(y, self.norm2(x), self.norm2(x)))
 
         # cross attention between text and image
-        reference = self.cross_attn_clip(lang, img, img)
+        reference = self.cross_attn_clip(lang, img, img) # lang (b,d), img (b,t,d)
         x = x + self.drop_path(self.cross_attn_ref(self.norm3(x), reference, reference))
 
         # final output
