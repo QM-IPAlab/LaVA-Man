@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --nodes=1
-#SBATCH --partition=long
+#SBATCH --partition=big
 #SBATCH --gres=gpu:4
-#SBATCH --job-name=rlang
+#SBATCH --job-name=stdnorm
 #SBATCH --cpus-per-task=16
 
 # Function to find an idle port around 29500
@@ -36,10 +36,12 @@ export OMP_NUM_THREADS=1
 #export MASTER_PORT=$(python -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
 
 python -m torch.distributed.launch --nproc_per_node 4 --master_port=$PORT mae/main_pretrain_ours.py \
-    --model mae_robot_promul \
+    --model mae_robot_lang \
     --batch_size 64 \
-    --output_dir output_mae_robot_lang_promul \
-    --pretrain /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/checkpoints/mae_pretrain_vit_base.pth \
+    --output_dir output_mae_robot_lang_stdnorm \
+    --pretrain /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big/checkpoint-160.pth \
     --mask_ratio 0.95 \
-    --log
+    --log \
+    --epochs 80 \
+    --stand_norm
     #--wandb_resume zqv1t9oz

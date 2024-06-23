@@ -76,7 +76,7 @@ def main(cfg):
 
     # Initialize agent
     agent = agents.names[agent_type](name, cfg, train_ds, val_ds)
-    if last_checkpoint is None and cfg['cliport_checkpoint'] is not None:
+    if agent_type == 'cliport' and cfg['cliport_checkpoint'] is not None:
         pretrain_checkpoint = cfg['cliport_checkpoint']
         agent.load(pretrain_checkpoint)
         print('Loading from cliport_checkpoint: ', pretrain_checkpoint)

@@ -1,5 +1,5 @@
-mode: val
-agent: mae_seg2
+mode: test
+agent: cliport
 n_demos: 100
 train_demos: 100
 n_repeats: 1
@@ -7,15 +7,15 @@ gpu:
 - 0
 save_results: true
 update_results: true
-checkpoint_type: val_missing
+checkpoint_type: test_best
 val_on_heldout: true
 disp: false
 shared_memory: false
-eval_task: stack-block-pyramid-seq-unseen-colors
-model_task: stack-block-pyramid-seq-unseen-colors
+eval_task: put-block-in-bowl-seen-colors
+model_task: put-block-in-bowl-seen-colors
 type: single
 model_dir: ${root_dir}
-exp_folder: exps_all_gradacc
+exp_folder: cliport_pretrained
 data_dir: ${root_dir}/data
 assets_root: ${root_dir}/cliport/environments/assets/
 model_path: ${model_dir}/${exp_folder}/${model_task}-${agent}-n${train_demos}-train/checkpoints/

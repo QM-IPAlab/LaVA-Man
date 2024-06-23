@@ -1,11 +1,11 @@
-- model_task=stack-block-pyramid-seq-unseen-colors
-- eval_task=stack-block-pyramid-seq-unseen-colors
-- agent=mae_seg2
-- mode=val
+- model_task=put-block-in-bowl-seen-colors
+- eval_task=put-block-in-bowl-seen-colors
+- agent=cliport
+- mode=test
 - n_demos=100
 - train_demos=100
-- exp_folder=exps_all_gradacc
-- checkpoint_type=val_missing
+- exp_folder=cliport_pretrained
+- checkpoint_type=test_best
 - update_results=True
 - disp=False
 - record.save_video=False

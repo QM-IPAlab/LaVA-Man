@@ -36,8 +36,6 @@ import sys
 
 
 assert timm.__version__ == "0.3.2"  # version check
-MEAN = [0.1867, 0.1683, 0.1569]
-STD = [0.1758, 0.1402, 0.1236]
 MEAN_CLIPORT = [0.48145466, 0.4578275, 0.40821073]
 STD_CLIPORT = [0.26862954, 0.26130258, 0.27577711]
 PATH = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/exist_dataset_no_aug_all.hdf5'
@@ -47,7 +45,7 @@ def get_args_parser():
     parser = argparse.ArgumentParser('MAE pre-training', add_help=False)
     parser.add_argument('--batch_size', default=64, type=int,
                         help='Batch size per GPU (effective batch size is batch_size * accum_iter * # gpus')
-    parser.add_argument('--epochs', default=400, type=int)
+    parser.add_argument('--epochs', default=161, type=int)
     parser.add_argument('--accum_iter', default=1, type=int,
                         help='Accumulate gradient iterations (for increasing the effective batch size under memory constraints)')
 
@@ -115,6 +113,7 @@ def get_args_parser():
     parser.add_argument('--save_ca', action='store_true', help='save cross attention maps')
     parser.add_argument('--wandb_resume', default=None, type=str)
     parser.add_argument('--save_relevance', action='store_true')
+    parser.add_argument('--stand_norm',action='store_true')
 
     return parser
 
@@ -123,6 +122,22 @@ def get_fix_transform():
     trasform_fix = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(mean=MEAN_CLIPORT, std=STD_CLIPORT)])
+    return trasform_fix
+
+
+def get_fix_transform_standnorm():
+    
+    class StandardNormalize(object):
+        def __call__(self, tensor):
+            min_val = torch.min(tensor)
+            max_val = torch.max(tensor)
+            normalized_tensor = (tensor - min_val) / (max_val - min_val)
+            scaled_tensor = normalized_tensor * 2 - 1
+            return scaled_tensor
+    
+    trasform_fix = transforms.Compose([
+        transforms.ToTensor(),
+        StandardNormalize()])
     return trasform_fix
 
 
@@ -152,6 +167,9 @@ def main(args):
 
     # simple augmentation
     transform_train = get_fix_transform()
+    if args.stand_norm:
+        print("Using standard normalization")
+        transform_train = get_fix_transform_standnorm()
     dataset_train = MAEDataset(transform=transform_train, data_path=args.data_path)
     dataset_vis = MAEDataset(transform=transform_train, data_path=TEST_PATH)
     #dataset_vis = Subset(dataset_test, range(10))
