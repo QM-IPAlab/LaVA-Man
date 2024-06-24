@@ -106,20 +106,20 @@ hydra:
   overrides:
     hydra: []
     task:
-    - model_task=put-block-in-bowl-seen-colors
-    - eval_task=put-block-in-bowl-seen-colors
-    - agent=cliport
+    - model_task=towers-of-hanoi-seq-seen-colors
+    - eval_task=towers-of-hanoi-seq-seen-colors
+    - agent=mae_seg2_renor
     - mode=test
     - n_demos=100
     - train_demos=100
-    - exp_folder=cliport_pretrained
+    - exp_folder=exps_all_renor3
     - checkpoint_type=test_best
     - update_results=True
     - disp=False
     - record.save_video=False
   job:
     name: eval
-    override_dirname: agent=cliport,checkpoint_type=test_best,disp=False,eval_task=put-block-in-bowl-seen-colors,exp_folder=cliport_pretrained,mode=test,model_task=put-block-in-bowl-seen-colors,n_demos=100,record.save_video=False,train_demos=100,update_results=True
+    override_dirname: agent=mae_seg2_renor,checkpoint_type=test_best,disp=False,eval_task=towers-of-hanoi-seq-seen-colors,exp_folder=exps_all_renor3,mode=test,model_task=towers-of-hanoi-seq-seen-colors,n_demos=100,record.save_video=False,train_demos=100,update_results=True
     id: ???
     num: ???
     config_name: eval

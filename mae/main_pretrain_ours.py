@@ -172,7 +172,7 @@ def main(args):
         transform_train = get_fix_transform_standnorm()
     dataset_train = MAEDataset(transform=transform_train, data_path=args.data_path)
     dataset_vis = MAEDataset(transform=transform_train, data_path=TEST_PATH)
-    #dataset_vis = Subset(dataset_test, range(10))
+    dataset_train = Subset(dataset_train, range(600))
 
     if True:  # args.distributed:
         num_tasks = misc.get_world_size()

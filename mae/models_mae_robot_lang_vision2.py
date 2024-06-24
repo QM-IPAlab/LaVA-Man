@@ -60,7 +60,8 @@ class MAERobotLangVisonCLIP(MAERobot):
         pred = F.interpolate(pred, size=(320, 320), mode='bilinear', align_corners=False)
         pred = pred[:, :, :, 80:-80]
         loss = self.forward_loss(img2, pred)
-        return loss, pred, pred
+
+        return loss, pred, None
     
     def forward_ca_decoder(self, img_emb, lang_emb):
         """

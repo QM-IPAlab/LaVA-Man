@@ -318,7 +318,7 @@ def preprocess_norm(img, dist=None):
     rgb = img[:, :3, :, :]
     rgb = rgb/255.0
     rgb = (rgb - rgb.min()) / (rgb.max() - rgb.min())
-    #rgb = (rgb * 2) - 1
+    rgb = (rgb * 2) - 1
     img[:, :3, :, :] = rgb
     return img
 

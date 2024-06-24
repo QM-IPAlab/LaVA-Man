@@ -1,21 +1,21 @@
-# #!/bin/bash
-# #SBATCH --partition=devel
-# #SBATCH --gres=gpu:1
-# #SBATCH --job-name=debug
-# #SBATCH --cpus-per-task=16
+#!/bin/bash
+#SBATCH --partition=big
+#SBATCH --gres=gpu:4
+#SBATCH --job-name=lat
+#SBATCH --cpus-per-task=16
 
-# module load python/anaconda3
-# source activate mae-cliport
+module load python/anaconda3
+source activate mae-cliport
 export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 
-exps_name="cliport_pretrained"
-agent_name="cliport"
+exps_name="exps_all_renor3"
+agent_name="mae_seg2_renor"
 
 # ======== task name ========= #
 
-task_name="towers-of-hanoi-seq-seen-colors"
+task_name="towers-of-hanoi-seq-unseen-colors"
 #task_name="put-block-in-bowl-seen-colors"
 
 #task_name="packing-seen-google-objects-group"
@@ -52,35 +52,35 @@ python -m cliport.train  train.task=${task_name}\
                          dataset.cache=True \
                          train.load_from_last_ckpt=False \
                          train.n_rotations=36\
-                         train.log=False \
+                         train.log=True \
                          wandb.run_name=${exps_name}_${task_name} \
-                         #mae_model=mae_robot_lang \
-                         #train.linear_probe=False \
-                         #train.accumulate_grad_batches=1 \
-                         #pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big/checkpoint-160.pth\
+                         mae_model=mae_robot_lang \
+                         train.linear_probe=False \
+                         train.accumulate_grad_batches=1 \
+                         pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_stdnorm/checkpoint-60.pth\
                         
 
-# python -m cliport.eval model_task=${task_name}\
-#                       eval_task=${task_name} \
-#                       agent=${agent_name} \
-#                       mode=val \
-#                       n_demos=100 \
-#                       train_demos=100 \
-#                       exp_folder=${exps_name} \
-#                       checkpoint_type=val_missing \
-#                       update_results=True \
-#                       disp=False\
-#                       record.save_video=False
+python -m cliport.eval model_task=${task_name}\
+                      eval_task=${task_name} \
+                      agent=${agent_name} \
+                      mode=val \
+                      n_demos=100 \
+                      train_demos=100 \
+                      exp_folder=${exps_name} \
+                      checkpoint_type=val_missing \
+                      update_results=True \
+                      disp=False\
+                      record.save_video=False
 
 
-# python -m cliport.eval model_task=${task_name}\
-#                       eval_task=${task_name} \
-#                       agent=${agent_name} \
-#                       mode=test \
-#                       n_demos=100 \
-#                       train_demos=100 \
-#                       exp_folder=${exps_name} \
-#                       checkpoint_type=test_best \
-#                       update_results=True \
-#                       disp=False\
-#                       record.save_video=False
+python -m cliport.eval model_task=${task_name}\
+                      eval_task=${task_name} \
+                      agent=${agent_name} \
+                      mode=test \
+                      n_demos=100 \
+                      train_demos=100 \
+                      exp_folder=${exps_name} \
+                      checkpoint_type=test_best \
+                      update_results=True \
+                      disp=False\
+                      record.save_video=False

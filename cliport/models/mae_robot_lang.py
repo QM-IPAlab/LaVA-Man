@@ -167,6 +167,7 @@ class MAESeg2Model(nn.Module):
             img_size=input_shape[:2],
             norm_pix_loss=False)
         
+        # linear probe
         self.linear_probe = False if 'linear_probe' not in cfg['train'] else cfg['train']['linear_probe']
         if self.linear_probe:
             self.model.requires_grad_(False)
@@ -251,19 +252,18 @@ class MAESeg2Model(nn.Module):
 
         for blk in self.model.decoder_blocks:
             out1, out2 = blk(out1, out2, lang_emb)
-
         out = self.model.decoder_norm(out1)
-        out = out[:, 1:, :]  # 1, 400, 512
-        out = self.unpatchify(out)
+        out = out[:, 1:, :]  # 1, 200, 512
+        out = self.unpatchify(out) # 1, 512, 20, 10
 
-        out = self.layer1(out)
-        out = self.cat1(out, rgb)
-        out = self.layer2(out)
-        out = self.cat2(out, rgb)
-        out = self.layer3(out)
-        out = self.cat3(out, rgb)
-        out = self.layer4(out)
-        out = self.cat4(out, rgb)
+        out = self.layer1(out)    # 1, 256, 40, 20
+        out = self.cat1(out, rgb) # 1, 256, 40, 20
+        out = self.layer2(out)    # 1, 128, 80, 40
+        out = self.cat2(out, rgb) # 1, 128, 80, 40
+        out = self.layer3(out)    # 1, 64, 160, 80
+        out = self.cat3(out, rgb) # 1, 64, 160, 80
+        out = self.layer4(out)    # 1, 16, 320, 160
+        out = self.cat4(out, rgb) # 1, 16, 320, 160
 
         # incase of different size (patch size = 8)
         if out.shape[-2:] != in_shape[-2:]:

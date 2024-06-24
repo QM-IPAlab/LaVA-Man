@@ -122,24 +122,30 @@ def validate_vis_img2(model: torch.nn.Module,
                 img2 = img2[0]
                 img2 = (img2 - img2.min()) / (img2.max() - img2.min())
 
-                # masked image
-                mask = mask.detach().cpu()
-                mask = mask.detach()
-                mask = mask.unsqueeze(-1).repeat(1, 1, model.patch_embed.patch_size[0] ** 2 * 3)  # (N, H*W, p*p*3)
-                mask = model.unpatchify(mask)  # 1 is removing, 0 is keeping
-                mask = torch.einsum('nchw->nhwc', mask).detach().cpu()
-                mask = mask[0]
-                mask = mask.permute(2, 0, 1)
-                im_masked = img2 * (1 - mask)
+                if mask is not None:
+                    # masked image
+                    mask = mask.detach().cpu()
+                    mask = mask.detach()
+                    mask = mask.unsqueeze(-1).repeat(1, 1, model.patch_embed.patch_size[0] ** 2 * 3)  # (N, H*W, p*p*3)
+                    mask = model.unpatchify(mask)  # 1 is removing, 0 is keeping
+                    mask = torch.einsum('nchw->nhwc', mask).detach().cpu()
+                    mask = mask[0]
+                    mask = mask.permute(2, 0, 1)
+                    im_masked = img2 * (1 - mask)
 
-                # MAE reconstruction
-                predict = model.unpatchify(predict)
-                predict = predict.detach().cpu()
-                predict = predict[0]
-                predict = (predict - predict.min()) / (predict.max() - predict.min())
-                im_paste = img2 * (1 - mask) + predict * mask
+                    # MAE reconstruction
+                    predict = model.unpatchify(predict)
+                    predict = predict.detach().cpu()
+                    predict = predict[0]
+                    predict = (predict - predict.min()) / (predict.max() - predict.min())
+                    im_paste = img2 * (1 - mask) + predict * mask
 
-                combined_image = torch.cat((img1, img2, im_masked, predict, im_paste), dim=2)
+                    combined_image = torch.cat((img1, img2, im_masked, predict, im_paste), dim=2)
+                
+                else:
+                    predict = predict.detach().cpu()
+                    predict = predict[0]
+                    combined_image = torch.cat((img1, img2, predict), dim=2)
                     
                 if log_writer is not None:
                     combined_image = combined_image.permute(1, 2, 0).numpy()

@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --nodes=1
-#SBATCH --partition=big
+#SBATCH --partition=long
 #SBATCH --gres=gpu:4
 #SBATCH --job-name=stdnorm
 #SBATCH --cpus-per-task=16
@@ -36,12 +36,10 @@ export OMP_NUM_THREADS=1
 #export MASTER_PORT=$(python -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
 
 python -m torch.distributed.launch --nproc_per_node 4 --master_port=$PORT mae/main_pretrain_ours.py \
-    --model mae_robot_lang \
+    --model robot_clip \
     --batch_size 64 \
-    --output_dir output_mae_robot_lang_stdnorm \
-    --pretrain /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big/checkpoint-160.pth \
+    --output_dir output_robot_clip \
+    --pretrain /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/checkpoints/mae_pretrain_vit_base.pth \
     --mask_ratio 0.95 \
     --log \
-    --epochs 80 \
-    --stand_norm
     #--wandb_resume zqv1t9oz
