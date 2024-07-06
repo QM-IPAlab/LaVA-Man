@@ -302,7 +302,7 @@ class MAERobotLangVisonProMul(MAERobot):
         x = self.lang_fuser2(x, l_input, x2_mask=None, x2_proj=self.lang_proj2)
         x = self.up2(x, im[-3]) # #64 512 28 28
         x = self.lang_fuser3(x, l_input, x2_mask=None, x2_proj=self.lang_proj3)
-        x = self.up3(x, im[-4]) #  64 512 56 
+        x = self.up3(x, im[-4]) #  64 512 56 56
         return x
     
     def forward(self, img1, img2, pick=None, place=None, lang=None, mask_ratio=0.75):
@@ -338,3 +338,146 @@ class MAERobotLangVisonProMul(MAERobot):
         out = out[:, 1:, :]
         return out
 
+
+class MAERobotLangVisonProMulCat(MAERobot):
+    """ CLIP vision model and text model multiply
+        Then cross attention to the image decoder
+    """
+
+    def __init__(self, img_size=(320, 160), patch_size=16, in_chans=3,
+                 embed_dim=768, depth=12, num_heads=12,
+                 decoder_embed_dim=256, decoder_depth=8, decoder_num_heads=16,
+                 mlp_ratio=4., norm_layer=nn.LayerNorm, norm_im2_in_dec=True, norm_pix_loss=False):
+        super().__init__(img_size, patch_size, in_chans, embed_dim, depth, num_heads,
+                         decoder_embed_dim, decoder_depth, decoder_num_heads,
+                         mlp_ratio, norm_layer, norm_im2_in_dec, norm_pix_loss)
+
+        self.decoder_blocks = nn.ModuleList([
+            DecoderCABlockVisionLangMul(decoder_embed_dim, decoder_num_heads, mlp_ratio, qkv_bias=True, norm_layer=norm_layer,
+                               norm_mem=norm_im2_in_dec)
+            for _ in range(decoder_depth)])
+
+        self.lang_fuser1 = FusionMultOurs(input_dim=1024)
+        self.lang_fuser2 = FusionMultOurs(input_dim=512)
+        self.lang_fuser3 = FusionMultOurs(input_dim=256)
+
+        self.lang_proj1 = nn.Linear(1024, 1024)
+        self.lang_proj2 = nn.Linear(1024, 512)
+        self.lang_proj3 = nn.Linear(1024, 256)
+
+        self.up1 = Up(2048, 1024 // 2)
+        self.up2 = Up(1024, 512 // 2)
+        self.up3 = Up(512, 256)
+
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(2048, 1024, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.ReLU(True)
+        )
+
+        self.resize_transform = transforms.Resize((224, 224))
+
+        self.dtype = self.conv1[0].weight.dtype
+        model, _ = load_clip("RN50", device='cuda')
+        self.clip = build_model(model.state_dict(), self.dtype).to('cuda')
+        self.clip.requires_grad_(False)
+
+    def encode_image(self, img):
+        img = F.pad(img, (80, 80, 0, 0), value=0)
+        with torch.no_grad():
+            img_encoding, img_im = self.clip.visual.prepool_im(img)
+        return img_encoding, img_im
+
+    def encode_text(self, x):
+        with torch.no_grad():
+            tokens = x['input_ids']
+            text_feat, text_emb = self.clip.encode_text_with_embeddings(tokens)
+        return text_feat, text_emb
+    
+    def get_hidden_embeds(self, processed_lang, processed_img):
+        """get the hidden embeddings of the language and the image"""
+        
+        lang_enc, _ = self.encode_text(processed_lang) # 64, 1024; 64, 77, 512
+        _, img_im = self.encode_image(processed_img) #64, 2048, 20, 10
+    
+        out = self.cliport_lang_fusion(lang_enc, img_im)
+        return out
+        
+    def cliport_lang_fusion(self, l_input, im):
+        import pdb; pdb.set_trace()
+        x = self.conv1(im[-1]) # 64 1024 10 5
+        x = self.lang_fuser1(x, l_input, x2_mask=None, x2_proj=self.lang_proj1)
+        x = self.up1(x, im[-2]) # # 64 512 20 10
+        x = self.lang_fuser2(x, l_input, x2_mask=None, x2_proj=self.lang_proj2)
+        x = self.up2(x, im[-3]) # #64 256 40 20
+        x = self.lang_fuser3(x, l_input, x2_mask=None, x2_proj=self.lang_proj3)
+        x = self.up3(x, im[-4]) #  64 128 80 40
+        x = x[:, :, :, 20:-20]
+        x = F.adaptive_avg_pool2d(x, (20, 10))
+        return x
+    
+    def forward(self, img1, img2, pick=None, place=None, lang=None, mask_ratio=0.75):
+        # encoder of the language goal
+        ref = self.get_hidden_embeds(lang, img1)
+        # encoder of the first observed image (no mask)
+        latent1, mask1, ids_restore1 = self.forward_encoder(img1, mask_ratio=0.0)
+        latent2, mask2, ids_restore2 = self.forward_encoder(img2, mask_ratio)
+    
+        # decoder
+        pred = self.forward_ca_decoder(latent1, latent2, ids_restore2, ref)
+        loss = self.forward_loss(img2, pred, mask2)
+
+        return loss, pred, mask2
+
+    def forward_ca_decoder(self, latent1, masked_latent2, ids_restore2, lang_emb):
+        """
+        latent1: visible
+        masked_latent2: masked goal image
+        """
+        # encoder to decoder layer
+        import pdb; pdb.set_trace()
+        fea1 = self.decoder_embed(latent1)
+        fea2 = self.decoder_embed(masked_latent2)
+
+        # append masked tokens to the sequence
+        masked_tokens = self.mask_token.repeat(fea2.shape[0],
+                                               ids_restore2.shape[1] + 1 - fea2.shape[1], 1)
+        fea2_ = torch.cat([fea2[:, 1:, :], masked_tokens], dim=1)  # no cls token
+        fea2_ = torch.gather(fea2_, dim=1,
+                             index=ids_restore2.unsqueeze(-1).repeat(1, 1, fea2.shape[2]))  # unshuffle
+        fea2 = torch.cat([fea2[:, :1, :], fea2_], dim=1)  # append cls token
+
+        # add positional embedding
+        if self.decoder_pos_embed is not None:
+            fea1 = fea1 + self.decoder_pos_embed
+            fea2 = fea2 + self.decoder_pos_embed
+
+        out1 = fea1
+        out2 = fea2
+        # apply Transformer blocks
+        for blk in self.decoder_blocks:
+            out1, out2 = blk(out1, out2, lang_emb)
+        out = self.decoder_norm(out1)
+
+        out = self.decoder_pred(out)
+        out = out[:, 1:, :]
+
+        return out
+
+    def cliport_forward(self, rgb, processed_lang):
+         
+        ref = self.get_hidden_embeds(processed_lang, rgb)
+        ref = F.adaptive_max_pool2d(ref, (16, 16))
+        
+        latent, mask, ids_restore = self.forward_encoder(rgb, mask_ratio=0.0)
+        
+        fea = self.decoder_embed(latent)
+        fea = fea + self.decoder_pos_embed
+
+        out1 = fea
+        out2 = None
+
+        for blk in self.decoder_blocks:
+            out1, out2 = blk(out1, out2, ref)
+        out = self.decoder_norm(out1)
+        out = out[:, 1:, :]
+        return out

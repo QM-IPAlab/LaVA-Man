@@ -3,7 +3,7 @@ Choose which model to load
 """
 from models_mae_robot import MAERobotBase, MAERobot
 from models_mae_robot_lang import MAERobotLang, MAERobotLangNoRef, MAERobotLang2
-from models_mae_robot_lang_vision import MAERobotLangVisonE, MAERobotLangVisonProjector, MAERobotLangVisonProMul
+from models_mae_robot_lang_vision import MAERobotLangVisonE, MAERobotLangVisonProjector, MAERobotLangVisonProMul, MAERobotLangVisonProMulCat
 from models_mae_robot_lang_vision2 import MAERobotLangVisonCLIP
 from models_mae_robot_lang_relevance import MAERobotLangRel
 from functools import partial
@@ -93,6 +93,14 @@ def vit_base_patch16_clip_only(**kwargs):
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
+def mae_vit_base_path16_rlpmc(**kwargs):
+    """MAE with multiplication between clip text and clip vision in deocder"""
+    model = MAERobotLangVisonProMulCat(
+        patch_size=16, embed_dim=768, depth=12, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
 # models
 mae_robot_base = mae_vit_base_patch16_robot_base  # original mae model with cliport image
 mae_robot = mae_vit_base_patch16_robot  # two state mae without language
@@ -105,3 +113,4 @@ mae_robot_lang2 = mae_vit_base_path16_rl2  # two state with language in both enc
 mae_robot_projector = mae_vit_base_path16_rlp
 mae_robot_promul = mae_vit_base_path16_rlpm
 robot_clip = vit_base_patch16_clip_only
+mae_robot_promulcat = mae_vit_base_path16_rlpmc

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from timm.models.vision_transformer import Block
+from blocks import Block
 
 from util.misc import PatchEmbedVarSize
 from util.pos_embed import get_2d_varsize_sincos_pos_embed

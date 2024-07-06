@@ -98,6 +98,10 @@ class MAERobotLangVisonCLIP(MAERobot):
         for blk in self.decoder_blocks:
             img_emb = blk(img_emb, lang_emb)
         out = self.decoder_norm(img_emb)
+        out = self.decoder_pred(out)
         out = out[:, 1:, :]
-        return out
+        pred = rearrange(out, 'b (h w) (ph pw c) -> b c (h ph) (w pw)', h=7, w=7, ph=32, pw=32, c=3)
+        pred = F.interpolate(pred, size=(320, 320), mode='bilinear', align_corners=False)
+        pred = pred[:, :, :, 80:-80]
+        return pred
        

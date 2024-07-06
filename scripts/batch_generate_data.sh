@@ -23,31 +23,31 @@ export CLIPORT_ROOT=$(pwd)
 # )
 
 
-declare -a tasks=(
-    "align-rope"\
-    #"assembling-kits-seq-unseen-colors"\
-    "assembling-kits-seq-seen-colors"\
-    "packing-boxes-pairs-seen-colors"\
-    #"packing-boxes-pairs-unseen-colors"\
-    "packing-seen-google-objects-group"\
-    "packing-seen-google-objects-seq"\
-    "packing-shapes"\
-    #"packing-unseen-google-objects-group"\
-    #"packing-unseen-google-objects-seq"\
-    "put-block-in-bowl-seen-colors"\
-    #"put-block-in-bowl-unseen-colors"\
-    "separating-piles-seen-colors"\
-    #"separating-piles-unseen-colors"\
-    "stack-block-pyramid-seq-seen-colors"\
-    #"stack-block-pyramid-seq-unseen-colors"\
-    "towers-of-hanoi-seq-seen-colors"\
-    #"towers-of-hanoi-seq-unseen-colors"\
+tasks=(
+  'assembling-kits-seq-full'
+  'packing-boxes-pairs-full'
+  'packing-seen-google-objects-seq'
+  'packing-unseen-google-objects-seq'
+  'packing-seen-google-objects-group'
+  'packing-unseen-google-objects-group'
+  'put-block-in-bowl-full'
+  'stack-block-pyramid-seq-full'
+  'separating-piles-full'
+  'towers-of-hanoi-seq-full'
 )
 
+# for task in "${tasks[@]}"
+# do
+#     echo "Running data colloection for task: $task"
+#     python -m cliport.dataset_to_hdf5 \
+#                             train.task="${task}"\
+#                             train.n_demos=1000
+# done
 for task in "${tasks[@]}"
 do
     echo "Running data colloection for task: $task"
-    python -m cliport.dataset_to_hdf5 \
-                            train.task="${task}"\
-                            train.n_demos=1000
+    python cliport/demo_hdf5.py n=1000 \
+                            task=$task \
+                            mode=test \
+                            hdf5_path=extra_dataset_no_aug
 done

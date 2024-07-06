@@ -179,8 +179,10 @@ def list_ckpts_to_eval(vcfg, existing_results):
         ckpts_to_eval = [c for c in checkpoints if c not in existing_results]
         best_checkpoint = 'best.ckpt'
         last_checkpoint = 'last.ckpt'
+        best_v0_checkpoint = 'best-v0.ckpt'
         if best_checkpoint not in existing_results:  ckpts_to_eval.append(best_checkpoint)
         if last_checkpoint not in existing_results:  ckpts_to_eval.append(last_checkpoint)
+        if best_v0_checkpoint not in existing_results:  ckpts_to_eval.append(best_v0_checkpoint)
     # Find the best checkpoint from validation and run eval on the test set.
     elif vcfg['checkpoint_type'] == 'test_best':
         result_jsons = [c for c in os.listdir(vcfg['results_path']) if "results-val" in c]

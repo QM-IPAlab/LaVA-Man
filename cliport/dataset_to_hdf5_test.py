@@ -46,32 +46,6 @@ class RavensDatasetToHdf5(RavensDataset):
                 data_gt_pick.append(gt_pick)
                 data_gt_place.append(gt_place)
 
-        def append_or_create_dataset(name, data, dtype=None):
-
-            if name in f:
-                # If dataset already exists, append to it
-                dset = f[name]
-                dset.resize(dset.shape[0] + len(data), axis=0)
-                dset[-len(data):] = data
-                n = len(dset)
-
-            else:
-
-                if dtype is None:
-                    maxshape = (None,) + data[0].shape
-                    chunks = (1,) + data[0].shape
-                    f.create_dataset(name, data=data, maxshape=maxshape,
-                                     chunks=chunks)
-                else:
-                    maxshape = (None,)
-                    chunks = (1,)  # For variable-length data
-                    f.create_dataset(name, data=data, maxshape=maxshape,
-                                     chunks=chunks, dtype=dtype)
-
-                n = len(data)
-
-            return n
-
         #turn to format suitable for hdf5
         data_language = np.array(data_language, dtype=h5py.special_dtype(vlen=str))
         data_s1 = np.array(data_s1)
@@ -79,11 +53,11 @@ class RavensDatasetToHdf5(RavensDataset):
         data_gt_pick = np.array(data_gt_pick)
         data_gt_place = np.array(data_gt_place)
 
-        n1 = append_or_create_dataset('image_s1', data=data_s1)
-        n2 = append_or_create_dataset('image_s2', data=data_s2)
-        n3 = append_or_create_dataset('language', data=data_language, dtype=h5py.string_dtype(encoding='ascii'))
-        n4 = append_or_create_dataset('gt_pick', data=data_gt_pick)
-        n5 = append_or_create_dataset('gt_place', data=data_gt_place, )
+        n1 = self.append_or_create_dataset(f,'image_s1', data=data_s1)
+        n2 = self.append_or_create_dataset(f,'image_s2', data=data_s2)
+        n3 = self.append_or_create_dataset(f,'language', data=data_language, dtype=h5py.string_dtype(encoding='ascii'))
+        n4 = self.append_or_create_dataset(f,'gt_pick', data=data_gt_pick)
+        n5 = self.append_or_create_dataset(f,'gt_place', data=data_gt_place, )
         f.close()
 
         assert n1 == n2 == n3 == n4 == n5
@@ -93,6 +67,31 @@ class RavensDatasetToHdf5(RavensDataset):
 
     def read_hdf5(self):
         self.data = h5py.File(self.data_file, 'r')
+
+    def append_or_create_dataset(self, f, name, data, dtype=None):
+        if name in f:
+            # If dataset already exists, append to it
+            dset = f[name]
+            dset.resize(dset.shape[0] + len(data), axis=0)
+            dset[-len(data):] = data
+            n = len(dset)
+
+        else:
+
+            if dtype is None:
+                maxshape = (None,) + data[0].shape
+                chunks = (1,) + data[0].shape
+                f.create_dataset(name, data=data, maxshape=maxshape,
+                                    chunks=chunks)
+            else:
+                maxshape = (None,)
+                chunks = (1,)  # For variable-length data
+                f.create_dataset(name, data=data, maxshape=maxshape,
+                                    chunks=chunks, dtype=dtype)
+
+            n = len(data)
+
+        return n
 
     def interpret(self, sample, goal):
         # Interpret the sample and goal data

@@ -1,6 +1,7 @@
 # Data Generation
 
 save_type: hdf5
+hdf5_path: debug
 
 defaults:
   - config
