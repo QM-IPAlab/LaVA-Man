@@ -35,6 +35,7 @@ train:
   n_rotations: 36
   batchnorm: False # important: False because batch_size=1
   lr: 1e-4
+  batch_size: 1
 
   attn_stream_fusion_type: 'add'
   trans_stream_fusion_type: 'conv'

@@ -11,7 +11,7 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 
 exps_name="debug"
-agent_name="mae_seg_base"
+agent_name="pick"
 
 # ======== task name ========= #
 
@@ -57,6 +57,7 @@ python -m cliport.train  train.task=${task_name}\
                          mae_model=mae_robot_promulcat \
                          train.linear_probe=True \
                          train.accumulate_grad_batches=1 \
+                         train.batch_size=14 \
                          pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_robot_clip/checkpoint-160.pth
                         
 

@@ -528,7 +528,7 @@ def perturb(input_image, pixels, theta_sigma=60, add_noise=False):
                 pixel >= 0) and in_fov_rounded and in_fov
 
             new_pixels.append(pixel)
-            new_rounded_pixels.append(rounded_pixel)
+            new_rounded_pixels.append(rounded_pixel.copy())
         if is_valid:
             break
 
@@ -549,6 +549,7 @@ def perturb(input_image, pixels, theta_sigma=60, add_noise=False):
         depth += np.float32(np.random.normal(0, 0.003, image_size + (3,)))
 
     input_image = np.concatenate((color, depth), axis=2)
+    input_image = input_image.astype(np.float32)
 
     return input_image, new_pixels, new_rounded_pixels, transform_params
 

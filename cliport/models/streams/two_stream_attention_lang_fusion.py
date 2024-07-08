@@ -82,6 +82,31 @@ class TwoStreamAttentionLangFusionLat(TwoStreamAttentionLangFusion):
         return x
 
 
+class TwoStreamAttnlangFusionLatBatch(TwoStreamAttentionLangFusionLat):
+    """ Batch version of TwoStreamAttentionLangFusionLat. """
+    def __init__(self, stream_fcn, in_shape, n_rotations, preprocess, cfg, device):
+        self.fusion_type = cfg['train']['attn_stream_fusion_type']
+        super().__init__(stream_fcn, in_shape, n_rotations, preprocess, cfg, device)
+
+    def forward(self, inp_img, lang_goal, softmax=True):
+        """Forward pass."""
+        inp_img = inp_img.permute(0, 3, 1, 2)
+        #FIXME: hard coded padding and then cropping
+        pad = int(self.padding[1][0]), int(self.padding[1][1])
+        in_data = F.pad(inp_img, pad, mode='constant')
+
+        #FIXME: no rotation here now
+        logits = self.attend(in_data, lang_goal)
+       
+        logits = logits[:, :, :, pad[0]:-pad[1]]
+        logits = logits.permute(0, 2, 3, 1)  # [B W H 1]
+        output = logits.reshape(inp_img.shape[0], -1)
+        if softmax:
+            output = F.softmax(output, dim=-1)
+            output = output.reshape(inp_img.shape[0], *logits.shape[1:])
+        return output
+
+
 class TwoStreamAttentionMAEFixSize(TwoStreamAttentionLangFusion):
     def __init__(self, stream_fcn, in_shape, n_rotations, preprocess, cfg, device):
         self.pretrain = cfg['pretrain_path']

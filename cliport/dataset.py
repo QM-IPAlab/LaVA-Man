@@ -205,7 +205,7 @@ class RavensDataset(Dataset):
             'img': img,
             'p0': p0, 'p0_theta': p0_theta,
             'p1': p1, 'p1_theta': p1_theta,
-            'perturb_params': perturb_params
+            #'perturb_params': perturb_params
         }
 
         # Add language goal if available.
@@ -261,18 +261,18 @@ class RavensDataset(Dataset):
         episode, _ = self.load(episode_id, self.images, self.cache)
 
         # Is the task sequential like stack-block-pyramid-seq?
-        is_sequential_task = '-seq' in self._path.split("/")[-1]
+        #is_sequential_task = '-seq' in self._path.split("/")[-1]
 
         # Return random observation action pair (and goal) from episode.
         i = np.random.choice(range(len(episode)-1))
-        g = i+1 if is_sequential_task else -1
-        sample, goal = episode[i], episode[g]
+        #g = i+1 if is_sequential_task else -1
+        sample = episode[i]
 
         # Process sample.
         sample = self.process_sample(sample, augment=self.augment)
-        goal = self.process_goal(goal, perturb_params=sample['perturb_params'])
+        #goal = self.process_goal(goal, perturb_params=sample['perturb_params'])
 
-        return sample, goal
+        return sample, sample
 
 
 class RavensMultiTaskDataset(RavensDataset):

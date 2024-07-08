@@ -2,8 +2,11 @@
 
 import os
 from pathlib import Path
+from re import T
 
 import torch
+from torch.utils.data import random_split, DataLoader
+
 from cliport import agents
 from cliport.dataset import RavensDataset, RavensMultiTaskDataset
 
@@ -73,6 +76,13 @@ def main(cfg):
     else:
         train_ds = RavensDataset(os.path.join(data_dir, '{}-train'.format(task)), cfg, n_demos=n_demos, augment=True)
         val_ds = RavensDataset(os.path.join(data_dir, '{}-val'.format(task)), cfg, n_demos=n_val, augment=False)
+
+    # Set data loaders if batch_size > 1
+    if cfg['train']['batch_size'] != 1:
+        cfg['train']['batchnorm'] == True
+        batch_size = cfg['train']['batch_size']
+        train_ds = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=2)
+        val_ds = DataLoader(val_ds, batch_size=batch_size, shuffle=True, num_workers=2)
 
     # Initialize agent
     agent = agents.names[agent_type](name, cfg, train_ds, val_ds)

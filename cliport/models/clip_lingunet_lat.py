@@ -92,7 +92,9 @@ class CLIPLingUNetLat(nn.Module):
 
     def encode_text(self, x):
         with torch.no_grad():
-            tokens = tokenize([x]).to(self.device)
+            if isinstance(x, str):
+                x = [x]
+            tokens = tokenize(x).to(self.device)
             text_feat, text_emb = self.clip_rn50.encode_text_with_embeddings(tokens)
 
         text_mask = torch.where(tokens==0, tokens, 1)  # [1, max_token_len]
@@ -112,7 +114,6 @@ class CLIPLingUNetLat(nn.Module):
         l_enc, l_emb, l_mask = self.encode_text(l)
         l_input = l_emb if 'word' in self.lang_fusion_type else l_enc
         l_input = l_input.to(dtype=x.dtype)
-
         assert x.shape[1] == self.input_dim
         x = self.conv1(x)
 

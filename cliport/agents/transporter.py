@@ -41,18 +41,20 @@ class TransporterAgent(LightningModule):
         self.val_repeats = cfg['train']['val_repeats']
         self.save_steps = cfg['train']['save_steps']
         self.save_visuals = 0
-
         self._build_model()
-        self._optimizers = {
-            'attn': torch.optim.Adam(self.attention.parameters(), lr=self.cfg['train']['lr']),
-            'trans': torch.optim.Adam(self.transport.parameters(), lr=self.cfg['train']['lr'])
-        }
+        self._set_optimizers()
         print("Agent: {}, Logging: {}".format(name, cfg['train']['log']))
 
     def _build_model(self):
         self.attention = None
         self.transport = None
         raise NotImplementedError()
+    
+    def _set_optimizers(self):
+        self._optimizers = {
+            'attn': torch.optim.Adam(self.attention.parameters(), lr=self.cfg['train']['lr']),
+            'trans': torch.optim.Adam(self.transport.parameters(), lr=self.cfg['train']['lr'])
+        }
 
     def forward(self, x):
         raise NotImplementedError()
@@ -181,7 +183,6 @@ class TransporterAgent(LightningModule):
         self.transport.train()
 
         frame, _ = batch
-
         # Get training losses.
         step = self.total_steps + 1
         loss0, err0 = self.attn_training_step(frame)
