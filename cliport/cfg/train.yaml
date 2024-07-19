@@ -36,6 +36,8 @@ train:
   batchnorm: False # important: False because batch_size=1
   lr: 1e-4
   batch_size: 1
+  precision: 32
+  sep_mode: False
 
   attn_stream_fusion_type: 'add'
   trans_stream_fusion_type: 'conv'

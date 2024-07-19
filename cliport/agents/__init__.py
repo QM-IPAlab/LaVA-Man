@@ -23,7 +23,7 @@ from cliport.agents.mae_transporter import MAEFixGloss, MAESeg2TransporterAgent,
 from cliport.agents.mae_transporter import MAESeg2ModelFullMaskAgent, MAESeg3TransporterAgent, MAEFeatUpTransporterAgent
 from cliport.agents.mae_transporter import MAESeg2DepthTransporterAgent, MAESegBaseAgent, MAESegCLIPModel
 from cliport.agents.mae_transporter_two_stream import MAESeg2TwoStreamTransporterAgent, MAESeg2PlusTwoStreamTransporterAgent
-from cliport.agents.sep_transporter import PickAgent, PlaceAgent
+from cliport.agents.sep_transporter import PickAgent, PlaceAgent, SepAgent
 names = {
 
          ### OURS MAE
@@ -45,6 +45,7 @@ names = {
          ## Separated Transporter
          'pick': PickAgent,
          'place': PlaceAgent,
+         'sep': SepAgent,
 
 
          ################################

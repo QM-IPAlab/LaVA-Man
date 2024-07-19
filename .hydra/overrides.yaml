@@ -1,4 +1,11 @@
-- n=1000
-- task=towers-of-hanoi-seq-full
+- model_task=towers-of-hanoi-seq-seen-colors
+- eval_task=towers-of-hanoi-seq-seen-colors
+- agent=place
 - mode=test
-- hdf5_path=extra_dataset_no_aug
+- n_demos=100
+- train_demos=100
+- exp_folder=exps_sep_test
+- checkpoint_type=best
+- update_results=True
+- disp=False
+- record.save_video=False

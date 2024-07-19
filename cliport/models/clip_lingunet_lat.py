@@ -110,7 +110,6 @@ class CLIPLingUNetLat(nn.Module):
         img=x
         x, im = self.encode_image(x)
         x = x.to(in_type)
-
         l_enc, l_emb, l_mask = self.encode_text(l)
         l_input = l_emb if 'word' in self.lang_fusion_type else l_enc
         l_input = l_input.to(dtype=x.dtype)

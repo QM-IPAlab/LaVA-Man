@@ -41,10 +41,14 @@ class Fusion(nn.Module):
     def tile_x2(self, x1, x2, x2_proj=None):
         if x2_proj:
             x2 = x2_proj(x2)
-
         x2 = x2.unsqueeze(-1).unsqueeze(-1)
         if x1.shape[0] != x2.shape[0] and x2.shape[0] == 1: # x2 is a single vector
             x2_repeat_dim0 = x1.shape[0]
+        elif x1.shape[0] != x2.shape[0] and x2.shape[0] != 1:
+            # x2 is a batch of vectors
+            x2 = x2.repeat(1, 1, x1.shape[-2], x1.shape[-1])
+            x2 = x2.repeat_interleave(x1.shape[0]//x2.shape[0], dim=0)
+            return x2
         else:
             x2_repeat_dim0 = 1
         x2 = x2.repeat(x2_repeat_dim0, 1, x1.shape[-2], x1.shape[-1])

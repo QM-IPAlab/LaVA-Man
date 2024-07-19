@@ -19,6 +19,7 @@ from omegaconf import OmegaConf
 
 import os
 import torch
+import contextlib
 
 
 # -----------------------------------------------------------------------------
@@ -607,6 +608,57 @@ class ImageRotator:
 
         return rot_x_list
 
+
+class ImageRotatorBatch:
+    """Rotate for n rotations."""
+    # Reference: https://kornia.readthedocs.io/en/latest/tutorials/warp_affine.html?highlight=rotate
+
+    def __init__(self, n_rotations):
+        self.angles = []
+        for i in range(n_rotations):
+            theta = i * 2 * 180 / n_rotations
+            self.angles.append(theta)
+        self.angles_tensor = torch.tensor(self.angles)
+
+    def __call__(self, x_batch, pivot, reverse=False):
+        
+        batch_size, num_images, channels, height, width = x_batch.shape
+        assert num_images == len(self.angles), "The number of images in the batch should be equal to the number of angles."
+        # Reshape x_batch to (b*n, c, h, w)
+        x_batch = x_batch.view(batch_size * num_images, channels, height, width)
+
+        # Create transformation for each angle
+        alpha = self.angles_tensor if not reverse else -self.angles_tensor # n
+        alpha = alpha.repeat(batch_size) # b*n
+
+        # Define the rotation center
+        center = torch.ones(batch_size * num_images, 2)
+        pivot_y = pivot[0].repeat_interleave(num_images)
+        pivot_x = pivot[1].repeat_interleave(num_images)
+        center[..., 0] = pivot_x
+        center[..., 1] = pivot_y
+
+        # Define the scale factor
+        scale = torch.ones(batch_size * num_images, 2)
+
+        # Compute the tran formation matrix
+        # force to use torch 32
+        M: torch.tensor = kornia.get_rotation_matrix2d(center, alpha, scale)
+        # apply the transformation to original image
+        x_warped = kornia.warp_affine(x_batch, M.to(x_batch.device), dsize=(height, width))
+        x_warped = x_warped.view(batch_size, num_images, channels, height, width)
+
+        return x_warped
+
+
+@contextlib.contextmanager
+def use_float32():
+    original_default_dtype = torch.get_default_dtype()
+    torch.set_default_dtype(torch.float32)
+    try:
+        yield
+    finally:
+        torch.set_default_dtype(original_default_dtype)
 
 # -----------------------------------------------------------------------------
 # COLOR AND PLOT UTILS

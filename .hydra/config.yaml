@@ -1,23 +1,34 @@
-save_type: hdf5
-hdf5_path: extra_dataset_no_aug
-data_dir: ${root_dir}/data
-assets_root: ${root_dir}/cliport/environments/assets/
+mode: test
+agent: place
+n_demos: 100
+train_demos: 100
+n_repeats: 1
+gpu:
+- 0
+save_results: true
+update_results: true
+checkpoint_type: best
+val_on_heldout: true
 disp: false
 shared_memory: false
-task: towers-of-hanoi-seq-full
-mode: test
-'n': 1000
-save_data: true
-dataset:
-  type: single
-  images: true
-  cache: true
-  augment:
-    theta_sigma: 60
+eval_task: towers-of-hanoi-seq-seen-colors
+model_task: towers-of-hanoi-seq-seen-colors
+type: single
+model_dir: ${root_dir}
+exp_folder: exps_sep_test
+data_dir: ${root_dir}/data
+assets_root: ${root_dir}/cliport/environments/assets/
+model_path: ${model_dir}/${exp_folder}/${model_task}-${agent}-n${train_demos}-train/checkpoints/
+train_config: ${model_dir}/${exp_folder}/${model_task}-${agent}-n${train_demos}-train/.hydra/config.yaml
+save_path: ${model_dir}/${exp_folder}/${eval_task}-${agent}-n${train_demos}-train/checkpoints/
+results_path: ${model_dir}/${exp_folder}/${eval_task}-${agent}-n${train_demos}-train/checkpoints/
+sep: false
+model_path_1: ${model_dir}/${exp_folder}/${model_task}-${agent}-pick-n${train_demos}-train/checkpoints/
+model_path_2: ${model_dir}/${exp_folder}/${model_task}-${agent}-place-n${train_demos}-train/checkpoints/
 record:
   save_video: false
-  save_video_path: ${data_dir}/${task}-${mode}/videos/
-  add_text: false
+  save_video_path: ${model_dir}/${exp_folder}/${eval_task}-${agent}-n${train_demos}-train/videos/
+  add_text: true
   fps: 20
   video_height: 640
   video_width: 720

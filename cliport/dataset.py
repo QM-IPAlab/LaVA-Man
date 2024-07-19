@@ -43,6 +43,8 @@ class RavensDataset(Dataset):
         self.cam_config = cameras.RealSenseD415.CONFIG
         self.bounds = np.array([[0.25, 0.75], [-0.5, 0.5], [0, 0.28]])
 
+        np.random.seed(42)
+
         # Track existing dataset if it exists.
         color_path = os.path.join(self._path, 'action')
         if os.path.exists(color_path):
@@ -63,6 +65,9 @@ class RavensDataset(Dataset):
 
             episodes = np.random.choice(range(self.n_episodes), self.n_demos, False)
             self.set(episodes)
+
+        if cfg['train']['batch_size'] != 1 and self.augment is True:
+            self.sample_set = np.tile(self.sample_set,(200//self.n_demos))
 
 
     def add(self, seed, episode):

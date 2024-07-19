@@ -36,9 +36,11 @@ def main(cfg):
         save_top_k=1,
         save_last=True,
     )
+    batch_size = cfg['train']['batch_size']    
 
     # Trainer
-    max_epochs = cfg['train']['n_steps'] // cfg['train']['n_demos']
+    n_cycle = (200//cfg['train']['n_demos']) if batch_size != 1 else 1
+    max_epochs = cfg['train']['n_steps'] // (cfg['train']['n_demos'] * n_cycle)
     acc = cfg['train']['accumulate_grad_batches'] if cfg['train']['accumulate_grad_batches'] else 1
     trainer = Trainer(
         gpus=cfg['train']['gpu'],
@@ -50,6 +52,7 @@ def main(cfg):
         check_val_every_n_epoch=max_epochs // 20,
         resume_from_checkpoint=last_checkpoint,
         accumulate_grad_batches=acc,
+        precision=cfg['train']['precision'],
     )
 
     # Resume epoch and global_steps
@@ -78,18 +81,22 @@ def main(cfg):
         val_ds = RavensDataset(os.path.join(data_dir, '{}-val'.format(task)), cfg, n_demos=n_val, augment=False)
 
     # Set data loaders if batch_size > 1
-    if cfg['train']['batch_size'] != 1:
-        cfg['train']['batchnorm'] == True
-        batch_size = cfg['train']['batch_size']
+    if batch_size != 1:
+        cfg['train']['batchnorm'] = True
         train_ds = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=2)
-        val_ds = DataLoader(val_ds, batch_size=batch_size, shuffle=True, num_workers=2)
+        val_ds = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=2)
 
     # Initialize agent
-    agent = agents.names[agent_type](name, cfg, train_ds, val_ds)
-    if agent_type == 'cliport' and cfg['cliport_checkpoint'] is not None:
-        pretrain_checkpoint = cfg['cliport_checkpoint']
-        agent.load(pretrain_checkpoint)
-        print('Loading from cliport_checkpoint: ', pretrain_checkpoint)
+    if not cfg['sep_mode']:
+        agent = agents.names[agent_type](name, cfg, train_ds, val_ds)
+        if agent_type == 'cliport' and cfg['cliport_checkpoint'] is not None:
+            pretrain_checkpoint = cfg['cliport_checkpoint']
+            agent.load(pretrain_checkpoint)
+            print('Loading from cliport_checkpoint: ', pretrain_checkpoint)
+
+    else:
+        agent = agents.names['sep'](name, cfg, train_ds, val_ds)
+    
 
     # Main training loop
     trainer.fit(agent)

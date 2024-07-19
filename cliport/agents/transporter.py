@@ -204,13 +204,14 @@ class TransporterAgent(LightningModule):
             loss=total_loss,
         )
 
-    def check_save_iteration(self):
+    def check_save_iteration(self, suffix='None'):
         global_step = self.trainer.global_step
         if (global_step + 1) in self.save_steps:
             self.trainer.run_evaluation()
             val_loss = self.trainer.callback_metrics['val_loss']
             steps = f'{global_step + 1:05d}'
             filename = f"steps={steps}-val_loss={val_loss:0.8f}.ckpt"
+            filename = f"{suffix}-{filename}" if suffix else filename
             checkpoint_path = os.path.join(self.cfg['train']['train_dir'], 'checkpoints')
             ckpt_path = os.path.join(checkpoint_path, filename)
             self.trainer.save_checkpoint(ckpt_path)
@@ -347,6 +348,12 @@ class TransporterAgent(LightningModule):
     def load(self, model_path):
         self.load_state_dict(torch.load(model_path)['state_dict'])
         self.to(device=self.device_type)
+
+    def load_sep(self, model_path_1, model_path_2):
+        import pdb; pdb.set_trace()
+        self.attention.load_state_dict(torch.load(model_path_1)['state_dict'])
+        self.transport.load_state_dict(torch.load(model_path_2)['state_dict'])
+
 
 
 class OriginalTransporterAgent(TransporterAgent):

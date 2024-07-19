@@ -90,15 +90,23 @@ class TwoStreamAttnlangFusionLatBatch(TwoStreamAttentionLangFusionLat):
 
     def forward(self, inp_img, lang_goal, softmax=True):
         """Forward pass."""
+        # Padding
         inp_img = inp_img.permute(0, 3, 1, 2)
-        #FIXME: hard coded padding and then cropping
-        pad = int(self.padding[1][0]), int(self.padding[1][1])
-        in_data = F.pad(inp_img, pad, mode='constant')
+        pad_left_right = int(self.padding[1][0]), int(self.padding[1][1])
+        pad_top_bottom = int(self.padding[0][0]), int(self.padding[0][1])
+        pad_all = pad_left_right + pad_top_bottom
+        in_data = F.pad(inp_img, pad_all, mode='constant')
 
         #FIXME: no rotation here now
         logits = self.attend(in_data, lang_goal)
-       
-        logits = logits[:, :, :, pad[0]:-pad[1]]
+
+        # Crop the padding
+        h_start = pad_top_bottom[0]
+        h_end = -pad_top_bottom[1] if pad_top_bottom[1] != 0 else None
+        w_start = pad_left_right[0]
+        w_end = -pad_left_right[1] if pad_left_right[1] != 0 else None
+        logits = logits[:, :, h_start:h_end, w_start:w_end]
+        
         logits = logits.permute(0, 2, 3, 1)  # [B W H 1]
         output = logits.reshape(inp_img.shape[0], -1)
         if softmax:
