@@ -9,12 +9,12 @@ export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 
-exps_name="exps_all_lat_plus"
-agent_name="mae_seg2_lat_plus"
+exps_name="exps_all_extra_cos_lr_dpt_2loss"
+agent_name="mae_seg_dpt_2loss"
 
 # ======== task name ========= #
 
-task_name="towers-of-hanoi-seq-seen-colors"
+task_name="assembling-kits-seq-seen-colors"
 #task_name="put-block-in-bowl-seen-colors"
 
 #task_name="packing-seen-google-objects-group"

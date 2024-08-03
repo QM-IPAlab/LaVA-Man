@@ -25,7 +25,7 @@ echo "MASTER_PORT set to $MASTER_PORT"
 #     --resume /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big/checkpoint-340.pth
 
 python mae/main_pretrain_ours.py \
-    --model mae_robot_promulcat \
+    --model mae_robot_cliploss \
     --batch_size 64 \
     --output_dir debug \
     --pretrain /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/checkpoints/mae_pretrain_vit_base.pth \

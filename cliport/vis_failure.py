@@ -177,11 +177,11 @@ def main(vcfg):
                             cache = get_local.cache
 
                             #image = cache['CLIPLingUNetLat.forward.img'][0]  # torch.Size([1, 3, 320, 320])
-                            image = cache['MAESeg2LatModelPlus.forward.rgb'][0]  # torch.Size([1, 3, 320, 320])
+                            image = cache['MAESegDPT2LossModel.forward.rgb'][0]  # torch.Size([1, 3, 320, 320])
                             image = vu.tensor_to_cv2_img(image, to_rgb=False)
 
                             #heatmap = cache['CLIPLingUNetLat.forward.out'][0]  # torch.Size([1, 3, 320, 320])
-                            heatmap = cache['MAESeg2LatModelPlus.forward.predict'][0]
+                            heatmap = cache['MAESegDPT2LossModel.forward.predict'][0]
                             heatmap = heatmap.squeeze()
 
                             # relevance map

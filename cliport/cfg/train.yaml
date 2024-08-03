@@ -35,9 +35,12 @@ train:
   n_rotations: 36
   batchnorm: False # important: False because batch_size=1
   lr: 1e-4
+  lr_scheduler: False
   batch_size: 1
   precision: 32
   sep_mode: False
+  lr_min: 0.0
+  warmup_epochs: 0
 
   attn_stream_fusion_type: 'add'
   trans_stream_fusion_type: 'conv'
@@ -48,8 +51,9 @@ train:
   log: False # log metrics and stats to wandb
   n_val: 100
   val_repeats: 1
-  save_steps: [3000, 5000, 7000, 10000, 20000, 40000, 80000, 120000, 160000, 200000, 300000, 400000, 500000, 600000, 800000, 1000000, 1200000]
+  save_steps: [5000, 10000, 15000, 20000, 25000, 30000, 35000, 40000, 45000, 50000, 55000, 60000, 80000, 120000, 160000, 200000, 300000, 400000, 500000, 600000, 800000, 1000000, 1200000]
   load_from_last_ckpt: True
+  load_pretrained_ckpt: False
   accumulate_grad_batches: 1
   linear_probe: False
 

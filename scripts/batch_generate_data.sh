@@ -26,14 +26,12 @@ export CLIPORT_ROOT=$(pwd)
 tasks=(
   'assembling-kits-seq-full'
   'packing-boxes-pairs-full'
-  'packing-seen-google-objects-seq'
-  'packing-unseen-google-objects-seq'
-  'packing-seen-google-objects-group'
-  'packing-unseen-google-objects-group'
   'put-block-in-bowl-full'
   'stack-block-pyramid-seq-full'
   'separating-piles-full'
   'towers-of-hanoi-seq-full'
+  'packing-shapes'
+  'align-rope'
 )
 
 # for task in "${tasks[@]}"
@@ -49,5 +47,5 @@ do
     python cliport/demo_hdf5.py n=1000 \
                             task=$task \
                             mode=test \
-                            hdf5_path=extra_dataset_no_aug
+                            hdf5_path=extra2_dataset_no_aug
 done

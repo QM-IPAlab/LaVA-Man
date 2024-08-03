@@ -10,6 +10,8 @@ from einops import rearrange
 from cliport.models.resnet import IdentityBlock, ConvBlock
 from transformers import AutoTokenizer
 from cliport.models.featup_pretrained import FeatUp
+from cliport.models.dpt_head import PixelwiseTaskWithDPT
+
 class MAEModel(nn.Module):
 
     def __init__(self, input_shape, output_dim, cfg, device, preprocess, model_name='mae_robot_lang',
@@ -238,7 +240,7 @@ class MAESeg2Model(nn.Module):
         in_type = x.dtype
         in_shape = x.shape
         device = x.device
-        rgb = x[:, :3]  # select RGB
+        rgb = x[:, :3]  # select RGB, b, c, h, w
         latent, mask, ids_restore = self.model.forward_encoder(rgb, mask_ratio=0)
         lang_emb = self.get_lang_embed(lang, device)
 
@@ -748,3 +750,250 @@ class MAESegCLIPModel(nn.Module):
 
         predict = self.conv(out)
         return predict
+    
+
+class MAESegDPTModel(nn.Module):
+    """
+    Use DPT model as the segmentation head as Croco_v2
+    """
+
+    def __init__(self, input_shape, output_dim, cfg, 
+                 device, preprocess, model_name='mae_robot_lang', 
+                 pretrain_path = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big/checkpoint-160.pth'):
+        super(MAESegDPTModel, self).__init__()
+        model_name = 'mae_robot_lang' if model_name is None else model_name
+        self.model = models_lib.__dict__[model_name](
+            img_size=input_shape[:2],
+            norm_pix_loss=False)
+        
+        # linear probe
+        self.linear_probe = False if 'linear_probe' not in cfg['train'] else cfg['train']['linear_probe']
+        if self.linear_probe:
+            self.model.requires_grad_(False)
+
+        # load pretrain model
+        if pretrain_path:
+            misc.dynamic_load_pretrain(self.model, pretrain_path, interpolate=True)
+
+        self.preprocess = preprocess
+        self.output_dim = output_dim
+        self.batchnorm = False
+        self.text_processor = AutoTokenizer.from_pretrained("openai/clip-vit-base-patch32")
+
+        #FIXME: hard code the head now
+        self.head = PixelwiseTaskWithDPT(
+            output_width_ratio=0.5,
+            num_channels=self.output_dim
+        )
+
+        self.head.setup()
+
+    def unpatchify(self, x):
+        p = self.model.patch_embed.patch_size[0]
+        h = self.model.img_size[0] // p
+        w = self.model.img_size[1] // p
+        x = rearrange(x, 'b (nh nw) c -> b c nh nw', nh=h, nw=w)
+        return x
+
+    def get_lang_embed(self, lang, device):
+        if type(lang) is str:
+            decoded_strings = [lang]
+        else:
+            decoded_strings = [s.decode('ascii') for s in lang]
+        processed_lang = self.text_processor(text=decoded_strings, padding="max_length", return_tensors='pt')
+        processed_lang = processed_lang.to(device)
+        lang_emb = self.model.clip_text(**processed_lang, return_dict=False)
+        return lang_emb
+    
+    def forward_encoder_dpt(self, x, mask_ratio=0.0):
+        # embed patches
+        x = self.model.patch_embed(x)
+
+        # add pos embed w/o cls token
+        x = x + self.model.pos_embed[:, 1:, :]
+
+        # masking: length -> length * mask_ratio
+        x, mask, ids_restore = self.model.random_masking(x, mask_ratio)
+
+        # append cls token
+        cls_token = self.model.cls_token + self.model.pos_embed[:, :1, :]
+        cls_tokens = cls_token.expand(x.shape[0], -1, -1)
+        x = torch.cat((cls_tokens, x), dim=1)
+
+        # apply Transformer blocks
+        out_list = []
+        for blk in self.model.blocks:
+            x = blk(x)
+            out_list.append(x)
+        out_list[-1] = self.model.norm(out_list[-1])
+
+        return out_list, mask, ids_restore
+       
+
+    @get_local('predict', 'rgb')
+    def forward(self, x, lang):
+        x = self.preprocess(x, dist='clip')
+        in_type = x.dtype
+        in_shape = x.shape
+        device = x.device
+        rgb = x[:, :3]  # select RGB
+        latent, mask, ids_restore = self.forward_encoder_dpt(rgb, mask_ratio=0.0)
+        lang_emb = self.get_lang_embed(lang, device)
+
+        fea = self.model.decoder_embed(latent[-1])
+        fea = fea + self.model.decoder_pos_embed
+
+        out1 = fea
+        out2 = None
+
+        if out1.shape[0] != lang_emb[0].shape[0]:
+            lang_emb = lang_emb[0].repeat([out1.shape[0], 1, 1])
+
+        out_list = []
+        for blk in self.model.decoder_blocks:
+            out1, out2 = blk(out1, out2, lang_emb)
+            out_list.append(out1)
+        out_list[-1] = self.model.decoder_norm(out_list[-1])
+
+        all_feats = latent + out_list
+        all_feats = [x[:,1:,:] for x in all_feats]
+
+        img_info = {'height': in_shape[2], 'width': in_shape[3]}
+        predict = self.head(all_feats, img_info)
+
+        return predict
+
+
+class MAESegDPT2LossModel(nn.Module):
+    """
+    Use DPT model as the segmentation head as Croco_v2,
+    Add the image reconstruction loss
+    """
+
+    def __init__(self, input_shape, output_dim, cfg, 
+                 device, preprocess, model_name='mae_robot_lang', 
+                 pretrain_path = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big/checkpoint-160.pth'):
+        super(MAESegDPT2LossModel, self).__init__()
+        model_name = 'mae_robot_lang' if model_name is None else model_name
+        self.model = models_lib.__dict__[model_name](
+            img_size=input_shape[:2],
+            norm_pix_loss=False)
+        
+        # linear probe
+        self.linear_probe = False if 'linear_probe' not in cfg['train'] else cfg['train']['linear_probe']
+        if self.linear_probe:
+            self.model.requires_grad_(False)
+
+        # load pretrain model
+        if pretrain_path:
+            misc.dynamic_load_pretrain(self.model, pretrain_path, interpolate=True)
+
+        self.preprocess = preprocess
+        self.output_dim = output_dim
+        self.batchnorm = False
+        self.text_processor = AutoTokenizer.from_pretrained("openai/clip-vit-base-patch32")
+
+        #FIXME: hard code the head now
+        self.head = PixelwiseTaskWithDPT(
+            output_width_ratio=0.5,
+            num_channels=self.output_dim
+        )
+
+        self.head.setup()
+
+    def unpatchify(self, x):
+        p = self.model.patch_embed.patch_size[0]
+        h = self.model.img_size[0] // p
+        w = self.model.img_size[1] // p
+        x = rearrange(x, 'b (nh nw) c -> b c nh nw', nh=h, nw=w)
+        return x
+
+    def get_lang_embed(self, lang, device):
+        if type(lang) is str:
+            decoded_strings = [lang]
+        else:
+            decoded_strings = [s.decode('ascii') for s in lang]
+        processed_lang = self.text_processor(text=decoded_strings, padding="max_length", return_tensors='pt')
+        processed_lang = processed_lang.to(device)
+        lang_emb = self.model.clip_text(**processed_lang, return_dict=False)
+        return lang_emb
+    
+    def forward_encoder_dpt(self, x, mask_ratio=0.0):
+        # embed patches
+        x = self.model.patch_embed(x)
+
+        # add pos embed w/o cls token
+        x = x + self.model.pos_embed[:, 1:, :]
+
+        # masking: length -> length * mask_ratio
+        x, mask, ids_restore = self.model.random_masking(x, mask_ratio)
+
+        # append cls token
+        cls_token = self.model.cls_token + self.model.pos_embed[:, :1, :]
+        cls_tokens = cls_token.expand(x.shape[0], -1, -1)
+        x = torch.cat((cls_tokens, x), dim=1)
+
+        # apply Transformer blocks
+        out_list = []
+        for blk in self.model.blocks:
+            x = blk(x)
+            out_list.append(x)
+        out_list[-1] = self.model.norm(out_list[-1])
+
+        return out_list, mask, ids_restore
+       
+    def forward_loss(self, imgs, pred):
+        """
+        imgs: [N, 3, H, W]
+        pred: [N, L, p*p*3]
+        mask: [N, L], 0 is keep, 1 is remove,
+        """
+        target = self.model.patchify(imgs)
+        if self.model.norm_pix_loss:
+            mean = target.mean(dim=-1, keepdim=True)
+            var = target.var(dim=-1, keepdim=True)
+            target = (target - mean) / (var + 1.e-6) ** .5
+
+        loss = (pred - target) ** 2
+        loss = loss.mean(dim=-1)  # [N, L], mean loss per patch
+
+        return loss
+
+    @get_local('predict', 'rgb')
+    def forward(self, x, lang):
+        x = self.preprocess(x, dist='clip')
+        in_type = x.dtype
+        in_shape = x.shape
+        device = x.device
+        rgb = x[:, :3]  # select RGB
+        latent, mask, ids_restore = self.forward_encoder_dpt(rgb, mask_ratio=0.0)
+        lang_emb = self.get_lang_embed(lang, device)
+
+        fea = self.model.decoder_embed(latent[-1])
+        fea = fea + self.model.decoder_pos_embed
+
+        out1 = fea
+        out2 = None
+
+        if out1.shape[0] != lang_emb[0].shape[0]:
+            lang_emb = lang_emb[0].repeat([out1.shape[0], 1, 1])
+
+        out_list = []
+        for blk in self.model.decoder_blocks:
+            out1, out2 = blk(out1, out2, lang_emb)
+            out_list.append(out1)
+        out_list[-1] = self.model.decoder_norm(out_list[-1])
+
+        rgb_predict = self.model.decoder_pred(out_list[-1])
+        rgb_predict = rgb_predict[:, 1:, :]
+        rgb_loss = self.forward_loss(rgb, rgb_predict)
+
+        all_feats = latent + out_list
+        all_feats = [x[:,1:,:] for x in all_feats]
+
+        img_info = {'height': in_shape[2], 'width': in_shape[3]}
+        predict = self.head(all_feats, img_info)
+        
+        return {'out': predict, 'rgb_loss': rgb_loss}
+    
+    

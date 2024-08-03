@@ -66,7 +66,7 @@ class RavensDataset(Dataset):
             episodes = np.random.choice(range(self.n_episodes), self.n_demos, False)
             self.set(episodes)
 
-        if cfg['train']['batch_size'] != 1 and self.augment is True:
+        if  self.augment is True and cfg['train']['batch_size'] != 1:
             self.sample_set = np.tile(self.sample_set,(200//self.n_demos))
 
 
@@ -413,15 +413,15 @@ class RavensMultiTaskDataset(RavensDataset):
         'multi-language-conditioned': {
             'train': [
                 'align-rope',
-                'assembling-kits-seq-seen-colors', # unseen here refers to training only seen splits to be consitent with single-task setting
-                'packing-boxes-pairs-seen-colors',
+                'assembling-kits-seq-full', # unseen here refers to training only seen splits to be consitent with single-task setting
+                'packing-boxes-pairs-full',
                 'packing-shapes',
-                'packing-seen-google-objects-seq',
-                'packing-seen-google-objects-group',
-                'put-block-in-bowl-seen-colors',
-                'stack-block-pyramid-seq-seen-colors',
-                'separating-piles-seen-colors',
-                'towers-of-hanoi-seq-seen-colors',
+                'packing-unseen-google-objects-seq',
+                'packing-unseen-google-objects-group',
+                'put-block-in-bowl-full',
+                'stack-block-pyramid-seq-full',
+                'separating-piles-full',
+                'towers-of-hanoi-seq-full',
             ],
             'val': [
                 'align-rope',
@@ -767,9 +767,9 @@ class RavensMultiTaskDataset(RavensDataset):
 
         # Process sample
         sample = self.process_sample(sample, augment=self.augment)
-        goal = self.process_goal(goal, perturb_params=sample['perturb_params'])
+        #goal = self.process_goal(goal, perturb_params=sample['perturb_params'])
 
-        return sample, goal
+        return sample, sample
 
     def add(self, seed, episode):
         raise Exception("Adding tasks not supported with multi-task dataset")

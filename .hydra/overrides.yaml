@@ -1,11 +1,11 @@
-- model_task=towers-of-hanoi-seq-seen-colors
-- eval_task=towers-of-hanoi-seq-seen-colors
-- agent=place
+- model_task=towers-of-hanoi-seq-unseen-colors
+- eval_task=towers-of-hanoi-seq-unseen-colors
+- agent=mae_seg2_lat
 - mode=test
 - n_demos=100
 - train_demos=100
-- exp_folder=exps_sep_test
-- checkpoint_type=best
+- exp_folder=exps_all_extra_cos_lr_lat
+- checkpoint_type=test_best
 - update_results=True
 - disp=False
 - record.save_video=False

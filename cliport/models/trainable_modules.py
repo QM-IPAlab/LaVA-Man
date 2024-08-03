@@ -1,36 +1,52 @@
-import os
 import numpy as np
-
-from prometheus_client import instance_ip_grouping_key
 import torch
 import torch.nn.functional as F
 from pytorch_lightning import LightningModule
-from cliport.models.streams.two_stream_transport_lang_fusion import TwoStreamTranslangFusionLatBatch
-from cliport.models.streams.two_stream_attention_lang_fusion import TwoStreamAttnlangFusionLatBatch
-from cliport.agents.transporter_lang_goal import TwoStreamClipLingUNetTransporterAgent, TwoStreamClipLingUNetLatTransporterAgent
-from cliport.utils import utils
-import cliport.utils.visual_utils as vu
 
-class PickAgent(TwoStreamClipLingUNetTransporterAgent):
+from cliport.utils import utils
+from cliport.models.streams.two_stream_transport_lang_fusion import TwoStreamTranslangFusionLatBatch
+from cliport.models.streams.two_stream_attention_lang_fusion import TwoStreamAttentionLangFusionLat
+
+
+class AttentionTrainer(LightningModule, TwoStreamAttentionLangFusionLat):
     """ Train the attention module only.
     """
-    def __init__(self, name, cfg, train_ds, test_ds):
-        super().__init__(name, cfg, train_ds, test_ds)
+    def __init__(self, stream_fcn, in_shape, n_rotations, preprocess, cfg, device):
+        self.fusion_type = cfg['train']['attn_stream_fusion_type']
+        super().__init__(stream_fcn, in_shape, n_rotations, preprocess, cfg, device)                               
 
-    def _set_optimizers(self):
-       pass                                      
+    def forward(self, inp_img, lang_goal, softmax=True):
+        """Forward pass."""
+        # Padding
+        inp_img = inp_img.permute(0, 3, 1, 2)
+        pad_left_right = int(self.padding[1][0]), int(self.padding[1][1])
+        pad_top_bottom = int(self.padding[0][0]), int(self.padding[0][1])
+        pad_all = pad_left_right + pad_top_bottom
+        in_data = F.pad(inp_img, pad_all, mode='constant')
 
-    def _build_model(self):
-        stream_one_fcn = 'plain_resnet_lat'
-        stream_two_fcn = 'clip_lingunet_lat'
-        self.attention = TwoStreamAttnlangFusionLatBatch(
-            stream_fcn=(stream_one_fcn, stream_two_fcn),
-            in_shape=self.in_shape,
-            n_rotations=1,
-            preprocess=utils.preprocess,
-            cfg=self.cfg,
-            device=self.device_type,
-        )
+        #FIXME: no rotation here now
+        logits = self.attend(in_data, lang_goal)
+
+        # Crop the padding
+        h_start = pad_top_bottom[0]
+        h_end = -pad_top_bottom[1] if pad_top_bottom[1] != 0 else None
+        w_start = pad_left_right[0]
+        w_end = -pad_left_right[1] if pad_left_right[1] != 0 else None
+        logits = logits[:, :, h_start:h_end, w_start:w_end]
+        
+        logits = logits.permute(0, 2, 3, 1)  # [B W H 1]
+        output = logits.reshape(inp_img.shape[0], -1)
+        if softmax:
+            output = F.softmax(output, dim=-1)
+            output = output.reshape(inp_img.shape[0], *logits.shape[1:])
+        return output
+
+    def attn_forward(self, inp, softmax=True):
+        inp_img = inp['inp_img']
+        lang_goal = inp['lang_goal']
+
+        out = self.forward(inp_img, lang_goal, softmax=softmax)
+        return out
 
     def attn_training_step(self, frame, backprop=True, compute_err=False):
         inp_img = frame['img']
@@ -100,7 +116,7 @@ class PickAgent(TwoStreamClipLingUNetTransporterAgent):
         return loss, err
 
     def training_step(self, batch, batch_idx):
-        self.attention.train()
+        self.train()
         frame, _ = batch
 
         # Get training losses.
@@ -151,37 +167,17 @@ class PickAgent(TwoStreamClipLingUNetTransporterAgent):
             total_attn_theta_err=total_attn_theta_err,
         )
     
-    def optimizer_step(self, current_epoch, batch_nb, optimizer, optimizer_i, second_order_closure, on_tpu, using_native_amp, using_lbfgs):
-        optimizer.step()
-        optimizer.zero_grad()
-
     def configure_optimizers(self):
-        opt = torch.optim.Adam(self.attention.parameters(), lr=self.cfg['train']['lr'])
+        opt = torch.optim.Adam(self.parameters(), lr=self.cfg['train']['lr'])
         return opt
 
 
-class PlaceAgent(TwoStreamClipLingUNetTransporterAgent):
+class TransporterTrainer(LightningModule, TwoStreamTranslangFusionLatBatch):
     """ Train the transporter module only.
     """
     def __init__(self, name, cfg, train_ds, test_ds):
         super().__init__(name, cfg, train_ds, test_ds)
     
-    def _set_optimizers(self):
-       pass 
-
-    def _build_model(self):
-        stream_one_fcn = 'plain_resnet_lat'
-        stream_two_fcn = 'clip_lingunet_lat'
-        self.transport = TwoStreamTranslangFusionLatBatch(
-            stream_fcn=(stream_one_fcn, stream_two_fcn),
-            in_shape=self.in_shape,
-            n_rotations=self.n_rotations,
-            crop_size=self.crop_size,
-            preprocess=utils.preprocess,
-            cfg=self.cfg,
-            device=self.device_type,
-        )
-
     def transport_training_step(self, frame, backprop=True, compute_err=False):
         inp_img = frame['img']
         p0 = frame['p0']
@@ -240,6 +236,13 @@ class PlaceAgent(TwoStreamClipLingUNetTransporterAgent):
 
         self.transport.iters += 1
         return err, loss
+
+    def trans_forward(self, inp, softmax=True):
+        inp_img = inp['inp_img']
+        p0 = inp['p0']
+        lang_goal = inp['lang_goal']
+        out = self.transport.forward(inp_img, p0, lang_goal, softmax=softmax)
+        return out
 
     def training_step(self, batch, batch_idx):
         self.transport.train()
@@ -300,4 +303,3 @@ class PlaceAgent(TwoStreamClipLingUNetTransporterAgent):
     def configure_optimizers(self):
         opt = torch.optim.Adam(self.transport.parameters(), lr=self.cfg['train']['lr'])
         return opt
-

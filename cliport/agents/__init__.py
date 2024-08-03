@@ -20,8 +20,8 @@ from cliport.agents.transporter_lang_goal import TwoStreamClipFilmLingUNetLatTra
 # Ours
 from cliport.agents.mae_transporter import MAETransporterAgent, MAESegTransporterAgent, MAEFixTransporterAgent
 from cliport.agents.mae_transporter import MAEFixGloss, MAESeg2TransporterAgent, MAESeg2TransporterAgentRenor
-from cliport.agents.mae_transporter import MAESeg2ModelFullMaskAgent, MAESeg3TransporterAgent, MAEFeatUpTransporterAgent
-from cliport.agents.mae_transporter import MAESeg2DepthTransporterAgent, MAESegBaseAgent, MAESegCLIPModel
+from cliport.agents.mae_transporter import MAESeg2ModelFullMaskAgent, MAESeg3TransporterAgent, MAEFeatUpTransporterAgent, MAESegDPT3TransporterAgent
+from cliport.agents.mae_transporter import MAESeg2DepthTransporterAgent, MAESegBaseAgent, MAESegCLIPModel, MAESegDPTTransporterAgent, MAESegDPT2LossTransporterAgent
 from cliport.agents.mae_transporter_two_stream import MAESeg2TwoStreamTransporterAgent, MAESeg2PlusTwoStreamTransporterAgent
 from cliport.agents.sep_transporter import PickAgent, PlaceAgent, SepAgent
 names = {
@@ -41,12 +41,13 @@ names = {
          'mae_featup':MAEFeatUpTransporterAgent,
          'mae_seg2_lat_plus': MAESeg2PlusTwoStreamTransporterAgent,
          'mae_clip': MAESegCLIPModel,
+         'mae_seg_dpt': MAESegDPTTransporterAgent,
+         'mae_seg_dpt_2loss': MAESegDPT2LossTransporterAgent,
+         'mae_seg2_dpt': MAESegDPT3TransporterAgent,
 
          ## Separated Transporter
          'pick': PickAgent,
          'place': PlaceAgent,
-         'sep': SepAgent,
-
 
          ################################
          ### CLIPort ###
@@ -68,7 +69,7 @@ names = {
          'two_stream_clip_woskip_transporter': TwoStreamClipWithoutSkipsTransporterAgent,
 
          # RN50-BERT
-         'two_stream_full_rn50_bert_lingunet_lat_transporter': TwoStreamRN50BertLingUNetLatTransporterAgent,
+         'rn50_bert': TwoStreamRN50BertLingUNetLatTransporterAgent,
 
          # RN50-BERT without language
          'two_stream_full_rn50_bert_unet_transporter': TwoStreamRN50BertUNetTransporterAgent,

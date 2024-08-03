@@ -37,7 +37,7 @@ class Attention(nn.Module):
 
     def _build_nets(self):
         stream_one_fcn, _ = self.stream_fcn
-        self.attn_stream = models.names[stream_one_fcn](self.in_shape, 1, self.cfg, self.device)
+        self.attn_stream = models.names[stream_one_fcn](self.in_shape, 1, self.cfg, self.device, self.preprocess)
         print(f"Attn FCN: {stream_one_fcn}")
 
     def attend(self, x):

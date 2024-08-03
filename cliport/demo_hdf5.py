@@ -32,7 +32,7 @@ def main(cfg):
 
     # Train seeds are even and val/test seeds are odd. Test seeds are offset by 10000
     seed = dataset.max_seed
-    seed = seed + 100000 # new dataset
+    seed = -2 + 100000 # new dataset
     file_path = os.path.join('/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5',
                             f'{hdf5_name}.hdf5')
     f = h5py.File(file_path, 'a')

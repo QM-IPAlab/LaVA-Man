@@ -152,6 +152,7 @@ class TwoStreamClipFilmLingUNetLatTransporterAgent(TwoStreamClipLingUNetTranspor
             device=self.device_type,
         )
 
+
 class TwoStreamClipLingUNetLatTransporterAgent(TwoStreamClipLingUNetTransporterAgent):
     def __init__(self, name, cfg, train_ds, test_ds):
         super().__init__(name, cfg, train_ds, test_ds)
@@ -280,7 +281,6 @@ class OriginalTransporterLangFusionAgent(TwoStreamClipLingUNetTransporterAgent):
             cfg=self.cfg,
             device=self.device_type,
         )
-
 
 
 class ClipLingUNetTransporterAgent(TwoStreamClipLingUNetTransporterAgent):

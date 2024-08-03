@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import math
 
 import torch
 import torch.nn.functional as F
@@ -29,7 +30,6 @@ class TransporterAgent(LightningModule):
 
         self.name = name
         self.task = cfg['train']['task']
-        self.total_steps = 0
         self.crop_size = 64
         self.n_rotations = cfg['train']['n_rotations']
 
@@ -42,8 +42,15 @@ class TransporterAgent(LightningModule):
         self.save_steps = cfg['train']['save_steps']
         self.save_visuals = 0
         self._build_model()
-        self._set_optimizers()
+        self.automatic_optimization = False
+        #self._set_optimizers()
         print("Agent: {}, Logging: {}".format(name, cfg['train']['log']))
+
+        self.total_steps = self.cfg['train']['n_steps']
+        self.warmup_epochs = self.cfg['train']['warmup_epochs']
+        self.sch = cfg['train']['lr_scheduler']
+        self.lr = cfg['train']['lr']
+        self.lr_min = cfg['train']['lr_min']
 
     def _build_model(self):
         self.attention = None
@@ -56,6 +63,36 @@ class TransporterAgent(LightningModule):
             'trans': torch.optim.Adam(self.transport.parameters(), lr=self.cfg['train']['lr'])
         }
 
+    def configure_optimizers(self):
+        
+        opt_attn = torch.optim.AdamW(self.attention.parameters(), lr=self.cfg['train']['lr'], betas=(0.9, 0.95))
+        opt_trans = torch.optim.AdamW(self.transport.parameters(), lr=self.cfg['train']['lr'], betas=(0.9, 0.95)) 
+        self.max_epochs = self.trainer.max_epochs
+        if self.sch:
+            print('Using cosine annealing learning rate scheduler with warm up !')
+        
+            def sch_foo(epoch):
+                """Decay the learning rate with half-cycle cosine after warmup"""
+                if epoch < self.warmup_epochs:
+                    lr = self.lr * (epoch+1) / self.warmup_epochs 
+                else:
+                    lr = self.lr_min + (self.lr - self.lr_min) * 0.5 * \
+                        (1. + math.cos(math.pi * (epoch - self.warmup_epochs) / (self.max_epochs - self.warmup_epochs)))
+                return lr/self.lr
+            
+            lrs_attn = torch.optim.lr_scheduler.LambdaLR(opt_attn, lr_lambda=sch_foo)
+            lrs_trans = torch.optim.lr_scheduler.LambdaLR(opt_trans, lr_lambda=sch_foo)
+            return (
+                {"optimizer": opt_attn, 
+                "lr_scheduler": lrs_attn},
+                {"optimizer": opt_trans, 
+                "lr_scheduler": lrs_trans}
+            )
+
+        else :
+            return [opt_attn, opt_trans]
+        
+    
     def forward(self, x):
         raise NotImplementedError()
 
@@ -100,7 +137,10 @@ class TransporterAgent(LightningModule):
 
         # Backpropagate.
         if backprop:
-            attn_optim = self._optimizers['attn']
+            attn_optim, _ = self.optimizers()
+            if self.sch:
+                s_att, _ = self.lr_schedulers()
+                s_att.step(epoch=self.current_epoch)
             self.manual_backward(loss, attn_optim)
             attn_optim.step()
             attn_optim.zero_grad()
@@ -155,7 +195,10 @@ class TransporterAgent(LightningModule):
         output = output.reshape(1, np.prod(output.shape))
         loss = self.cross_entropy_with_logits(output, label)
         if backprop:
-            transport_optim = self._optimizers['trans']
+            _, transport_optim = self.optimizers()
+            if self.sch:
+                _, s_trans = self.lr_schedulers()
+                s_trans.step(epoch=self.current_epoch)
             self.manual_backward(loss, transport_optim)
             transport_optim.step()
             transport_optim.zero_grad()
@@ -178,7 +221,7 @@ class TransporterAgent(LightningModule):
         self.transport.iters += 1
         return err, loss
 
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch, batch_idx, optimizer_idx):
         self.attention.train()
         self.transport.train()
 
@@ -333,12 +376,6 @@ class TransporterAgent(LightningModule):
             'place': p1_pix,
         }
 
-    def optimizer_step(self, current_epoch, batch_nb, optimizer, optimizer_i, second_order_closure, on_tpu, using_native_amp, using_lbfgs):
-        pass
-
-    def configure_optimizers(self):
-        pass
-
     def train_dataloader(self):
         return self.train_ds
 
@@ -354,6 +391,117 @@ class TransporterAgent(LightningModule):
         self.attention.load_state_dict(torch.load(model_path_1)['state_dict'])
         self.transport.load_state_dict(torch.load(model_path_2)['state_dict'])
 
+    def test_step(self, batch, batch_idx):
+        self.attention.eval()
+        self.transport.eval()
+
+        loss0, loss1 = 0, 0
+        assert self.val_repeats >= 1
+        for i in range(self.val_repeats):
+            frame, _ = batch
+            l0, err0 = self.attn_training_step(frame, backprop=False, compute_err=True)
+            loss0 += l0
+            if isinstance(self.transport, Attention):
+                l1, err1 = self.attn_training_step(frame, backprop=False, compute_err=True)
+                loss1 += l1
+            else:
+                l1, err1 = self.transport_training_step(frame, backprop=False, compute_err=True)
+                loss1 += l1
+        loss0 /= self.val_repeats
+        loss1 /= self.val_repeats
+        val_total_loss = loss0 + loss1
+
+        self.trainer.evaluation_loop.trainer.train_loop.running_loss.append(val_total_loss)
+        
+
+        # #import pdb; pdb.set_trace()
+        # img = frame['img'][:,:,:3]
+        # pick_place = frame['p0']
+        # place_place = frame['p1']
+        # pick_radius = frame['pick_radius']
+        # place_radius = frame['place_radius']
+        # text = frame['lang_goal']
+
+        # img = img.astype(np.uint8)
+
+        # brg = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        # cv2.circle(brg, (pick_place[1], pick_place[0]), int(pick_radius), (0, 255, 0), 2)
+        # cv2.circle(brg, (place_place[1], place_place[0]), int(place_radius), (0, 0, 255), 2)
+        # cv2.putText(brg, text, (10,10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 0), 1, cv2.LINE_AA)
+        # foler = 'data_gt_real_images'
+        # idx = len(os.listdir(foler))
+        # cv2.imwrite(f'data_gt_real_images/real{idx}.png', brg)
+        
+
+        # whether successful pick and place ?
+        if err0['dist'] < frame['pick_radius']:
+            success_pick = 1
+        else:
+            success_pick = 0
+        
+        if err1['dist'] < frame['place_radius']:
+            success_place = 1
+        else:
+            success_place = 0
+        
+        if err0['dist'] < frame['pick_radius'] and err1['dist'] < frame['place_radius']:
+            success = 1
+        else:
+            success = 0
+                
+        return dict(
+            val_loss=val_total_loss,
+            val_loss0=loss0,
+            val_loss1=loss1,
+            val_attn_dist_err=err0['dist'],
+            val_attn_theta_err=err0['theta'],
+            val_trans_dist_err=err1['dist'],
+            val_trans_theta_err=err1['theta'],
+            success=success,
+            success_pick=success_pick,
+            success_place=success_place
+        )
+
+    def test_epoch_end(self, all_outputs):
+
+        mean_val_total_loss = np.mean([v['val_loss'].item() for v in all_outputs])
+        mean_val_loss0 = np.mean([v['val_loss0'].item() for v in all_outputs])
+        mean_val_loss1 = np.mean([v['val_loss1'].item() for v in all_outputs])
+        total_attn_dist_err = np.sum([v['val_attn_dist_err'] for v in all_outputs])
+        total_attn_theta_err = np.sum([v['val_attn_theta_err'] for v in all_outputs])
+        total_trans_dist_err = np.sum([v['val_trans_dist_err'] for v in all_outputs])
+        total_trans_theta_err = np.sum([v['val_trans_theta_err'] for v in all_outputs])
+        success_rate = np.sum([v['success'] for v in all_outputs]) / len(all_outputs)
+        success_pick_rate = np.sum([v['success_pick'] for v in all_outputs]) / len(all_outputs)
+        success_place_rate = np.sum([v['success_place'] for v in all_outputs]) / len(all_outputs)
+
+        file_name = os.path.join(self.cfg['train']['train_dir'],'checkpoints', 'pick_n_place_loss.txt') 
+        saved_file = open(file_name, 'a')
+        print('=============================', file=saved_file)
+        print('vl/attn/loss', mean_val_loss0, file=saved_file)
+        print('vl/trans/loss', mean_val_loss1,file=saved_file)
+        print('vl/loss', mean_val_total_loss,file=saved_file)
+        print('vl/total_attn_dist_err', total_attn_dist_err,file=saved_file)
+        print('vl/total_attn_theta_err', total_attn_theta_err,file=saved_file)
+        print('vl/total_trans_dist_err', total_trans_dist_err,file=saved_file)
+        print('vl/total_trans_theta_err', total_trans_theta_err,file=saved_file)
+        print('success_rate', success_rate,file=saved_file)
+        print('success_pick_rate', success_pick_rate,file=saved_file)
+        print('success_place_rate', success_place_rate,file=saved_file)
+        saved_file.close()
+
+        return dict(
+            val_loss=mean_val_total_loss,
+            val_loss0=mean_val_loss0,
+            mean_val_loss1=mean_val_loss1,
+            total_attn_dist_err=total_attn_dist_err,
+            total_attn_theta_err=total_attn_theta_err,
+            total_trans_dist_err=total_trans_dist_err,
+            total_trans_theta_err=total_trans_theta_err,
+            success_rate=success_rate,
+            success_pick_rate=success_pick_rate,
+            success_place_rate=success_place_rate
+        )
 
 
 class OriginalTransporterAgent(TransporterAgent):

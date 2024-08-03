@@ -37,10 +37,10 @@ class RN50BertLingUNetLat(nn.Module):
         modules = list(resnet50.children())[:-2]
 
         self.stem = nn.Sequential(*modules[:4])
-        self.layer1 = modules[4]
-        self.layer2 = modules[5]
-        self.layer3 = modules[6]
-        self.layer4 = modules[7]
+        self.layer1_ = modules[4]
+        self.layer2_ = modules[5]
+        self.layer3_ = modules[6]
+        self.layer4_ = modules[7]
 
     def _load_lang_enc(self):
         self.tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
@@ -97,7 +97,7 @@ class RN50BertLingUNetLat(nn.Module):
 
     def resnet50(self, x):
         im = []
-        for layer in [self.stem, self.layer1, self.layer2, self.layer3, self.layer4]:
+        for layer in [self.stem, self.layer1_, self.layer2_, self.layer3_, self.layer4_]:
             x = layer(x)
             im.append(x)
         return x, im

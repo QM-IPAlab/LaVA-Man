@@ -114,3 +114,37 @@ class OneStreamTransportMAEFixSize(TwoStreamTransportLangFusion):
             output = F.softmax(output, dim=-1)
             output = output.reshape(output_shape[1:])
         return output
+
+
+class OneStreamTransportMAEFixSize2Loss(OneStreamTransportMAEFixSize):
+
+    def forward(self, inp_img, p, lang_goal, softmax=True):
+        """Forward pass."""
+        img_unprocessed = np.pad(inp_img, self.padding, mode='constant')
+        input_data = img_unprocessed
+        in_shape = (1,) + input_data.shape
+        input_data = input_data.reshape(in_shape)
+        in_tensor = torch.from_numpy(input_data).to(dtype=torch.float, device=self.device)
+
+        # Rotation pivot.
+        pv = np.array([p[0], p[1]]) + self.pad_size
+
+        # Crop before network (default for Transporters CoRL 2020).
+        hcrop = self.pad_size
+        in_tensor = in_tensor.permute(0, 3, 1, 2)
+
+        crop = in_tensor.repeat(self.n_rotations, 1, 1, 1)
+        crop = self.rotator(crop, pivot=pv)
+        crop = torch.cat(crop, dim=0)
+        crop = crop[:, :, pv[0]-hcrop:pv[0]+hcrop, pv[1]-hcrop:pv[1]+hcrop]
+
+        in_tensor_ori = in_tensor[:, :, hcrop:-hcrop, hcrop:-hcrop]
+        logits, kernel = self.transport(in_tensor_ori, crop, lang_goal)
+
+        logits_loss = logits['rgb_loss']
+        logits = logits['out']
+        kernel = kernel['out']
+
+        out = self.correlate(logits, kernel, softmax)
+        return {'out': out, 'rgb_loss': logits_loss}
+
