@@ -9,7 +9,7 @@ output*/
 wandb*/
 *.png
 debug/
-
+scripts_hpc/
 # Folders
 cliport/data/
 cliport/outputs/
