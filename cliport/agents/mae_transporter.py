@@ -658,3 +658,5 @@ class MAESegDPT2LossTransporterAgent(TwoStreamClipLingUNetTransporterAgent):
             'pick': [p0_pix[0], p0_pix[1], p0_theta],
             'place': [p1_pix[0], p1_pix[1], p1_theta],
         }
+    
+

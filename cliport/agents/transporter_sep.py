@@ -458,11 +458,6 @@ class TransporterAgentSep(LightningModule):
         self.load_state_dict(torch.load(model_path)['state_dict'])
         self.to(device=self.device_type)
 
-    def load_sep(self, model_path_1, model_path_2):
-        import pdb; pdb.set_trace()
-        self.attention.load_state_dict(torch.load(model_path_1)['state_dict'])
-        self.transport.load_state_dict(torch.load(model_path_2)['state_dict'])
-
     def test_step(self, batch, batch_idx):
         self.attention.eval()
         self.transport.eval()

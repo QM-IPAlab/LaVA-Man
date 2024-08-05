@@ -79,6 +79,7 @@ def main(cfg):
     agent_type = cfg['train']['agent']
     n_demos = cfg['train']['n_demos']
     n_val = cfg['train']['n_val']
+    mode = cfg['train']['sep_mode']
     name = '{}-{}-{}'.format(task, agent_type, n_demos)
 
     # Datasets
@@ -101,7 +102,7 @@ def main(cfg):
         val_ds = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=2)
 
     # Initialize agent
-    if not cfg['train']['sep_mode']:
+    if not mode:
         agent = agents.names[agent_type](name, cfg, train_ds, val_ds)
         if  cfg['train']['load_pretrained_ckpt']:
             pretrain_checkpoint = cfg['cliport_checkpoint']
@@ -110,7 +111,7 @@ def main(cfg):
 
     else:
         # train the pick and place agents separately
-        agent = agents.names['sep'](name, cfg, train_ds, val_ds)
+        agent = agents.names[agent_type](name, cfg, train_ds, val_ds, mode)
     
     # Main training loop
     trainer.fit(agent)
