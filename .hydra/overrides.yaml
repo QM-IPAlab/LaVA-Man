@@ -1,5 +1,5 @@
 - model_task=multi-language-conditioned
-- eval_task=packing-boxes-pairs-full
+- eval_task=stack-block-pyramid-seq-full
 - agent=transporter
 - mode=test
 - n_demos=100

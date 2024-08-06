@@ -107,7 +107,7 @@ hydra:
     hydra: []
     task:
     - model_task=multi-language-conditioned
-    - eval_task=packing-boxes-pairs-full
+    - eval_task=stack-block-pyramid-seq-full
     - agent=transporter
     - mode=test
     - n_demos=100
@@ -119,7 +119,7 @@ hydra:
     - record.save_video=False
   job:
     name: eval
-    override_dirname: agent=transporter,checkpoint_type=best,disp=False,eval_task=packing-boxes-pairs-full,exp_folder=exps_cliport_pretrained,mode=test,model_task=multi-language-conditioned,n_demos=100,record.save_video=False,train_demos=1000,update_results=True
+    override_dirname: agent=transporter,checkpoint_type=best,disp=False,eval_task=stack-block-pyramid-seq-full,exp_folder=exps_cliport_pretrained,mode=test,model_task=multi-language-conditioned,n_demos=100,record.save_video=False,train_demos=1000,update_results=True
     id: ???
     num: ???
     config_name: eval

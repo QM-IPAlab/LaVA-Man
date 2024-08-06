@@ -11,7 +11,7 @@ checkpoint_type: best
 val_on_heldout: true
 disp: false
 shared_memory: false
-eval_task: packing-boxes-pairs-full
+eval_task: stack-block-pyramid-seq-full
 model_task: multi-language-conditioned
 type: single
 model_dir: ${root_dir}
