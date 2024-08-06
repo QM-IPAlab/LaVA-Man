@@ -12,6 +12,9 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 
 exps_name="exps_cliport_pretrained"
 agent_name="transporter"
+#agent_name="cliport"
+#agent_name="rn50_bert"
+#agent_name="clip_lingunet_transporter"
 
 # ======== task name ========= #
 
@@ -53,12 +56,12 @@ python -m cliport.train  train.task=multi-language-conditioned\
                          train.agent=${agent_name}\
                          dataset.type=multi\
                          train.n_demos=1000 \
-                         train.n_steps=20100 \
+                         train.n_steps=80100 \
                          train.exp_folder=${exps_name} \
                          dataset.cache=True \
-                         train.load_from_last_ckpt=false \
+                         train.load_from_last_ckpt=True \
                          train.n_rotations=36\
-                         train.log=True \
+                         train.log=False \
                          wandb.run_name=${exps_name}_${task_name} \
                          mae_model=mae_robot_lang \
                          train.linear_probe=False \

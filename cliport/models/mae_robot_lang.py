@@ -226,6 +226,11 @@ class MAESeg2Model(nn.Module):
     def get_lang_embed(self, lang, device):
         if type(lang) is str:
             decoded_strings = [lang]
+        elif type(lang) is list: # if batch size
+            if type(lang[0]) is str:
+                decoded_strings = [s for s in lang]
+            else:
+                decoded_strings = [s.decode('ascii') for s in lang]
         else:
             decoded_strings = [s.decode('ascii') for s in lang]
         processed_lang = self.text_processor(text=decoded_strings, padding="max_length", return_tensors='pt')

@@ -1,21 +1,21 @@
 mode: test
-agent: mae_seg2_lat
+agent: transporter
 n_demos: 100
-train_demos: 100
+train_demos: 1000
 n_repeats: 1
 gpu:
 - 0
 save_results: true
 update_results: true
-checkpoint_type: test_best
+checkpoint_type: best
 val_on_heldout: true
 disp: false
 shared_memory: false
-eval_task: towers-of-hanoi-seq-unseen-colors
-model_task: towers-of-hanoi-seq-unseen-colors
+eval_task: packing-boxes-pairs-full
+model_task: multi-language-conditioned
 type: single
 model_dir: ${root_dir}
-exp_folder: exps_all_extra_cos_lr_lat
+exp_folder: exps_cliport_pretrained
 data_dir: ${root_dir}/data
 assets_root: ${root_dir}/cliport/environments/assets/
 model_path: ${model_dir}/${exp_folder}/${model_task}-${agent}-n${train_demos}-train/checkpoints/

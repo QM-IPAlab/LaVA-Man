@@ -41,12 +41,23 @@ def main(cfg):
         save_top_k=1,
         save_last=True,
     )
-    batch_size = cfg['train']['batch_size']    
+    
+    # Config
+    data_dir = cfg['train']['data_dir']
+    task = cfg['train']['task']
+    agent_type = cfg['train']['agent']
+    mode = cfg['train']['sep_mode']
+    n_demos = cfg['train']['n_demos']
+    n_val = cfg['train']['n_val']
+    batch_size = cfg['train']['batch_size']
+    name = '{}-{}-{}'.format(task, agent_type, n_demos)
 
-    # Trainer
-    n_cycle = (200//cfg['train']['n_demos']) if batch_size != 1 else 1
+    # repeat the demos, to avoid too few steps per epoch
+    n_cycle = (200//n_demos) if (batch_size!=1 and n_demos <= 100) else 1
     max_epochs = cfg['train']['n_steps'] // (cfg['train']['n_demos'] * n_cycle)
+    
     acc = cfg['train']['accumulate_grad_batches'] if cfg['train']['accumulate_grad_batches'] else 1
+    
     if cfg['train']['log']:
         lr_monitor = LearningRateMonitor(logging_interval='step')
         callbacks.append(lr_monitor)
@@ -72,15 +83,6 @@ def main(cfg):
         trainer.current_epoch = last_ckpt['epoch']
         trainer.global_step = last_ckpt['global_step']
         del last_ckpt
-
-    # Config
-    data_dir = cfg['train']['data_dir']
-    task = cfg['train']['task']
-    agent_type = cfg['train']['agent']
-    n_demos = cfg['train']['n_demos']
-    n_val = cfg['train']['n_val']
-    mode = cfg['train']['sep_mode']
-    name = '{}-{}-{}'.format(task, agent_type, n_demos)
 
     # Datasets
     dataset_type = cfg['dataset']['type']

@@ -1,6 +1,6 @@
 from cliport.agents.transporter_sep import TransporterAgentSep
-from cliport.models.streams.one_stream_attention_lang_fusion import OneStreamAttentionMAEFixSize
-from cliport.models.streams.one_stream_transport_lang_fusion import OneStreamTransportMAEFixSize
+from cliport.models.streams.one_stream_attention_lang_fusion import OneStreamAttentionMAEBatch
+from cliport.models.streams.one_stream_transport_lang_fusion import OneStreamTransportMAEBatch
 from cliport.utils import utils
 
 
@@ -10,7 +10,7 @@ class MAESepSeg2Agent(TransporterAgentSep):
 
     def _build_model(self):
         stream_fcn = 'mae_seg2'
-        self.attention = OneStreamAttentionMAEFixSize(
+        self.attention = OneStreamAttentionMAEBatch(
             stream_fcn=(stream_fcn, None),
             in_shape=self.in_shape,
             n_rotations=1,
@@ -18,7 +18,7 @@ class MAESepSeg2Agent(TransporterAgentSep):
             cfg=self.cfg,
             device=self.device_type,
         )
-        self.transport = OneStreamTransportMAEFixSize(
+        self.transport = OneStreamTransportMAEBatch(
             stream_fcn=(stream_fcn, None),
             in_shape=self.in_shape,
             n_rotations=self.n_rotations,

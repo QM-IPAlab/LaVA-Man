@@ -1,11 +1,11 @@
-- model_task=towers-of-hanoi-seq-unseen-colors
-- eval_task=towers-of-hanoi-seq-unseen-colors
-- agent=mae_seg2_lat
+- model_task=multi-language-conditioned
+- eval_task=packing-boxes-pairs-full
+- agent=transporter
 - mode=test
 - n_demos=100
-- train_demos=100
-- exp_folder=exps_all_extra_cos_lr_lat
-- checkpoint_type=test_best
+- train_demos=1000
+- exp_folder=exps_cliport_pretrained
+- checkpoint_type=best
 - update_results=True
 - disp=False
 - record.save_video=False

@@ -66,7 +66,7 @@ class RavensDataset(Dataset):
             episodes = np.random.choice(range(self.n_episodes), self.n_demos, False)
             self.set(episodes)
 
-        if  self.augment is True and cfg['train']['batch_size'] != 1:
+        if  self.augment is True and cfg['train']['batch_size'] != 1 and self.n_demos <= 100:
             self.sample_set = np.tile(self.sample_set,(200//self.n_demos))
 
 

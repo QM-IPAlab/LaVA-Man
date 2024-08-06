@@ -18,6 +18,7 @@ cliport/jobs/
 jobs/
 videos/
 checkpoints/
+/data
 
 # Large Asserts
 cliport/environments/assets/google/

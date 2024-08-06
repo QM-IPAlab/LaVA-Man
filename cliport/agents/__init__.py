@@ -23,7 +23,7 @@ from cliport.agents.mae_transporter import MAEFixGloss, MAESeg2TransporterAgent,
 from cliport.agents.mae_transporter import MAESeg2ModelFullMaskAgent, MAESeg3TransporterAgent, MAEFeatUpTransporterAgent, MAESegDPT3TransporterAgent
 from cliport.agents.mae_transporter import MAESeg2DepthTransporterAgent, MAESegBaseAgent, MAESegCLIPModel, MAESegDPTTransporterAgent, MAESegDPT2LossTransporterAgent
 from cliport.agents.mae_transporter_two_stream import MAESeg2TwoStreamTransporterAgent, MAESeg2PlusTwoStreamTransporterAgent
-from cliport.agents.sep_transporter import PickAgent, PlaceAgent, SepAgent
+from cliport.agents.sep_transporter import PickAgent, PlaceAgent
 
 from cliport.agents.transporter_sep_models import MAESepSeg2Agent
 

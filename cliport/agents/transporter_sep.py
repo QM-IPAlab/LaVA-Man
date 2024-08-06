@@ -170,7 +170,7 @@ class TransporterAgentSep(LightningModule):
                 raise NotImplementedError()
             
             # Back prop and step
-            s_att.step(epoch=self.current_epoch)
+            if self.sch: s_att.step(epoch=self.current_epoch)
             self.manual_backward(loss, attn_optim)
             attn_optim.step()
             attn_optim.zero_grad()
@@ -250,7 +250,7 @@ class TransporterAgentSep(LightningModule):
                 raise NotImplementedError()
             
             # Back prop and step
-            s_trans.step(epoch=self.current_epoch)    
+            if self.sch: s_trans.step(epoch=self.current_epoch)    
             self.manual_backward(loss, transport_optim)
             transport_optim.step()
             transport_optim.zero_grad()
@@ -280,7 +280,7 @@ class TransporterAgentSep(LightningModule):
             }
         return err, loss
 
-    def training_step(self, batch, batch_idx, optimizer_idx):        
+    def training_step(self, batch, optimizer_idx):        
         if self.attention is not None: self.attention.train()  
         if self.attention is not None: self.transport.train()
         frame, _ = batch
@@ -347,9 +347,9 @@ class TransporterAgentSep(LightningModule):
         assert self.val_repeats ==1, "Not support val_repeat > 1 currently"
 
         # Init recordings
-        loss0, loss1 = 0, 0
-        err0 = {'dist': 0, 'theta': 0}
-        err1 = {'dist': 0, 'theta': 0}
+        loss0, loss1 = torch.tensor(0.).to(self.device), torch.tensor(0.).to(self.device)
+        err0 = {'dist': 0., 'theta': 0.}
+        err1 = {'dist': 0., 'theta': 0.}
         
         if self.mode == 'both':        
             loss0, err0 = self.attn_training_step(frame, backprop=False, compute_err=True)
