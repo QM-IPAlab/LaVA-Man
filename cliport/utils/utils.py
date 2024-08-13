@@ -630,13 +630,12 @@ class ImageRotatorBatch:
         # Create transformation for each angle
         alpha = self.angles_tensor if not reverse else -self.angles_tensor # n
         alpha = alpha.repeat(batch_size) # b*n
-
         # Define the rotation center
         center = torch.ones(batch_size * num_images, 2)
-        pivot_y = pivot[0].repeat_interleave(num_images)
-        pivot_x = pivot[1].repeat_interleave(num_images)
-        center[..., 0] = pivot_x
-        center[..., 1] = pivot_y
+        #pivot_y = pivot[0].repeat_interleave(num_images)
+        #pivot_x = pivot[1].repeat_interleave(num_images)
+        center[..., 0] = int(height // 2)
+        center[..., 1] = int(width // 2)
 
         # Define the scale factor
         scale = torch.ones(batch_size * num_images, 2)

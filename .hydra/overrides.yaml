@@ -1,11 +1,11 @@
-- model_task=multi-language-conditioned
-- eval_task=stack-block-pyramid-seq-full
-- agent=transporter
+- model_task=packing-boxes-pairs-full
+- eval_task=packing-boxes-pairs-full
+- agent=cliport
 - mode=test
 - n_demos=100
-- train_demos=1000
-- exp_folder=exps_cliport_pretrained
-- checkpoint_type=best
+- train_demos=100
+- exp_folder=exps_cliport_pretrained_single
+- checkpoint_type=test_best
 - update_results=True
 - disp=False
 - record.save_video=False

@@ -19,6 +19,7 @@ jobs/
 videos/
 checkpoints/
 /data
+/py-mae-cliport
 
 # Large Asserts
 cliport/environments/assets/google/

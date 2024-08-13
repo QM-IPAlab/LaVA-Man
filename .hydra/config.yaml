@@ -1,21 +1,21 @@
 mode: test
-agent: transporter
+agent: cliport
 n_demos: 100
-train_demos: 1000
+train_demos: 100
 n_repeats: 1
 gpu:
 - 0
 save_results: true
 update_results: true
-checkpoint_type: best
+checkpoint_type: test_best
 val_on_heldout: true
 disp: false
 shared_memory: false
-eval_task: stack-block-pyramid-seq-full
-model_task: multi-language-conditioned
+eval_task: packing-boxes-pairs-full
+model_task: packing-boxes-pairs-full
 type: single
 model_dir: ${root_dir}
-exp_folder: exps_cliport_pretrained
+exp_folder: exps_cliport_pretrained_single
 data_dir: ${root_dir}/data
 assets_root: ${root_dir}/cliport/environments/assets/
 model_path: ${model_dir}/${exp_folder}/${model_task}-${agent}-n${train_demos}-train/checkpoints/

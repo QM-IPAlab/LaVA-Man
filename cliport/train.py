@@ -1,4 +1,9 @@
-"""Main training script."""
+"""Main training script.
+
+!!!! Warning: This script use Pytorch Lighting, but change the logger and original
+lightning module. May need to TEST before submit to the github !!!!!
+
+"""
 
 from gc import callbacks
 import os
@@ -6,6 +11,7 @@ from pathlib import Path
 from re import T
 
 import torch
+from torch import max_pool1d
 from torch.utils.data import random_split, DataLoader
 
 from cliport import agents
@@ -20,37 +26,56 @@ from pytorch_lightning.callbacks import LearningRateMonitor
 
 WANDB_DIR = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/wandb_cliport'
 TB_DIR = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/tensorboard'
+os.environ["WANDB_SERVICE_WAIT"] = "60"
 
 @hydra.main(config_path="./cfg", config_name='train')
 def main(cfg):
-    # Logger
-    wandb_logger = WandbLogger(name=cfg['wandb']['run_name'],
-                               tags=cfg['wandb']['logger']['tags'],
-                               offline=True,
-                               save_dir=WANDB_DIR) if cfg['train']['log'] else None
+    
+    # Config
+    data_dir = cfg['train']['data_dir']
+    task = cfg['train']['task']
+    agent_type = cfg['train']['agent']
+    sep_mode = cfg['train']['sep_mode']
+    n_demos = cfg['train']['n_demos']
+    n_val = cfg['train']['n_val']
+    batch_size = cfg['train']['batch_size']
+    name = '{}-{}-{}'.format(task, agent_type, n_demos)
 
+    # Wandb Logger
+    try:
+        wandb_logger = WandbLogger(name=cfg['wandb']['run_name'],
+                                tags=[f"{task}", f"{agent_type}", f"{sep_mode}"],
+                                save_dir=WANDB_DIR,
+                                mode="offline",
+                                project='cliport') if cfg['train']['log'] else None
+    except Exception as e :
+        print("fail to initialize wandb. Continuing withour wandb")
+        print(f"Error: {e}")
+        cfg['train']['log'] = False
+        wandb_logger = None
+    
     # Checkpoint saver
     hydra_dir = Path(os.getcwd())
     checkpoint_path = os.path.join(cfg['train']['train_dir'], 'checkpoints')
     last_checkpoint_path = os.path.join(checkpoint_path, 'last.ckpt')
     last_checkpoint = last_checkpoint_path if os.path.exists(last_checkpoint_path) and cfg['train']['load_from_last_ckpt'] else None
     callbacks=[]
-    checkpoint_callback = ModelCheckpoint(
-        monitor=cfg['wandb']['saver']['monitor'],
-        filepath=os.path.join(checkpoint_path, 'best'),
-        save_top_k=1,
-        save_last=True,
-    )
     
-    # Config
-    data_dir = cfg['train']['data_dir']
-    task = cfg['train']['task']
-    agent_type = cfg['train']['agent']
-    mode = cfg['train']['sep_mode']
-    n_demos = cfg['train']['n_demos']
-    n_val = cfg['train']['n_val']
-    batch_size = cfg['train']['batch_size']
-    name = '{}-{}-{}'.format(task, agent_type, n_demos)
+    if sep_mode:
+        checkpoint_callback = ModelCheckpoint(
+            monitor=cfg['wandb']['saver']['monitor'],
+            filepath=os.path.join(checkpoint_path, f'{sep_mode}-best'),
+            save_top_k=1,
+            save_last=False,
+        )
+
+    else:
+        checkpoint_callback = ModelCheckpoint(
+            monitor=cfg['wandb']['saver']['monitor'],
+            filepath=os.path.join(checkpoint_path, 'best'),
+            save_top_k=1,
+            save_last=True,
+        )
 
     # repeat the demos, to avoid too few steps per epoch
     n_cycle = (200//n_demos) if (batch_size!=1 and n_demos <= 100) else 1
@@ -100,11 +125,11 @@ def main(cfg):
     # When batch size > 1, return tensors, otherwise return numpy arrays as original
     if batch_size != 1:
         cfg['train']['batchnorm'] = True
-        train_ds = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=2)
-        val_ds = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=2)
+        train_ds = DataLoader(train_ds, batch_size=batch_size, shuffle=True, pin_memory=True)
+        val_ds = DataLoader(val_ds, batch_size=batch_size, shuffle=False, pin_memory=True)
 
     # Initialize agent
-    if not mode:
+    if not sep_mode:
         agent = agents.names[agent_type](name, cfg, train_ds, val_ds)
         if  cfg['train']['load_pretrained_ckpt']:
             pretrain_checkpoint = cfg['cliport_checkpoint']
@@ -113,7 +138,7 @@ def main(cfg):
 
     else:
         # train the pick and place agents separately
-        agent = agents.names[agent_type](name, cfg, train_ds, val_ds, mode)
+        agent = agents.names[agent_type](name, cfg, train_ds, val_ds, sep_mode)
     
     # Main training loop
     trainer.fit(agent)

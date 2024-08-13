@@ -1,74 +1,85 @@
 #!/bin/bash
 #SBATCH --partition=small
 #SBATCH --gres=gpu:1
-#SBATCH --job-name=dpt2loss
+#SBATCH --job-name=single
 #SBATCH --cpus-per-task=16
-#SBATCH --array=0-5
+#SBATCH --array=0-12%6
 
-module load python/anaconda3
-source activate mae-cliport
+module load python/3.8
+source py-mae-cliport/bin/activate
 export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 
 # ======== experiments name =======sb== #
 
-exps_name="exps_all_extra_cos_lr_dpt_2loss"
+exps_name="exps_cliport_pretrained_single"
 
 
 # ======== agent name ========= #
 
-agent_name="mae_seg_dpt_2loss"
+#agent_name="mae_sep_seg2"
+#agent_name="transporter"
+agent_name="cliport"
+#agent_name="rn50_bert"
+#agent_name="clip_lingunet_transporter"
 
 # tasks=("packing-unseen-google-objects-group"\
 #   "packing-unseen-google-objects-seq"\
 #   "packing-seen-google-objects-seq"\
 # )
 
-tasks=("assembling-kits-seq-unseen-colors"\
-  "assembling-kits-seq-seen-colors"\
-  "towers-of-hanoi-seq-seen-colors"\
-  "towers-of-hanoi-seq-unseen-colors"\
-  "stack-block-pyramid-seq-seen-colors"\
-  "stack-block-pyramid-seq-unseen-colors"\
-  #"separating-piles-seen-colors"\
-  #"separating-piles-unseen-colors"\
-  #"put-block-in-bowl-seen-colors"\
-  #"put-block-in-bowl-unseen-colors"\
-  #"packing-boxes-pairs-seen-colors"\
-  #"packing-boxes-pairs-unseen-colors"\
-  #"packing-seen-google-objects-group"\
-  #"packing-seen-google-objects-seq"\
-  #"packing-unseen-google-objects-group"\
-  #"packing-unseen-google-objects-seq"\
-  #"packing-shapes"\
-  #"align-rope"\
+tasks=("assembling-kits-seq-full"\
+    "packing-boxes-pairs-full"\
+    "stack-block-pyramid-seq-full"\
+    "separating-piles-full"\
+    "towers-of-hanoi-seq-full"\
+    "put-block-in-bowl-full"\
+    "packing-seen-google-objects-group"\
+    "packing-unseen-google-objects-group"\
+    "packing-seen-google-objects-seq"\
+    "packing-unseen-google-objects-seq"\
+    "align-rope"\
+    "packing-shapes"\
 )
 
 #/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big/checkpoint-160.pth
 
 task_name=${tasks[$SLURM_ARRAY_TASK_ID]}
 
+python -m cliport.train  train.task=${task_name}\
+                         train.agent=${agent_name}\
+                         train.exp_folder=${exps_name}\
+                         wandb.run_name=${exps_name}_${task_name}\
+                         train.n_demos=100 \
+                         train.n_steps=20100 \
+                         train.lr_scheduler=False\
+                         train.load_from_last_ckpt=False\
+                         train.log=False\
+                         train.load_pretrained_ckpt=True\
+                         cliport_checkpoint=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/exps_cliport_pretrained/multi-language-conditioned-${agent_name}-n1000-train/checkpoints/best.ckpt\
+                         dataset.cache=True \
+
 
 # python -m cliport.train  train.task=${task_name}\
 #                          train.agent=${agent_name}\
+#                          train.exp_folder=${exps_name}\
 #                          train.n_demos=100 \
 #                          train.n_steps=20100 \
-#                          train.exp_folder=${exps_name} \
-#                          dataset.cache=True \
-#                          train.load_from_last_ckpt=False \
-#                          train.n_rotations=36\
-#                          train.log=True \
-#                          wandb.run_name=${exps_name}_${task_name} \
-#                          mae_model=mae_robot_lang \
-#                          train.linear_probe=False \
-#                          train.accumulate_grad_batches=1 \
-#                          pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big_extra/checkpoint-140.pth\
-#                          cliport_checkpoint=False\
 #                          train.lr_scheduler=True\
 #                          train.lr=5e-5\
 #                          train.warmup_epochs=10\
-
+#                          train.precision=32\
+#                          train.batch_size=16\
+#                          train.load_from_last_ckpt=False\
+#                          train.log=True\
+#                          wandb.run_name=${exps_name}_${task_name}\
+#                          mae_model=mae_robot_lang \
+#                          pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big_extra/checkpoint-140.pth\
+#                          cliport_checkpoint=False\
+#                          dataset.cache=True \
+#                          train.sep_mode=place\
+                         
 
 python -m cliport.eval model_task=${task_name}\
                        eval_task=${task_name} \

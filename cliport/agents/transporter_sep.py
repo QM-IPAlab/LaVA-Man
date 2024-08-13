@@ -11,13 +11,16 @@ from cliport.utils import utils
 import cliport.utils.visual_utils as vu
 from cliport.models.core.attention import Attention
 
+from visualizer import get_local
+
+
 class TransporterAgentSep(LightningModule):
     """
         Our trasnporter agent.
         Train the attention and transport model separately,
         And support for batch size training + learning scheduler
     """
-    def __init__(self, name, cfg, train_ds, test_ds, mode):
+    def __init__(self, name, cfg, train_ds, test_ds, sep_mode):
         super().__init__()
         utils.set_seed(0)
 
@@ -44,6 +47,7 @@ class TransporterAgentSep(LightningModule):
         self.automatic_optimization = False
         #self._set_optimizers()
         print("Agent: {}, Logging: {}".format(name, cfg['train']['log']))
+        print("sep_mode: ", self.sep_mode)
 
         self.total_steps = self.cfg['train']['n_steps']
         self.warmup_epochs = self.cfg['train']['warmup_epochs']
@@ -51,8 +55,8 @@ class TransporterAgentSep(LightningModule):
         self.lr = cfg['train']['lr']
         self.lr_min = cfg['train']['lr_min']
 
-        self.mode = mode # train or test
-        assert self.mode in ['pick', 'place', 'both'], "Mode should be either pick, place, or both"
+        self.sep_mode = sep_mode # train or test
+        assert self.sep_mode in ['pick', 'place', 'both'], "Mode should be either pick, place, or both"
 
     def _build_model(self):
         self.attention = None
@@ -61,10 +65,22 @@ class TransporterAgentSep(LightningModule):
     
     def configure_optimizers(self):
         
-        opt_attn = torch.optim.AdamW(self.attention.parameters(), lr=self.cfg['train']['lr'], betas=(0.9, 0.95))
-        opt_trans = torch.optim.AdamW(self.transport.parameters(), lr=self.cfg['train']['lr'], betas=(0.9, 0.95)) 
+        if self.sep_mode == 'pick':
+            trainable = self.attention.parameters()
+        elif self.sep_mode == 'place':
+            trainable = self.transport.parameters()
+        else:
+            raise NotImplementedError()
+        
+        base_lr = self.cfg['train']['lr']
+        batch_size = self.cfg['train']['batch_size']
+        lr = base_lr * batch_size
+        opt = torch.optim.AdamW(trainable, lr=lr, betas=(0.9, 0.95))
         self.max_epochs = self.trainer.max_epochs
         
+        
+        # configure learning rate schedulr
+
         # configure learning rate schedulr
         if self.sch:
             print('Using cosine annealing learning rate scheduler with warm up !')
@@ -78,22 +94,45 @@ class TransporterAgentSep(LightningModule):
                         (1. + math.cos(math.pi * (epoch - self.warmup_epochs) / (self.max_epochs - self.warmup_epochs)))
                 return lr/self.lr
             
-            lrs_attn = torch.optim.lr_scheduler.LambdaLR(opt_attn, lr_lambda=sch_foo)
-            lrs_trans = torch.optim.lr_scheduler.LambdaLR(opt_trans, lr_lambda=sch_foo)
+            lrs = torch.optim.lr_scheduler.LambdaLR(opt, lr_lambda=sch_foo)
+            optim = {"optimizer": opt, "lr_scheduler": lrs}
+        else:
+            optim = opt
+        
+        return optim
+        
+        # opt_attn = torch.optim.AdamW(self.attention.parameters(), lr=self.cfg['train']['lr'], betas=(0.9, 0.95))
+        # opt_trans = torch.optim.AdamW(self.transport.parameters(), lr=self.cfg['train']['lr'], betas=(0.9, 0.95)) 
+            
+        # # configure learning rate schedulr
+        # if self.sch:
+        #     print('Using cosine annealing learning rate scheduler with warm up !')
+        
+        #     def sch_foo(epoch):
+        #         """Decay the learning rate with half-cycle cosine after warmup"""
+        #         if epoch < self.warmup_epochs:
+        #             lr = self.lr * (epoch+1) / self.warmup_epochs 
+        #         else:
+        #             lr = self.lr_min + (self.lr - self.lr_min) * 0.5 * \
+        #                 (1. + math.cos(math.pi * (epoch - self.warmup_epochs) / (self.max_epochs - self.warmup_epochs)))
+        #         return lr/self.lr
+            
+        #     lrs_attn = torch.optim.lr_scheduler.LambdaLR(opt_attn, lr_lambda=sch_foo)
+        #     lrs_trans = torch.optim.lr_scheduler.LambdaLR(opt_trans, lr_lambda=sch_foo)
          
-            pick_optim = {"optimizer": opt_attn, "lr_scheduler": lrs_attn}
-            place_optim = {"optimizer": opt_trans, "lr_scheduler": lrs_trans}
-        else:
-            pick_optim = opt_attn
-            place_optim = opt_trans
+        #     pick_optim = {"optimizer": opt_attn, "lr_scheduler": lrs_attn}
+        #     place_optim = {"optimizer": opt_trans, "lr_scheduler": lrs_trans}
+        # else:
+        #     pick_optim = opt_attn
+        #     place_optim = opt_trans
 
-        # return pick and place
-        if self.mode == 'pick':
-            return pick_optim
-        elif self.mode == 'place':
-            return place_optim
-        else:
-            return pick_optim, place_optim
+        # # return pick and place
+        # if self.sep_mode == 'pick':
+        #     return pick_optim
+        # elif self.sep_mode == 'place':
+        #     return place_optim
+        # else:
+        #     return pick_optim, place_optim
         
     def forward(self, x):
         raise NotImplementedError()
@@ -125,14 +164,13 @@ class TransporterAgentSep(LightningModule):
 
         # save attention map in validation
         if backprop is False and compute_err is True and self.logger is not None and self.save_visuals == 0:
-            import pdb; pdb.set_trace()
             image = inp_img[0, :, :, :3]
             image = vu.tensor_to_cv2_img(image, to_rgb=False)
             heatmap = out[0].reshape(image.shape[0], image.shape[1]).detach().cpu().numpy()
             combined = vu.save_tensor_with_heatmap(image, heatmap,
                                                    filename=None, return_img=True)
             combined = combined[:, :, ::-1]
-            self.logger.log_image(key='heatmap', images=[combined], caption=[lang_goal])
+            self.logger.log_image(key='heatmap', images=[combined], caption=[lang_goal[0]])
             self.save_visuals += 1
 
         return self.attn_criterion(backprop, compute_err, inp, out, p0, p0_theta)
@@ -160,10 +198,10 @@ class TransporterAgentSep(LightningModule):
 
         # Choose optimizer and learning rate scheduler.
         if backprop:
-            if self.mode == 'pick':
+            if self.sep_mode == 'pick':
                 attn_optim = self.optimizers()
                 if self.sch: s_att  = self.lr_schedulers()
-            elif self.mode == 'both':
+            elif self.sep_mode == 'both':
                 attn_optim, _ = self.optimizers()
                 if self.sch: s_att, _ = self.lr_schedulers()
             else:
@@ -216,6 +254,23 @@ class TransporterAgentSep(LightningModule):
         inp = {'inp_img': inp_img, 'p0': p0, 'lang_goal': lang_goal}
         out = self.trans_forward(inp, softmax=False)
         err, loss = self.transport_criterion(backprop, compute_err, inp, out, p0, p1, p1_theta)
+        
+        # save heatmap
+        if backprop is False and compute_err is True and self.logger is not None and self.save_visuals == 0:
+            image = inp_img[0, :, :, :3]
+            image = vu.tensor_to_cv2_img(image, to_rgb=False)
+
+            itheta = p1_theta / (2 * np.pi / self.transport.n_rotations)
+            itheta =(torch.round(itheta)).long() % self.transport.n_rotations
+            itheta = itheta[0].cpu().numpy().astype(int)
+            heatmap = out[0].reshape(image.shape[0], image.shape[1], self.n_rotations).detach().cpu().numpy()
+            heatmap = heatmap[:, :, itheta]
+            combined = vu.save_tensor_with_heatmap(image, heatmap,
+                                                   filename=None, return_img=True)
+            combined = combined[:, :, ::-1]
+            self.logger.log_image(key='trans_heatmap', images=[combined], caption=[lang_goal[0]])
+            self.save_visuals += 1
+
         return loss, err
 
     def transport_criterion(self, backprop, compute_err, inp, output, p, q, theta):
@@ -223,16 +278,16 @@ class TransporterAgentSep(LightningModule):
         itheta = theta / (2 * np.pi / self.transport.n_rotations)
         itheta =(torch.round(itheta)).long() % self.transport.n_rotations
 
-         # Get one-hot pixel label map.
+        # Get one-hot pixel label map.
         inp_img = inp['inp_img']
         batch_size = inp_img.shape[0]
         label_size = inp_img.shape[1:3] + (self.transport.n_rotations,)
         label = torch.zeros((batch_size,) + label_size, dtype=torch.float, device=output.device)
         batch_indices = torch.arange(batch_size, device=output.device)
 
-        if isinstance(p, torch.Tensor):
-            p = [p[:, 0].long(), p[:, 1].long()]
-        label[batch_indices, p[0], p[1], itheta] = 1
+        if isinstance(q, torch.Tensor):
+            q = [q[:, 0].long(), q[:, 1].long()]
+        label[batch_indices, q[0], q[1], itheta] = 1
         label = label.reshape(batch_size, -1)
 
         # Get loss.
@@ -240,10 +295,10 @@ class TransporterAgentSep(LightningModule):
         
         # Choose optimizer and learning rate scheduler.
         if backprop:
-            if self.mode == 'place': 
+            if self.sep_mode == 'place': 
                 transport_optim = self.optimizers()
                 if self.sch: s_trans = self.lr_schedulers()
-            elif self.mode == 'both':
+            elif self.sep_mode == 'both':
                 _, transport_optim = self.optimizers()
                 if self.sch: _, s_trans = self.lr_schedulers()
             else:
@@ -260,7 +315,7 @@ class TransporterAgentSep(LightningModule):
         dist = []
         theta_dist = []
         if compute_err:
-            pick_conf = self.attn_forward(inp)
+            pick_conf = self.trans_forward(inp)
             pick_conf = pick_conf.detach().cpu().numpy()
 
             for i in range(batch_size):
@@ -268,7 +323,7 @@ class TransporterAgentSep(LightningModule):
                 argmax = np.unravel_index(argmax, shape=pick_conf[i].shape)
                 p0_pix = argmax[:2]
                 p0_theta = argmax[2] * (2 * np.pi / pick_conf[i].shape[2])
-                p_numpy = [p[0][i].cpu().numpy(), p[1][i].cpu().numpy()]
+                p_numpy = [q[0][i].cpu().numpy(), q[1][i].cpu().numpy()]
                 dist.append(np.linalg.norm(np.array(p_numpy) - p0_pix, ord=1))
                 theta_dist.append(np.absolute((theta[i].cpu().numpy() - p0_theta) % np.pi))
             
@@ -282,11 +337,11 @@ class TransporterAgentSep(LightningModule):
 
     def training_step(self, batch, optimizer_idx):        
         if self.attention is not None: self.attention.train()  
-        if self.attention is not None: self.transport.train()
+        if self.transport is not None: self.transport.train()
         frame, _ = batch
 
         # Get training losses
-        if self.mode == 'both':
+        if self.sep_mode == 'both':
             loss0, err0 = self.attn_training_step(frame)
             if isinstance(self.transport, Attention):
                 loss1, err1 = self.attn_training_step(frame)
@@ -297,42 +352,40 @@ class TransporterAgentSep(LightningModule):
             self.log('tr/trans/loss', loss1)
             self.log('tr/loss', total_loss)
         
-        elif self.mode == 'pick':
+        elif self.sep_mode == 'pick':
             loss0, err0 = self.attn_training_step(frame)
             total_loss = loss0
             self.log('tr/attn/loss', loss0)
 
-        elif self.mode == 'place':
+        elif self.sep_mode == 'place':
             loss1, err1 = self.transport_training_step(frame)
             total_loss = loss1
             self.log('tr/trans/loss', loss1)
+        
+        else: 
+            raise NotImplementedError
             
         # final loss and checkpoint
         self.trainer.train_loop.running_loss.append(total_loss)
-        self.check_save_iteration(suffix=self.mode)
-        self.total_steps += 1 
+        self.total_steps += 1
         return total_loss
 
     def check_save_iteration(self, suffix='None'):
-        global_step = self.trainer.global_step
-        if (global_step + 1) in self.save_steps:
-            self.trainer.run_evaluation()
+        self.save_last_checkpoint()
+        epoch = self.trainer.current_epoch
+        #FIXME hard coded for now
+        selected_epochs = [34, 54, 84]
+        if epoch in selected_epochs: 
             val_loss = self.trainer.callback_metrics['val_loss']
-            steps = f'{global_step + 1:05d}'
-            filename = f"steps={steps}-val_loss={val_loss:0.8f}.ckpt"
+            filename = f"epochs={epoch}-val_loss={val_loss:0.8f}.ckpt"
             filename = f"{suffix}-{filename}"
             checkpoint_path = os.path.join(self.cfg['train']['train_dir'], 'checkpoints')
             ckpt_path = os.path.join(checkpoint_path, filename)
             self.trainer.save_checkpoint(ckpt_path)
 
-        if (global_step + 1) % 1000 == 0:
-            # save lastest checkpoint
-            # print(f"Saving last.ckpt Epoch: {self.trainer.current_epoch} | Global Step: {self.trainer.global_step}")
-            self.save_last_checkpoint()
-
     def save_last_checkpoint(self):
         checkpoint_path = os.path.join(self.cfg['train']['train_dir'], 'checkpoints')
-        ckpt_path = os.path.join(checkpoint_path, 'last.ckpt')
+        ckpt_path = os.path.join(checkpoint_path, f'{self.sep_mode}-last.ckpt')
         self.trainer.save_checkpoint(ckpt_path)
 
     def on_validation_epoch_start(self) -> None:
@@ -351,15 +404,15 @@ class TransporterAgentSep(LightningModule):
         err0 = {'dist': 0., 'theta': 0.}
         err1 = {'dist': 0., 'theta': 0.}
         
-        if self.mode == 'both':        
+        if self.sep_mode == 'both':        
             loss0, err0 = self.attn_training_step(frame, backprop=False, compute_err=True)
             if isinstance(self.transport, Attention):
                 loss1, err1 = self.attn_training_step(frame, backprop=False, compute_err=True)
             else:
                 loss1, err1 = self.transport_training_step(frame, backprop=False, compute_err=True)
-        elif self.mode == 'pick':
+        elif self.sep_mode == 'pick':
             loss0, err0 = self.attn_training_step(frame, backprop=False, compute_err=True)
-        elif self.mode == 'place':
+        elif self.sep_mode == 'place':
             loss1, err1 = self.transport_training_step(frame, backprop=False, compute_err=True)
         
         # totoal loss and return
@@ -399,6 +452,10 @@ class TransporterAgentSep(LightningModule):
         print("\nAttn Err - Dist: {:.2f}, Theta: {:.2f}".format(total_attn_dist_err, total_attn_theta_err))
         print("Transport Err - Dist: {:.2f}, Theta: {:.2f}".format(total_trans_dist_err, total_trans_theta_err))
 
+        # save checkpoint after validation
+        if self.trainer.current_epoch > 0:
+            self.check_save_iteration(suffix=self.sep_mode)
+        
         return dict(
             val_loss=mean_val_total_loss,
             val_loss0=mean_val_loss0,
@@ -409,30 +466,36 @@ class TransporterAgentSep(LightningModule):
             total_trans_theta_err=total_trans_theta_err,
         )
 
+    @get_local('img', 'place_heatmap')
     def act(self, obs, info, goal=None):  # pylint: disable=unused-argument
+                
         """Run inference and return best action given visual observations."""
         # Get heightmap from RGB-D images.
         img = self.test_ds.get_image(obs)
         lang_goal = info['lang_goal']
-
+        img_t = torch.tensor(img).unsqueeze(0).to(self.device_type).float()
         # Attention model forward pass.
-        pick_inp = {'inp_img': img, 'lang_goal': lang_goal}
+        pick_inp = {'inp_img': img_t, 'lang_goal': lang_goal}
         pick_conf = self.attn_forward(pick_inp)
+        pick_conf = pick_conf.squeeze(0)
         pick_conf = pick_conf.detach().cpu().numpy()
         argmax = np.argmax(pick_conf)
         argmax = np.unravel_index(argmax, shape=pick_conf.shape)
         p0_pix = argmax[:2]
         p0_theta = argmax[2] * (2 * np.pi / pick_conf.shape[2])
-
+        p0_pix_t = torch.tensor(p0_pix).unsqueeze(0).to(self.device_type).float()
         # Transport model forward pass.
-        place_inp = {'inp_img': img, 'p0': p0_pix, 'lang_goal': lang_goal}
+        place_inp = {'inp_img': img_t, 'p0': p0_pix_t, 'lang_goal': lang_goal}
         place_conf = self.trans_forward(place_inp)
-        place_conf = place_conf.permute(1, 2, 0)
+        place_conf = place_conf.squeeze(0)
         place_conf = place_conf.detach().cpu().numpy()
         argmax = np.argmax(place_conf)
         argmax = np.unravel_index(argmax, shape=place_conf.shape)
         p1_pix = argmax[:2]
         p1_theta = argmax[2] * (2 * np.pi / place_conf.shape[2])
+
+        # for visulizaiton only
+        place_heatmap = place_conf[:,:,argmax[2]]
 
         # Pixels to end effector poses.
         hmap = img[:, :, 3]
@@ -453,10 +516,6 @@ class TransporterAgentSep(LightningModule):
 
     def val_dataloader(self):
         return self.test_ds
-
-    def load(self, model_path):
-        self.load_state_dict(torch.load(model_path)['state_dict'])
-        self.to(device=self.device_type)
 
     def test_step(self, batch, batch_idx):
         self.attention.eval()
@@ -569,3 +628,14 @@ class TransporterAgentSep(LightningModule):
             success_pick_rate=success_pick_rate,
             success_place_rate=success_place_rate
         )
+    
+    def load(self, model_path):
+        self.load_state_dict(torch.load(model_path)['state_dict'])
+        self.to(device=self.device_type)
+
+    def load_sep(self, model_pick, model_place):
+        self.load_state_dict(torch.load(model_pick)['state_dict'], strict=False)
+        self.load_state_dict(torch.load(model_place)['state_dict'], strict=False)
+        self.to(device=self.device_type)
+        
+

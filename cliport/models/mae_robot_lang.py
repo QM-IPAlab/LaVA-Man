@@ -254,9 +254,8 @@ class MAESeg2Model(nn.Module):
 
         out1 = fea
         out2 = None
-
         if out1.shape[0] != lang_emb[0].shape[0]:
-            lang_emb = lang_emb[0].repeat([out1.shape[0], 1, 1])
+            lang_emb = lang_emb[0].repeat([int(out1.shape[0]//lang_emb[0].shape[0]), 1, 1])
 
         for blk in self.model.decoder_blocks:
             out1, out2 = blk(out1, out2, lang_emb)

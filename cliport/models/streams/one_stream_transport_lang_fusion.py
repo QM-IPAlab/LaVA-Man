@@ -5,6 +5,8 @@ import cliport.models as models
 from cliport.models.streams.two_stream_transport_lang_fusion import TwoStreamTransportLangFusion
 from cliport.utils import utils
 
+from visualizer import get_local
+
 class OneStreamTransportLangFusion(TwoStreamTransportLangFusion):
     """Transport (a.k.a) Place module with language features fused at the bottleneck"""
 
@@ -74,7 +76,6 @@ class OneStreamTransportMAEFixSize(TwoStreamTransportLangFusion):
         print(f"Transport FCN: {stream_one_fcn}")
 
     def transport(self, in_tensor, crop, lang):
-        import pdb; pdb.set_trace()
         logits = self.key_stream_one(in_tensor, lang)
         kernel = self.query_stream_one(crop, lang)
         return logits, kernel
@@ -157,6 +158,7 @@ class OneStreamTransportMAEBatch(OneStreamTransportMAEFixSize):
         super().__init__(stream_fcn, in_shape, n_rotations, crop_size, preprocess, cfg, device)
         self.rotator = utils.ImageRotatorBatch(self.n_rotations)
 
+    #@get_local('inp_img','out','logits','kernel')
     def forward(self, inp_img, p, lang_goal, softmax=True):
         """Forward pass. Batch size version.
         Args:
@@ -193,20 +195,26 @@ class OneStreamTransportMAEBatch(OneStreamTransportMAEFixSize):
         cropped_tensor = cropped_tensor.unsqueeze(1) # Shape (batch_size, 1, 6, 64, 64)
         cropped_tensor = cropped_tensor.repeat(1, self.n_rotations, 1, 1, 1) # Shape (batch_size, 36, 6, 64, 64)
         cropped_rotated = self.rotator(cropped_tensor, pivot=pv) # Shape (batch_size, 6, 64, 64)
-
         cropped_rotated = cropped_rotated.view(-1, 6, 64, 64)
+        
+        # image = cropped_rotated[:36,:3,:,:]
+        # image = image/255
+        # import torchvision
+         
+        # torchvision.utils.save_image(image, '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/batch_image2.png', nrow=8)
+        # import pdb; pdb.set_trace()
+
         logits, kernel = self.transport(inp_img, cropped_rotated, lang_goal)
-        return self.correlate(logits, kernel, softmax)
+        out = self.correlate(logits, kernel, softmax)
+        return out
     
     def correlate(self, in0, in1, softmax):
         """Correlate two input tensors."""
         batch_size = in0.shape[0]
-        import pdb; pdb.set_trace()
-        in0 = in0.view(1, -1, 384, 224)
+        in0 = in0.view(1, -1, in0.shape[-2], in0.shape[-1])
         output = F.conv2d(in0, in1, padding=(self.pad_size, self.pad_size), groups=batch_size)
         output = F.interpolate(output, size=(in0.shape[-2], in0.shape[-1]), mode='bilinear')
-        output = output[:,:,self.pad_size:-self.pad_size, self.pad_size:-self.pad_size]
-        output = output.view(batch_size, 36, output.shape[2], output.shape[3])
+        output = output.view(batch_size, self.n_rotations, output.shape[2], output.shape[3])
         output = output.permute(0, 2, 3, 1)  # [B W H 1]
         output_shape = output.shape
         output = output.reshape(batch_size, -1)
