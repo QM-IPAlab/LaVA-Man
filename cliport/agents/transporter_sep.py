@@ -373,7 +373,7 @@ class TransporterAgentSep(LightningModule):
     def check_save_iteration(self, suffix='None'):
         self.save_last_checkpoint()
         epoch = self.trainer.current_epoch
-        #FIXME hard coded for now
+        #FIXME hard coded save checkpoint for now
         selected_epochs = [34, 54, 84]
         if epoch in selected_epochs: 
             val_loss = self.trainer.callback_metrics['val_loss']

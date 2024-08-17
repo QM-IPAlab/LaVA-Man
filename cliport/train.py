@@ -124,9 +124,11 @@ def main(cfg):
     # Set data loaders if batch_size > 1
     # When batch size > 1, return tensors, otherwise return numpy arrays as original
     if batch_size != 1:
+        ###FIXME: The batchnorm=True is not saved in the hydra config file during training.
+        ###       Be careful when evaluating the model.
         cfg['train']['batchnorm'] = True
-        train_ds = DataLoader(train_ds, batch_size=batch_size, shuffle=True, pin_memory=True)
-        val_ds = DataLoader(val_ds, batch_size=batch_size, shuffle=False, pin_memory=True)
+        train_ds = DataLoader(train_ds, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=2)
+        val_ds = DataLoader(val_ds, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=2)
 
     # Initialize agent
     if not sep_mode:

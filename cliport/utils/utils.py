@@ -643,6 +643,7 @@ class ImageRotatorBatch:
         # Compute the tran formation matrix
         # force to use torch 32
         M: torch.tensor = kornia.get_rotation_matrix2d(center, alpha, scale)
+        M = M.to(x_batch.device)
         # apply the transformation to original image
         x_warped = kornia.warp_affine(x_batch, M.to(x_batch.device), dsize=(height, width))
         x_warped = x_warped.view(batch_size, num_images, channels, height, width)

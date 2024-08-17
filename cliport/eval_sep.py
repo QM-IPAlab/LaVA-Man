@@ -1,7 +1,8 @@
 """Ravens main training script."""
 
+from re import T
 from visualizer import get_local
-get_local.activate()
+#get_local.activate()
 
 import os
 import pickle
@@ -75,6 +76,8 @@ def main(vcfg):
     ckpt_manager = CkptManager(vcfg)
     if checkpoint_type == 'val_missing':
         eval_pick, eval_place = ckpt_manager.get_eval_list()
+    elif checkpoint_type == 'last':
+        eval_pick, eval_place = ckpt_manager.get_last_ckpt()
     else:
         eval_pick, eval_place = ckpt_manager.get_test_ckpt()
     #TODO: other checkpoint types
@@ -84,8 +87,9 @@ def main(vcfg):
         print(f"Pick: {ckpt_pick} | Place: {ckpt_place}")
     
     tcfg['pretrain_path'] = None
+    tcfg['train']['batchnorm'] = True
     agent = agents.names[vcfg['agent']](name, tcfg, None, ds, 'both')
-
+    agent.eval()
 
     for ckpt_pick, ckpt_place in zip(eval_pick, eval_place):
         
@@ -338,6 +342,9 @@ class CkptManager():
             return [best_checkpoint_pick], [best_checkpoint_place]        
         else:
             return [self.get_best_pick()], [self.get_best_place()]
+
+    def get_last_ckpt(self):
+        return [self.get_last_pick()], [self.get_last_place()]
 
 
 def get_model_path(ckpt_pick, ckpt_place, vcfg, existing_results):

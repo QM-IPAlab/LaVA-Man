@@ -296,3 +296,124 @@ class MAERobotLangDPT(MAERobot):
                 out1, out2 = blk(out1, out2, lang_emb)
             out = self.decoder_norm(out1)  
         return out
+    
+
+class MAERobotLangRecon(MAERobotLang):
+    """
+    For ablation study:
+    Reconstruction version of MAERobotLang (single frame input)
+    """
+
+    def forward_ca_decoder(self, masked_latent1, ids_restore1, lang_emb):
+        """
+        latent1: visible
+        masked_latent2: masked goal image
+        """
+        # encoder to decoder layer
+        fea1 = self.decoder_embed(masked_latent1)
+
+        # append masked tokens to the sequence
+        masked_tokens = self.mask_token.repeat(fea1.shape[0],
+                                               ids_restore1.shape[1] + 1 - fea1.shape[1], 1)
+        fea1_ = torch.cat([fea1[:, 1:, :], masked_tokens], dim=1)  # no cls token
+        fea1_ = torch.gather(fea1_, dim=1,
+                             index=ids_restore1.unsqueeze(-1).repeat(1, 1, fea1.shape[2]))  # unshuffle
+        fea1 = torch.cat([fea1[:, :1, :], fea1_], dim=1)  # append cls token
+
+        # add positional embedding
+        if self.decoder_pos_embed is not None:
+            fea1 = fea1 + self.decoder_pos_embed
+
+        out1 = fea1
+        # apply Transformer blocks
+        for blk in self.decoder_blocks:
+            out1, out2 = blk(out1, None, lang_emb)
+        out = self.decoder_norm(out1)
+
+        out = self.decoder_pred(out)
+        out = out[:, 1:, :]
+
+        return out
+    
+    def forward(self, img1, img2, pick=None, place=None, lang=None, mask_ratio=0.75):
+        #self.decoder_pos_embed_2 = self.decoder_pos_embed2
+
+        # encoder of the first observed image (no mask)
+        latent1, mask1, ids_restore1 = self.forward_encoder(img1, mask_ratio=mask_ratio)
+
+        # encoder of the language goal
+        lang_emb = self.get_lang_embed(lang)
+
+        # decoder
+        pred = self.forward_ca_decoder(latent1, ids_restore1, lang_emb)
+        loss = self.forward_loss(img1, pred, mask1)
+
+        return loss, pred, mask1
+
+
+class MAERobotLangDualMasking(MAERobotLang):
+    """
+    For ablation study:
+    Dual mask. (Mask both two inputs)
+    """
+    
+    def forward_ca_decoder(self, latent1, masked_latent2, ids_restore1, ids_restore2, lang_emb):
+        """
+        latent1: visible
+        masked_latent2: masked goal image
+        """
+        # encoder to decoder layer
+        fea1 = self.decoder_embed(latent1)
+        fea2 = self.decoder_embed(masked_latent2)
+
+        # append masked tokens to the sequence
+        masked_tokens = self.mask_token.repeat(fea1.shape[0],
+                                               ids_restore1.shape[1] + 1 - fea1.shape[1], 1)
+        fea1_ = torch.cat([fea1[:, 1:, :], masked_tokens], dim=1)  # no cls token
+        fea1_ = torch.gather(fea1_, dim=1,
+                             index=ids_restore1.unsqueeze(-1).repeat(1, 1, fea1.shape[2]))  # unshuffle
+        fea1 = torch.cat([fea1[:, :1, :], fea1_], dim=1)  # append cls token
+
+        # append masked tokens to the sequence
+        masked_tokens = self.mask_token.repeat(fea1.shape[0],
+                                               ids_restore2.shape[1] + 1 - fea2.shape[1], 1)
+        fea2_ = torch.cat([fea2[:, 1:, :], masked_tokens], dim=1)  # no cls token
+        fea2_ = torch.gather(fea2_, dim=1,
+                             index=ids_restore2.unsqueeze(-1).repeat(1, 1, fea2.shape[2]))  # unshuffle
+        fea2 = torch.cat([fea2[:, :1, :], fea2_], dim=1)  # append cls token
+
+        # add positional embedding
+        if self.decoder_pos_embed is not None:
+            fea1 = fea1 + self.decoder_pos_embed
+            fea2 = fea2 + self.decoder_pos_embed
+
+        out1 = fea1
+        out2 = fea2
+        # apply Transformer blocks
+        for blk in self.decoder_blocks:
+            out1, out2 = blk(out1, out2, lang_emb)
+        out = self.decoder_norm(out1)
+
+        out = self.decoder_pred(out)
+        out = out[:, 1:, :]
+
+        return out
+
+    def forward(self, img1, img2, pick=None, place=None, lang=None, mask_ratio=0.75):
+        #self.decoder_pos_embed_2 = self.decoder_pos_embed2
+
+        # encoder of the first observed image (no mask)
+        latent1, mask1, ids_restore1 = self.forward_encoder(img1, mask_ratio=0.75)
+        latent2, mask2, ids_restore2 = self.forward_encoder(img2, mask_ratio=mask_ratio)
+
+        # encoder of the language goal
+        lang_emb = self.get_lang_embed(lang)
+
+        # decoder
+        pred = self.forward_ca_decoder(latent1, latent2, ids_restore1, ids_restore2,lang_emb)
+        loss = self.forward_loss(img2, pred, mask2)
+
+        return loss, pred, mask2
+    
+    
+    

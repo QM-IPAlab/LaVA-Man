@@ -20,8 +20,8 @@ exps_name="exps_cliport_pretrained_single"
 
 #agent_name="mae_sep_seg2"
 #agent_name="transporter"
-agent_name="cliport"
-#agent_name="rn50_bert"
+#agent_name="cliport"
+agent_name="rn50_bert"
 #agent_name="clip_lingunet_transporter"
 
 # tasks=("packing-unseen-google-objects-group"\
@@ -54,31 +54,11 @@ python -m cliport.train  train.task=${task_name}\
                          train.n_demos=100 \
                          train.n_steps=20100 \
                          train.lr_scheduler=False\
-                         train.load_from_last_ckpt=False\
+                         train.load_from_last_ckpt=True\
                          train.log=False\
                          train.load_pretrained_ckpt=True\
                          cliport_checkpoint=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/exps_cliport_pretrained/multi-language-conditioned-${agent_name}-n1000-train/checkpoints/best.ckpt\
                          dataset.cache=True \
-
-
-# python -m cliport.train  train.task=${task_name}\
-#                          train.agent=${agent_name}\
-#                          train.exp_folder=${exps_name}\
-#                          train.n_demos=100 \
-#                          train.n_steps=20100 \
-#                          train.lr_scheduler=True\
-#                          train.lr=5e-5\
-#                          train.warmup_epochs=10\
-#                          train.precision=32\
-#                          train.batch_size=16\
-#                          train.load_from_last_ckpt=False\
-#                          train.log=True\
-#                          wandb.run_name=${exps_name}_${task_name}\
-#                          mae_model=mae_robot_lang \
-#                          pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big_extra/checkpoint-140.pth\
-#                          cliport_checkpoint=False\
-#                          dataset.cache=True \
-#                          train.sep_mode=place\
                          
 
 python -m cliport.eval model_task=${task_name}\

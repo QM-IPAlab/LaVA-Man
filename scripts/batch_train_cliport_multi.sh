@@ -10,7 +10,7 @@ export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 
-exps_name="exps_all_extra_cos_lr"
+exps_name="exps_fullcolor_unbatched"
 #agent_name="transporter"
 agent_name="mae_seg2"
 #agent_name="rn50_bert"
@@ -52,25 +52,25 @@ declare -a tasks=("assembling-kits-seq-full"\
     "packing-shapes"\
 )
 
-# python -m cliport.train  train.task=multi-language-conditioned\
-#                          train.agent=${agent_name}\
-#                          dataset.type=multi\
-#                          train.n_demos=1000 \
-#                          train.n_steps=80100 \
-#                          train.exp_folder=${exps_name} \
-#                          dataset.cache=True \
-#                          train.load_from_last_ckpt=True \
-#                          train.n_rotations=36\
-#                          train.log=False \
-#                          wandb.run_name=${exps_name}_${task_name} \
-#                          mae_model=mae_robot_lang \
-#                          train.linear_probe=False \
-#                          train.accumulate_grad_batches=1 \
-#                          pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big_extra/checkpoint-140.pth\
-#                          cliport_checkpoint=False\
-#                          train.lr_scheduler=False\
-#                          train.lr=1e-4\
-#                          #train.warmup_epochs=10\
+python -m cliport.train  train.task=multi-language-conditioned\
+                         train.agent=${agent_name}\
+                         dataset.type=multi\
+                         train.n_demos=1000 \
+                         train.n_steps=80100 \
+                         train.exp_folder=${exps_name} \
+                         dataset.cache=True \
+                         train.load_from_last_ckpt=True \
+                         train.n_rotations=36\
+                         train.log=False \
+                         wandb.run_name=${exps_name}_${task_name} \
+                         mae_model=mae_robot_lang \
+                         train.linear_probe=False \
+                         train.accumulate_grad_batches=1 \
+                         pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big_extra/checkpoint-140.pth\
+                         cliport_checkpoint=False\
+                         train.lr_scheduler=True\
+                         train.lr=5e-5\
+                         train.warmup_epochs=10\
 
 
 
@@ -84,7 +84,7 @@ do
                         n_demos=100 \
                         train_demos=1000 \
                         exp_folder=${exps_name} \
-                        checkpoint_type=best \
+                        checkpoint_type=test_best \
                         update_results=True \
                         disp=False\
                         record.save_video=False

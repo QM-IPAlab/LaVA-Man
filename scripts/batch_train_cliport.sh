@@ -10,13 +10,13 @@ export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 
-exps_name="exps_sep_seg2_v3"
+exps_name="exps_sep_seg2_batchnorm"
 agent_name="mae_sep_seg2"
 
 # ======== task name ========= #
 
-#task_name="towers-of-hanoi-seq-unseen-colors"
-task_name="put-block-in-bowl-seen-colors"
+task_name="towers-of-hanoi-seq-seen-colors"
+#task_name="packing-seen-google-objects-seq"
 
 #task_name="packing-seen-google-objects-group"
 #task_name="packing-unseen-google-objects-group"
@@ -89,12 +89,12 @@ echo $short_name
 python cliport/eval_sep.py model_task=${task_name}\
                       eval_task=${task_name} \
                       agent=${agent_name} \
-                      mode=test \
+                      mode=val \
                       n_demos=100 \
                       train_demos=100 \
                       exp_folder=${exps_name} \
-                      checkpoint_type=test_best \
-                      update_results=False \
+                      checkpoint_type=val_missing \
+                      update_results=True \
                       disp=False\
                       record.save_video=False\
 

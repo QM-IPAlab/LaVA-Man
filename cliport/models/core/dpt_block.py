@@ -229,6 +229,132 @@ def make_fusion_block(features, use_bn, width_ratio=1):
         width_ratio=width_ratio,
     )
 
+class DoubleConv(nn.Module):
+    """(convolution => [BN] => ReLU) * 2"""
+
+    def __init__(self, in_channels, out_channels, mid_channels=None):
+        super().__init__()
+        if not mid_channels:
+            mid_channels = out_channels
+        self.double_conv = nn.Sequential(
+            nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1),
+            nn.BatchNorm2d(mid_channels),                                     # (Mohit): argh... forgot to remove this batchnorm
+            nn.ReLU(inplace=True),
+            nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1),
+            nn.BatchNorm2d(out_channels),                                     # (Mohit): argh... forgot to remove this batchnorm
+            nn.ReLU(inplace=True)
+        )
+
+    def forward(self, x):
+        return self.double_conv(x)
+
+class Cat(nn.Module):
+    """Upscaling then double conv"""
+
+    def __init__(self, in_channels, out_channels):
+        super().__init__()
+
+        self.conv_g = nn.Conv2d(3, in_channels, kernel_size=1)
+        self.conv = DoubleConv(in_channels * 2, out_channels)
+
+    def forward(self, x, img):
+        _, _, h, w = x.shape
+        guidance = F.adaptive_avg_pool2d(img, (h, w))
+        guidance = self.conv_g(guidance)
+        cat = torch.cat([x, guidance], dim=1)
+        out = self.conv(cat)
+        return out
+
+class FeatureFusionBlock_ours(nn.Module):
+    """Feature fusion block."""
+
+    def __init__(
+        self,
+        features,
+        activation,
+        deconv=False,
+        bn=False,
+        expand=False,
+        align_corners=True,
+        width_ratio=1,
+    ):
+        """Init.
+        Args:
+            features (int): number of features
+        """
+        super(FeatureFusionBlock_custom, self).__init__()
+        self.width_ratio = width_ratio
+
+        self.deconv = deconv
+        self.align_corners = align_corners
+
+        self.groups = 1
+
+        self.expand = expand
+        out_features = features
+        if self.expand == True:
+            out_features = features // 2
+
+        self.out_conv = nn.Conv2d(
+            features,
+            out_features,
+            kernel_size=1,
+            stride=1,
+            padding=0,
+            bias=True,
+            groups=1,
+        )
+
+        self.resConfUnit1 = ResidualConvUnit_custom(features, activation, bn)
+        self.resConfUnit2 = ResidualConvUnit_custom(features, activation, bn)
+
+        self.skip_add = nn.quantized.FloatFunctional()
+
+    def forward(self, *xs):
+        """Forward pass.
+        Returns:
+            tensor: output
+        """
+        import pdb; pdb.set_trace()
+        output = xs[0]
+
+        if len(xs) == 3:
+            res = self.resConfUnit1(xs[1])
+            if self.width_ratio != 1:
+                res = F.interpolate(res, size=(output.shape[2], output.shape[3]), mode='bilinear')
+
+            output = self.skip_add.add(output, res)
+            # output += res
+
+        output = self.resConfUnit2(output)
+
+        if self.width_ratio != 1:
+            # and output.shape[3] < self.width_ratio * output.shape[2]
+            #size=(image.shape[])
+            if (output.shape[3] / output.shape[2]) < (2 / 3) * self.width_ratio:
+                shape = 3 * output.shape[3]
+            else:
+                shape = int(self.width_ratio * 2 * output.shape[2])
+            output  = F.interpolate(output, size=(2* output.shape[2], shape), mode='bilinear')
+        else:
+            output = nn.functional.interpolate(output, scale_factor=2,
+                    mode="bilinear", align_corners=self.align_corners)
+        output = self.out_conv(output)
+        return output
+
+def make_fusion_ours(features, use_bn, width_ratio=1):
+    return FeatureFusionBlock_ours(
+        features,
+        nn.ReLU(False),
+        deconv=False,
+        bn=use_bn,
+        expand=False,
+        align_corners=True,
+        width_ratio=width_ratio,
+    )
+
+
+
 class Interpolate(nn.Module):
     """Interpolation module."""
 
@@ -261,6 +387,7 @@ class Interpolate(nn.Module):
         )
 
         return x
+
 
 class DPTOutputAdapter(nn.Module):
     """DPT output adapter.
@@ -445,6 +572,62 @@ class DPTOutputAdapter(nn.Module):
         path_3 = self.scratch.refinenet3(path_4, layers[2])
         path_2 = self.scratch.refinenet2(path_3, layers[1])
         path_1 = self.scratch.refinenet1(path_2, layers[0])
+
+        # Output head
+        out = self.head(path_1)
+
+        return out
+
+
+class DPTOutputAdapterOurs(DPTOutputAdapter):
+    def __init__(self,
+                 num_channels: int = 1,
+                 stride_level: int = 1,
+                 patch_size: Union[int, Tuple[int, int]] = 16,
+                 main_tasks: Iterable[str] = ('rgb',),
+                 hooks: List[int] = [2, 5, 8, 11],
+                 layer_dims: List[int] = [96, 192, 384, 768],
+                 feature_dim: int = 256,
+                 last_dim: int = 32,
+                 use_bn: bool = False,
+                 dim_tokens_enc: Optional[int] = None,
+                 head_type: str = 'semseg',
+                 output_width_ratio=1,
+                 **kwargs):
+        super().__init__()
+        self.scratch.refinenet1 = make_fusion_ours(feature_dim, use_bn, output_width_ratio)
+        self.scratch.refinenet2 = make_fusion_ours(feature_dim, use_bn, output_width_ratio)
+        self.scratch.refinenet3 = make_fusion_ours(feature_dim, use_bn, output_width_ratio)
+        self.scratch.refinenet4 = make_fusion_ours(feature_dim, use_bn, output_width_ratio)
+
+    def forward(self, encoder_tokens: List[torch.Tensor], image_size, rgb=None):
+            #input_info: Dict):
+        assert self.dim_tokens_enc is not None, 'Need to call init(dim_tokens_enc) function first'
+        H, W = image_size
+        
+        # Number of patches in height and width
+        # in our case stride level = patch size as there is no overlap
+        N_H = H // (self.stride_level * self.P_H) 
+        N_W = W // (self.stride_level * self.P_W)
+
+        # Hook decoder onto 4 layers from specified ViT layers
+        layers = [encoder_tokens[hook] for hook in self.hooks]
+
+        # Extract only task-relevant tokens and ignore global tokens.
+        layers = [self.adapt_tokens(l) for l in layers]
+
+        # Reshape tokens to spatial representation
+        layers = [rearrange(l, 'b (nh nw) c -> b c nh nw', nh=N_H, nw=N_W) for l in layers]
+
+        layers = [self.act_postprocess[idx](l) for idx, l in enumerate(layers)]
+        # Project layers to chosen feature dim
+        layers = [self.scratch.layer_rn[idx](l) for idx, l in enumerate(layers)]
+
+        # Fuse layers using refinement stages
+        path_4 = self.scratch.refinenet4(layers[3], rgb)
+        path_3 = self.scratch.refinenet3(path_4, layers[2], rgb)
+        path_2 = self.scratch.refinenet2(path_3, layers[1], rgb)
+        path_1 = self.scratch.refinenet1(path_2, layers[0], rgb)
 
         # Output head
         out = self.head(path_1)

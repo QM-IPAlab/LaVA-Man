@@ -47,3 +47,62 @@ class MAESepSeg2Agent(TransporterAgentSep):
         
         else:
             raise ValueError(f"Invalid sep_mode: {self.sep_mode}")
+        
+
+class MAESepDPTAgent(MAESepSeg2Agent):
+    def _build_model(self):
+        stream_fcn = 'mae_seg_dpt'
+        if self.sep_mode == 'pick':
+            self.attention = self.create_attention(stream_fcn)
+            self.transport = None
+        
+        elif self.sep_mode == 'place':
+            self.transport = self.create_transport(stream_fcn)
+            self.attention = None
+        
+        elif self.sep_mode == 'both':
+            self.attention = self.create_attention(stream_fcn)
+            self.transport = self.create_transport(stream_fcn)
+        
+        else:
+            raise ValueError(f"Invalid sep_mode: {self.sep_mode}")
+
+
+class MAESepDPTSKAgent(MAESepSeg2Agent):
+    def _build_model(self):
+        stream_fcn = 'mae_seg_dptsk'
+        if self.sep_mode == 'pick':
+            self.attention = self.create_attention(stream_fcn)
+            self.transport = None
+        
+        elif self.sep_mode == 'place':
+            self.transport = self.create_transport(stream_fcn)
+            self.attention = None
+        
+        elif self.sep_mode == 'both':
+            self.attention = self.create_attention(stream_fcn)
+            self.transport = self.create_transport(stream_fcn)
+        
+        else:
+            raise ValueError(f"Invalid sep_mode: {self.sep_mode}")
+        
+
+class MAESepDPTSegAgent(MAESepSeg2Agent):
+    def _build_model(self):
+        stream_fcn1 = 'mae_seg_dpt'
+        stream_fcn2 = 'mae_seg2'
+        if self.sep_mode == 'pick':
+            self.attention = self.create_attention(stream_fcn1)
+            self.transport = None
+        
+        elif self.sep_mode == 'place':
+            self.transport = self.create_transport(stream_fcn2)
+            self.attention = None
+        
+        elif self.sep_mode == 'both':
+            self.attention = self.create_attention(stream_fcn1)
+            self.transport = self.create_transport(stream_fcn2)
+        
+        else:
+            raise ValueError(f"Invalid sep_mode: {self.sep_mode}")
+

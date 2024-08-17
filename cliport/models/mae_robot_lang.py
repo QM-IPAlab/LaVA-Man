@@ -10,7 +10,7 @@ from einops import rearrange
 from cliport.models.resnet import IdentityBlock, ConvBlock
 from transformers import AutoTokenizer
 from cliport.models.featup_pretrained import FeatUp
-from cliport.models.dpt_head import PixelwiseTaskWithDPT
+from cliport.models.dpt_head import PixelwiseTaskWithDPT, PixelwiseTaskWithDPTOurs
 
 class MAEModel(nn.Module):
 
@@ -181,9 +181,9 @@ class MAESeg2Model(nn.Module):
 
         self.preprocess = preprocess
         self.output_dim = output_dim
-        self.batchnorm = False
+        self.batchnorm = cfg['train']['batchnorm']
         self.text_processor = AutoTokenizer.from_pretrained("openai/clip-vit-base-patch32")
-
+        print(f"batchnorm: {self.batchnorm}")
         self.layer1 = nn.Sequential(
             ConvBlock(512, [256, 256, 256], kernel_size=3, stride=1, batchnorm=self.batchnorm),
             IdentityBlock(256, [256, 256, 256], kernel_size=3, stride=1, batchnorm=self.batchnorm),
@@ -802,6 +802,11 @@ class MAESegDPTModel(nn.Module):
     def get_lang_embed(self, lang, device):
         if type(lang) is str:
             decoded_strings = [lang]
+        elif type(lang) is list: # if batch size
+            if type(lang[0]) is str:
+                decoded_strings = [s for s in lang]
+            else:
+                decoded_strings = [s.decode('ascii') for s in lang]
         else:
             decoded_strings = [s.decode('ascii') for s in lang]
         processed_lang = self.text_processor(text=decoded_strings, padding="max_length", return_tensors='pt')
@@ -851,7 +856,7 @@ class MAESegDPTModel(nn.Module):
         out2 = None
 
         if out1.shape[0] != lang_emb[0].shape[0]:
-            lang_emb = lang_emb[0].repeat([out1.shape[0], 1, 1])
+            lang_emb = lang_emb[0].repeat([out1.shape[0]//lang_emb[0].shape[0], 1, 1])
 
         out_list = []
         for blk in self.model.decoder_blocks:
@@ -1001,3 +1006,73 @@ class MAESegDPT2LossModel(nn.Module):
         return {'out': predict, 'rgb_loss': rgb_loss}
     
     
+class MAESegDPTSKModel(MAESegDPTModel):
+    """
+    Use DPT model as the segmentation head as Croco_v2
+    and then use skip connection to combine input image
+    """
+
+    def __init__(self, input_shape, output_dim, cfg, 
+                 device, preprocess, model_name='mae_robot_lang', 
+                 pretrain_path = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big/checkpoint-160.pth'):
+        super().__init__()
+        model_name = 'mae_robot_lang' if model_name is None else model_name
+        self.model = models_lib.__dict__[model_name](
+            img_size=input_shape[:2],
+            norm_pix_loss=False)
+        
+        # linear probe
+        self.linear_probe = False if 'linear_probe' not in cfg['train'] else cfg['train']['linear_probe']
+        if self.linear_probe:
+            self.model.requires_grad_(False)
+
+        # load pretrain model
+        if pretrain_path:
+            misc.dynamic_load_pretrain(self.model, pretrain_path, interpolate=True)
+
+        self.preprocess = preprocess
+        self.output_dim = output_dim
+        self.batchnorm = False
+        self.text_processor = AutoTokenizer.from_pretrained("openai/clip-vit-base-patch32")
+
+        #FIXME: hard code the head now
+        self.head = PixelwiseTaskWithDPTOurs(
+            output_width_ratio=0.5,
+            num_channels=self.output_dim
+        )
+
+        self.head.setup()
+
+    @get_local('predict', 'rgb')
+    def forward(self, x, lang):
+        x = self.preprocess(x, dist='clip')
+        in_type = x.dtype
+        in_shape = x.shape
+        device = x.device
+        rgb = x[:, :3]  # select RGB
+        latent, mask, ids_restore = self.forward_encoder_dpt(rgb, mask_ratio=0.0)
+        lang_emb = self.get_lang_embed(lang, device)
+
+        fea = self.model.decoder_embed(latent[-1])
+        fea = fea + self.model.decoder_pos_embed
+
+        out1 = fea
+        out2 = None
+
+        if out1.shape[0] != lang_emb[0].shape[0]:
+            lang_emb = lang_emb[0].repeat([out1.shape[0]//lang_emb[0], 1, 1])
+
+        out_list = []
+        for blk in self.model.decoder_blocks:
+            out1, out2 = blk(out1, out2, lang_emb)
+            out_list.append(out1)
+        out_list[-1] = self.model.decoder_norm(out_list[-1])
+
+        all_feats = latent + out_list
+        all_feats = [x[:,1:,:] for x in all_feats]
+
+        img_info = {'height': in_shape[2], 'width': in_shape[3]}
+        import pdb; pdb.set_trace()
+        predict = self.head(all_feats, img_info, rgb)
+
+        return predict

@@ -25,18 +25,19 @@ class RavensDatasetToHdf5(RavensDataset):
 
         # TODO: save to different file name
         f = h5py.File(os.path.join('/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5',
-                                   'exist_dataset_no_aug_seen.hdf5'), 'a')
-
+                                   'full_color_seen_obj.hdf5'), 'a')
+        print(f'Processing {len(self)} episodes... ')
         for idx in range(len(self)):
-
+           
             # Load the dpisode data determined by the index
             episode, _ = self.load(idx, self.images, self.cache)
 
             for n_sample in range(len(episode) - 1):
                 sample = episode[n_sample]
                 goal = episode[n_sample + 1]
+                assert self.augment == False 
                 sample = self.process_sample(sample, augment=self.augment)
-                goal = self.process_goal(goal, perturb_params=sample['perturb_params'])
+                goal = self.process_goal(goal, perturb_params=None)
 
                 # Interpret the sample and goal data
                 image_s1, image_s2, language_encoded, gt_pick, gt_place = self.interpret(sample, goal)

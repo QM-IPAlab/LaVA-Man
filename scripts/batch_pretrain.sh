@@ -1,8 +1,7 @@
 #!/bin/bash
-#SBATCH --nodes=1
-#SBATCH --partition=big
+#SBATCH --partition=long
 #SBATCH --gres=gpu:4
-#SBATCH --job-name=extra
+#SBATCH --job-name=full
 #SBATCH --cpus-per-task=16
 
 # Function to find an idle port around 29500
@@ -26,21 +25,24 @@ find_idle_port() {
 
 # Find an idle port
 find_idle_port
-module load python/anaconda3
-source activate mae-cliport
+module load python/3.8
+source py-mae-cliport/bin/activate
 export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 export OMP_NUM_THREADS=1
+
 #export MASTER_ADDR=$(hostname)
 #export MASTER_PORT=$(python -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
 
 python -m torch.distributed.launch --nproc_per_node 4 --master_port=$PORT mae/main_pretrain_ours.py \
     --model mae_robot_lang \
     --batch_size 64 \
-    --output_dir output_mae_robot_lang_big_extra \
-    --pretrain /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big/checkpoint-160.pth \
+    --output_dir output_mae_robot_lang_full_color2 \
+    --pretrain  /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_full_color/checkpoint-399.pth\
     --mask_ratio 0.95 \
+    --data_path /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/full_color_seen_obj.hdf5 \
+    --epochs 400 \
     --log \
-    --data_path /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/extra_dataset_no_aug.hdf5
-    #--wandb_resume zqv1t9oz
+    --no_pin_mem
+
