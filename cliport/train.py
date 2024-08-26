@@ -139,9 +139,13 @@ def main(cfg):
             print('Loading from cliport_checkpoint: ', pretrain_checkpoint)
 
     else:
-        # train the pick and place agents separately
         agent = agents.names[agent_type](name, cfg, train_ds, val_ds, sep_mode)
-    
+        if  cfg['train']['load_pretrained_ckpt']:
+            pretrain_checkpoint = cfg['cliport_checkpoint']
+            agent.load(pretrain_checkpoint)
+            print('Loading from cliport_checkpoint: ', pretrain_checkpoint)
+        # train the pick and place agents separately
+        
     # Main training loop
     trainer.fit(agent)
 

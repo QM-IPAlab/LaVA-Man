@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --partition=small
 #SBATCH --gres=gpu:1
-#SBATCH --job-name=single
+#SBATCH --job-name=extra3
 #SBATCH --cpus-per-task=16
-#SBATCH --array=0-12%6
+#SBATCH --array=0-9
 
 module load python/3.8
 source py-mae-cliport/bin/activate
@@ -13,15 +13,15 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 
 # ======== experiments name =======sb== #
 
-exps_name="exps_cliport_pretrained_single"
+exps_name="exps_fullcolor_nobatch_dual_single"
 
 
 # ======== agent name ========= #
 
-#agent_name="mae_sep_seg2"
+agent_name="mae_seg2"
 #agent_name="transporter"
 #agent_name="cliport"
-agent_name="rn50_bert"
+#agent_name="rn50_bert"
 #agent_name="clip_lingunet_transporter"
 
 # tasks=("packing-unseen-google-objects-group"\
@@ -39,8 +39,6 @@ tasks=("assembling-kits-seq-full"\
     "packing-unseen-google-objects-group"\
     "packing-seen-google-objects-seq"\
     "packing-unseen-google-objects-seq"\
-    "align-rope"\
-    "packing-shapes"\
 )
 
 #/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big/checkpoint-160.pth
@@ -53,12 +51,18 @@ python -m cliport.train  train.task=${task_name}\
                          wandb.run_name=${exps_name}_${task_name}\
                          train.n_demos=100 \
                          train.n_steps=20100 \
-                         train.lr_scheduler=False\
+                         train.lr_scheduler=True\
+                         train.lr=5e-5\
+                         train.warmup_epochs=10\
                          train.load_from_last_ckpt=True\
-                         train.log=False\
-                         train.load_pretrained_ckpt=True\
-                         cliport_checkpoint=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/exps_cliport_pretrained/multi-language-conditioned-${agent_name}-n1000-train/checkpoints/best.ckpt\
+                         train.log=True\
+                         mae_model=mae_robot_lang \
                          dataset.cache=True \
+                         pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_full_color_repeat/checkpoint-399.pth\
+                         train.load_pretrained_ckpt=False\
+                         train.sep_mode=False\
+                         #cliport_checkpoint=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/exps_cliport_pretrained/multi-language-conditioned-${agent_name}-n1000-train/checkpoints/best.ckpt\
+                         
                          
 
 python -m cliport.eval model_task=${task_name}\

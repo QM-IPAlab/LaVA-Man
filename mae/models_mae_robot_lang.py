@@ -55,6 +55,9 @@ class MAERobotLang(MAERobot):
 
 
 class MAERobotLangNoRef(MAERobot):
+    """No Siamese encoder. Only one encoder for the o_t image
+    and train to predict the o_t+1"""
+    
     def __init__(self, img_size=(320, 160), patch_size=16, in_chans=3,
                  embed_dim=768, depth=12, num_heads=12,
                  decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
@@ -78,20 +81,22 @@ class MAERobotLangNoRef(MAERobot):
         return lang_emb
 
     def forward(self, img1, img2, pick=None, place=None, lang=None, mask_ratio=0.75):
+        """Mask the input, disable the reference"""
+        
         # encoder of the first observed image (no mask)
-        latent1, mask1, ids_restore1 = self.forward_encoder(img1, mask_ratio=0.0)
-        latent2, mask2, ids_restore2 = self.forward_encoder(img2, mask_ratio)
+        latent1, mask1, ids_restore1 = self.forward_encoder(img1, mask_ratio=mask_ratio)
+        #latent2, mask2, ids_restore2 = self.forward_encoder(img2, mask_ratio=0.0)
 
         # encoder of the language goal
         lang_emb = self.get_lang_embed(lang)
 
         # decoder
-        pred = self.forward_ca_decoder(latent1, latent2, ids_restore2, lang_emb)
-        loss = self.forward_loss(img2, pred, mask2)
+        pred = self.forward_ca_decoder(latent1, lang_emb)
+        loss = self.forward_loss(img2, pred, mask1)
 
-        return loss, pred, mask2
+        return loss, pred, mask1
 
-    def forward_ca_decoder(self, latent1, masked_latent2, ids_restore2, lang_emb):
+    def forward_ca_decoder(self, latent1, lang_emb):
         """
         latent1: visible
         masked_latent2: masked goal image

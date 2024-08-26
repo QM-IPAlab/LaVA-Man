@@ -374,7 +374,7 @@ class TransporterAgentSep(LightningModule):
         self.save_last_checkpoint()
         epoch = self.trainer.current_epoch
         #FIXME hard coded save checkpoint for now
-        selected_epochs = [34, 54, 84]
+        selected_epochs = [34, 54, 84, 114]
         if epoch in selected_epochs: 
             val_loss = self.trainer.callback_metrics['val_loss']
             filename = f"epochs={epoch}-val_loss={val_loss:0.8f}.ckpt"

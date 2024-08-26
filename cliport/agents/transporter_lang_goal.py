@@ -48,7 +48,7 @@ class TwoStreamClipLingUNetTransporterAgent(TransporterAgent):
         out = self.attention.forward(inp_img, lang_goal, softmax=softmax)
         return out
 
-    def attn_training_step(self, frame, backprop=True, compute_err=False):
+    def attn_training_step(self, frame, backprop=True, compute_err=False, return_output=False):
         inp_img = frame['img']
         p0, p0_theta = frame['p0'], frame['p0_theta']
         lang_goal = frame['lang_goal']
@@ -66,7 +66,12 @@ class TwoStreamClipLingUNetTransporterAgent(TransporterAgent):
             combined = combined[:, :, ::-1]
             self.logger.log_image(key='heatmap', images=[combined], caption=[lang_goal])
             self.save_visuals += 1
-        return self.attn_criterion(backprop, compute_err, inp, out, p0, p0_theta)
+        
+        loss, err = self.attn_criterion(backprop, compute_err, inp, out, p0, p0_theta, return_output)
+        if not return_output: # during training and acting
+            return loss, err
+        else:  # for real image visualization
+            return loss, err, out
 
     def trans_forward(self, inp, softmax=True):
         inp_img = inp['inp_img']
@@ -75,7 +80,7 @@ class TwoStreamClipLingUNetTransporterAgent(TransporterAgent):
         out = self.transport.forward(inp_img, p0, lang_goal, softmax=softmax)
         return out
 
-    def transport_training_step(self, frame, backprop=True, compute_err=False):
+    def transport_training_step(self, frame, backprop=True, compute_err=False, return_output=False):
         inp_img = frame['img']
         p0 = frame['p0']
         p1, p1_theta = frame['p1'], frame['p1_theta']
@@ -83,8 +88,13 @@ class TwoStreamClipLingUNetTransporterAgent(TransporterAgent):
 
         inp = {'inp_img': inp_img, 'p0': p0, 'lang_goal': lang_goal}
         out = self.trans_forward(inp, softmax=False)
-        err, loss = self.transport_criterion(backprop, compute_err, inp, out, p0, p1, p1_theta)
-        return loss, err
+        
+        if not return_output: # during training and acting
+            err, loss = self.transport_criterion(backprop, compute_err, inp, out, p0, p1, p1_theta)
+            return loss, err
+        else: # for real image visualization
+            err, loss, idx = self.transport_criterion(backprop, compute_err, inp, out, p0, p1, p1_theta, return_output)
+            return loss, err, out[0,idx,:,:]
 
     # @get_local('img', 'lang_goal', 'pick_conf', 'place_conf')
     def act(self, obs, info, goal=None):  # pylint: disable=unused-argument

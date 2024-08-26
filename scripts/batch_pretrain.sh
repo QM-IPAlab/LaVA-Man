@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --partition=long
-#SBATCH --gres=gpu:4
+#SBATCH --gres=gpu:8
 #SBATCH --job-name=full
 #SBATCH --cpus-per-task=16
 
@@ -31,18 +31,20 @@ export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 export OMP_NUM_THREADS=1
+export TOKENIZERS_PARALLELISM=false
 
 #export MASTER_ADDR=$(hostname)
 #export MASTER_PORT=$(python -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
 
-python -m torch.distributed.launch --nproc_per_node 4 --master_port=$PORT mae/main_pretrain_ours.py \
+python -m torch.distributed.launch --nproc_per_node 8 --master_port=$PORT mae/main_pretrain_ours.py \
     --model mae_robot_lang \
     --batch_size 64 \
-    --output_dir output_mae_robot_lang_full_color2 \
-    --pretrain  /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_full_color/checkpoint-399.pth\
+    --output_dir output_mae_robot_lang_full_color_aug \
+    --pretrain  /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/checkpoints/mae_pretrain_vit_base.pth\
     --mask_ratio 0.95 \
     --data_path /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/full_color_seen_obj.hdf5 \
     --epochs 400 \
-    --log \
-    --no_pin_mem
+    --aug \
+    --transform flip \
+    --log
 

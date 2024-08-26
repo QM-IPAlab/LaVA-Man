@@ -733,6 +733,7 @@ class RavensMultiTaskDataset(RavensDataset):
 
         self._path = None
         self._task = None
+        np.random.seed(42)
 
     def __len__(self):
         # Average number of episodes across all tasks

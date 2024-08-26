@@ -4,13 +4,13 @@
 # #SBATCH --job-name=real
 # #SBATCH --cpus-per-task=16
 
-# module load python/anaconda3
-# source activate mae-cliport
+# module load python/3.8
+# source py-mae-cliport/bin/activate
 export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 
-exps_name="exps_real"
+exps_name="exps_extra_unbatched"
 agent_name="mae_seg2"
 
 # ======== task name ========= #
@@ -21,22 +21,22 @@ task_name="pack_objects"
 #                          train.agent=${agent_name}\
 #                          train.exp_folder=${exps_name} \
 #                          dataset.cache=True \
+#                          train.n_demos=100 \
+#                          train.n_steps=20100 \
 #                          train.load_from_last_ckpt=False \
 #                          train.n_rotations=36\
-#                          train.log=False \
+#                          train.log=True \
 #                          wandb.run_name=${exps_name}_${task_name} \
 #                          mae_model=mae_robot_lang \
 #                          train.linear_probe=False \
 #                          train.accumulate_grad_batches=1 \
 #                          pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big_extra/checkpoint-140.pth\
-#                          cliport_checkpoint=False\
 #                          train.lr_scheduler=True\
 #                          train.lr=5e-5\
 #                          dataset.type=real\
-#                          #train.lr=5e-5\
-#                          #train.warmup_epochs=10\
-#                          #train.precision=32\
-#                          #train.batch_size=4 \
+#                          train.warmup_epochs=10\
+#                          train.load_pretrained_ckpt=False\
+                         #cliport_checkpoint=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/exps_extra_unbatched/multi-language-conditioned-mae_seg2-n1000-train/checkpoints/best.ckpt\
                          
 
 python cliport/eval_pick_place.py model_task=${task_name}\

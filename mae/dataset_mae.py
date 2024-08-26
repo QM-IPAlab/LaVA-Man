@@ -5,12 +5,13 @@ from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 import h5py
 import torchvision.transforms as transforms
-
+from cliport.utils import utils
+import numpy as np
 PATH = "/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/exist_dataset.hdf5"
 
 
 class MAEDataset(Dataset):
-    def __init__(self, data_path=PATH, transform=None):
+    def __init__(self, data_path=PATH, transform=None, aug=False):
         super().__init__()
         self.data_path = data_path
         self.file = None
@@ -20,6 +21,7 @@ class MAEDataset(Dataset):
             print("Length of the dataset: ", self.length)
 
         self.transform = transform
+        self.aug = aug
 
     def __len__(self):
         return self.length
@@ -34,6 +36,12 @@ class MAEDataset(Dataset):
         lang = self.file['language'][idx]
         pick = self.file['gt_pick'][idx]
         place = self.file['gt_place'][idx]
+
+        if self.aug:
+            angle = np.random.choice([0, 15, 30])
+            img1, _, (p0, p1), pert_urb_params = utils.perturb(img1, (pick, place), theta_sigma=angle)
+            pick = p0
+            place = p1
 
         if self.transform:
             if img1.max() > 1:

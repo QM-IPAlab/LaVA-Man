@@ -113,17 +113,25 @@ def get_args_parser():
     parser.add_argument('--save_ca', action='store_true', help='save cross attention maps')
     parser.add_argument('--wandb_resume', default=None, type=str)
     parser.add_argument('--save_relevance', action='store_true')
-    parser.add_argument('--stand_norm',action='store_true')
+    #parser.add_argument('--stand_norm',action='store_true')  abandoned
+    parser.add_argument('--transform', default='None', type=str)
+    parser.add_argument('--aug', action='store_true')
 
     return parser
 
+def get_flip_transform():
+    transform_flip = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.RandomVerticalFlip(p=0.5),
+        transforms.Normalize(mean=MEAN_CLIPORT, std=STD_CLIPORT)])
+    return transform_flip
 
 def get_fix_transform():
     trasform_fix = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(mean=MEAN_CLIPORT, std=STD_CLIPORT)])
     return trasform_fix
-
 
 def get_fix_transform_standnorm():
     
@@ -139,7 +147,6 @@ def get_fix_transform_standnorm():
         transforms.ToTensor(),
         StandardNormalize()])
     return trasform_fix
-
 
 def get_aug_transform(input_size):
     transform_train = transforms.Compose([
@@ -165,13 +172,16 @@ def main(args):
 
     cudnn.benchmark = True
 
-    # simple augmentation
-    transform_train = get_fix_transform()
-    if args.stand_norm:
-        print("Using standard normalization")
+    # choose augmentations
+    if args.transform == 'flip':
+        transform_train = get_flip_transform()
+    elif args.transform == 'stand_norm':
         transform_train = get_fix_transform_standnorm()
-    dataset_train = MAEDataset(transform=transform_train, data_path=args.data_path)
-    dataset_vis = MAEDataset(transform=transform_train, data_path=TEST_PATH)
+    else:
+        transform_train = get_fix_transform()
+
+    dataset_train = MAEDataset(transform=transform_train, data_path=args.data_path, aug=args.aug)
+    dataset_vis = MAEDataset(transform=transform_train, data_path=TEST_PATH, aug=False)
     #dataset_train = Subset(dataset_train, range(600))
 
     if True:  # args.distributed:

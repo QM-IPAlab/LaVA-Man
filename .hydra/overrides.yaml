@@ -1,11 +1,11 @@
 - model_task=multi-language-conditioned
-- eval_task=packing-shapes
+- eval_task=stack-block-pyramid-seq-full
 - agent=mae_sep_seg2
 - mode=test
 - n_demos=100
 - train_demos=1000
-- exp_folder=exps_no_pretrain
-- checkpoint_type=test_best
+- exp_folder=exps_full_color_repeat
+- checkpoint_type=last
 - update_results=True
 - disp=False
 - record.save_video=False

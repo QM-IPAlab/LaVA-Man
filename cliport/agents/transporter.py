@@ -1,6 +1,8 @@
 import os
 import numpy as np
 import math
+import cv2
+import cliport.utils.visual_utils as vu
 
 import torch
 import torch.nn.functional as F
@@ -112,15 +114,19 @@ class TransporterAgent(LightningModule):
         output = self.attention.forward(inp_img, softmax=softmax)
         return output
 
-    def attn_training_step(self, frame, backprop=True, compute_err=False):
+    def attn_training_step(self, frame, backprop=True, compute_err=False, return_output=False):
         inp_img = frame['img']
         p0, p0_theta = frame['p0'], frame['p0_theta']
 
         inp = {'inp_img': inp_img}
         out = self.attn_forward(inp, softmax=False)
-        return self.attn_criterion(backprop, compute_err, inp, out, p0, p0_theta)
+        loss, err = self.attn_criterion(backprop, compute_err, inp, out, p0, p0_theta)
+        if not return_output:
+            return loss, err
+        else:
+            return loss, err, out
 
-    def attn_criterion(self, backprop, compute_err, inp, out, p, theta):
+    def attn_criterion(self, backprop, compute_err, inp, out, p, theta, return_output=False):
         # Get label.
         theta_i = theta / (2 * np.pi / self.attention.n_rotations)
         theta_i = np.int32(np.round(theta_i)) % self.attention.n_rotations
@@ -154,9 +160,9 @@ class TransporterAgent(LightningModule):
             argmax = np.unravel_index(argmax, shape=pick_conf.shape)
             p0_pix = argmax[:2]
             p0_theta = argmax[2] * (2 * np.pi / pick_conf.shape[2])
-
+            dis_ord = 1 if not return_output else 2
             err = {
-                'dist': np.linalg.norm(np.array(p) - p0_pix, ord=1),
+                'dist': np.linalg.norm(np.array(p) - p0_pix, ord=dis_ord),
                 'theta': np.absolute((theta - p0_theta) % np.pi)
             }
         return loss, err
@@ -168,17 +174,22 @@ class TransporterAgent(LightningModule):
         output = self.transport.forward(inp_img, p0, softmax=softmax)
         return output
 
-    def transport_training_step(self, frame, backprop=True, compute_err=False):
+    def transport_training_step(self, frame, backprop=True, compute_err=False, return_output=False):
         inp_img = frame['img']
         p0 = frame['p0']
         p1, p1_theta = frame['p1'], frame['p1_theta']
 
         inp = {'inp_img': inp_img, 'p0': p0}
         output = self.trans_forward(inp, softmax=False)
-        err, loss = self.transport_criterion(backprop, compute_err, inp, output, p0, p1, p1_theta)
-        return loss, err
-
-    def transport_criterion(self, backprop, compute_err, inp, output, p, q, theta):
+        
+        if not return_output: # during training
+            err, loss = self.transport_criterion(backprop, compute_err, inp, output, p0, p1, p1_theta)
+            return loss, err
+        else: # for real image visualization only
+            err, loss, idx = self.transport_criterion(backprop, compute_err, inp, output, p0, p1, p1_theta, return_output)
+            return loss, err, output[0,idx,:,:]
+        
+    def transport_criterion(self, backprop, compute_err, inp, output, p, q, theta, return_output=False):
         itheta = theta / (2 * np.pi / self.transport.n_rotations)
         itheta = np.int32(np.round(itheta)) % self.transport.n_rotations
 
@@ -213,13 +224,16 @@ class TransporterAgent(LightningModule):
             argmax = np.unravel_index(argmax, shape=place_conf.shape)
             p1_pix = argmax[:2]
             p1_theta = argmax[2] * (2 * np.pi / place_conf.shape[2])
-
+            dis_ord = 1 if not return_output else 2
             err = {
-                'dist': np.linalg.norm(np.array(q) - p1_pix, ord=1),
+                'dist': np.linalg.norm(np.array(q) - p1_pix, ord=dis_ord),
                 'theta': np.absolute((theta - p1_theta) % np.pi)
             }
         self.transport.iters += 1
-        return err, loss
+        if not return_output:
+            return err, loss
+        else:
+            return err, loss, argmax[2]
 
     def training_step(self, batch, batch_idx, optimizer_idx):
         self.attention.train()
@@ -393,13 +407,13 @@ class TransporterAgent(LightningModule):
         assert self.val_repeats >= 1
         for i in range(self.val_repeats):
             frame, _ = batch
-            l0, err0 = self.attn_training_step(frame, backprop=False, compute_err=True)
+            l0, err0, out_attn = self.attn_training_step(frame, backprop=False, compute_err=True, return_output=True)
             loss0 += l0
             if isinstance(self.transport, Attention):
-                l1, err1 = self.attn_training_step(frame, backprop=False, compute_err=True)
+                l1, err1, out_attn = self.attn_training_step(frame, backprop=False, compute_err=True, return_output=True)
                 loss1 += l1
             else:
-                l1, err1 = self.transport_training_step(frame, backprop=False, compute_err=True)
+                l1, err1, out_trans = self.transport_training_step(frame, backprop=False, compute_err=True, return_output=True)
                 loss1 += l1
         loss0 /= self.val_repeats
         loss1 /= self.val_repeats
@@ -408,16 +422,30 @@ class TransporterAgent(LightningModule):
         self.trainer.evaluation_loop.trainer.train_loop.running_loss.append(val_total_loss)
         
 
-        # #import pdb; pdb.set_trace()
-        # img = frame['img'][:,:,:3]
-        # pick_place = frame['p0']
-        # place_place = frame['p1']
-        # pick_radius = frame['pick_radius']
-        # place_radius = frame['place_radius']
-        # text = frame['lang_goal']
+        #import pdb; pdb.set_trace()
+        img = frame['img'][:,:,:3]
+        pick_place = frame['p0']
+        place_place = frame['p1']
+        pick_radius = frame['pick_radius']
+        place_radius = frame['place_radius']
+        text = frame['lang_goal']
 
-        # img = img.astype(np.uint8)
+        img = img.astype(np.uint8)
 
+        #save heatmap images
+        out_attn = out_attn.reshape(320,160).detach().cpu().numpy()
+        out_trans = out_trans.detach().cpu().numpy()
+        save_path = os.path.join(self.cfg['train']['train_dir'], 'real_vis')
+        os.makedirs(save_path, exist_ok=True)
+        image = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        name = self.name.split('-')[0]
+        save = vu.save_tensor_with_heatmap(image, out_attn,
+            f'{save_path}/{name}_pick{batch_idx + 1:06d}.png',
+            l=text)
+        save = vu.save_tensor_with_heatmap(image, out_trans,
+            f'{save_path}/{name}_place{batch_idx + 1:06d}.png',
+            l=text)
+        # save gt images
         # brg = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         # cv2.circle(brg, (pick_place[1], pick_place[0]), int(pick_radius), (0, 255, 0), 2)
         # cv2.circle(brg, (place_place[1], place_place[0]), int(place_radius), (0, 0, 255), 2)
