@@ -70,7 +70,7 @@ class MAESepDPTAgent(MAESepSeg2Agent):
 
 class MAESepDPTSKAgent(MAESepSeg2Agent):
     def _build_model(self):
-        stream_fcn = 'mae_seg_dptsk'
+        stream_fcn = 'mae_seg_dpt_sk'
         if self.sep_mode == 'pick':
             self.attention = self.create_attention(stream_fcn)
             self.transport = None
@@ -102,6 +102,25 @@ class MAESepDPTSegAgent(MAESepSeg2Agent):
         elif self.sep_mode == 'both':
             self.attention = self.create_attention(stream_fcn1)
             self.transport = self.create_transport(stream_fcn2)
+        
+        else:
+            raise ValueError(f"Invalid sep_mode: {self.sep_mode}")
+
+
+class MAESepSeg2DAgent(MAESepSeg2Agent):
+    def _build_model(self):
+        stream_fcn = 'mae_seg2_dual'
+        if self.sep_mode == 'pick':
+            self.attention = self.create_attention(stream_fcn)
+            self.transport = None
+        
+        elif self.sep_mode == 'place':
+            self.transport = self.create_transport(stream_fcn)
+            self.attention = None
+        
+        elif self.sep_mode == 'both':
+            self.attention = self.create_attention(stream_fcn)
+            self.transport = self.create_transport(stream_fcn)
         
         else:
             raise ValueError(f"Invalid sep_mode: {self.sep_mode}")

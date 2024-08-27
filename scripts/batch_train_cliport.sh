@@ -10,7 +10,7 @@ export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 
-exps_name="exps_sep_seg2_batchnorm"
+exps_name="debug"
 agent_name="mae_sep_seg2"
 
 # ======== task name ========= #

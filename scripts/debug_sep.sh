@@ -7,7 +7,7 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 export TOKENIZERS_PARALLELISM=false
 
 exps_name="debug"
-agent_name="mae_seg2"
+agent_name="mae_sep_dpt_sk"
 
 task_name="put-block-in-bowl-seen-colors"
 
@@ -31,22 +31,22 @@ task_name="put-block-in-bowl-seen-colors"
 # "packing-seen-google-objects-seq"
 
 
-python -m cliport.train  train.task=${task_name}\
-                         train.agent=${agent_name}\
-                         train.exp_folder=${exps_name}\
-                         wandb.run_name=${exps_name}_${task_name}\
-                         train.n_demos=100 \
-                         train.n_steps=20100 \
-                         train.lr_scheduler=True\
-                         train.lr=5e-5\
-                         train.warmup_epochs=10\
-                         train.load_from_last_ckpt=True\
-                         train.log=True\
-                         mae_model=mae_robot_lang \
-                         dataset.cache=True \
-                         pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big_extra/checkpoint-140.pth\
-                         train.load_pretrained_ckpt=False\
-                         train.sep_mode=False\
+# python -m cliport.train  train.task=${task_name}\
+#                          train.agent=${agent_name}\
+#                          train.exp_folder=${exps_name}\
+#                          wandb.run_name=${exps_name}_${task_name}\
+#                          train.n_demos=100 \
+#                          train.n_steps=20100 \
+#                          train.lr_scheduler=True\
+#                          train.lr=5e-5\
+#                          train.warmup_epochs=10\
+#                          train.load_from_last_ckpt=True\
+#                          train.log=False\
+#                          mae_model=mae_robot_lang \
+#                          dataset.cache=True \
+#                          pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big_extra/checkpoint-140.pth\
+#                          train.load_pretrained_ckpt=False\
+#                          train.sep_mode=False\
 
 # python -m cliport.train  train.task=${task_name}\
 #                          train.agent=${agent_name}\
@@ -89,25 +89,25 @@ python -m cliport.train  train.task=${task_name}\
 #                          train.sep_mode=place\
 #                          #dataset.type=multi\
 
-# python -m cliport.train  train.task=multi-language-conditioned\
-#                          train.agent=${agent_name}\
-#                          train.exp_folder=${exps_name}\
-#                          wandb.run_name=debug\
-#                          train.n_demos=1000 \
-#                          train.n_steps=101000 \
-#                          train.lr_scheduler=True\
-#                          train.lr=2e-5\
-#                          train.warmup_epochs=8\
-#                          train.precision=32\
-#                          train.batch_size=16\
-#                          train.batchnorm=True\
-#                          train.load_from_last_ckpt=False\
-#                          train.log=False\
-#                          mae_model=mae_robot_lang \
-#                          pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big/checkpoint-160.pth\
-#                          cliport_checkpoint=False\
-#                          dataset.cache=False \
-#                          train.sep_mode=pick\
-#                          dataset.type=multi\
+python -m cliport.train  train.task=multi-language-conditioned\
+                         train.agent=${agent_name}\
+                         train.exp_folder=${exps_name}\
+                         wandb.run_name=debug\
+                         train.n_demos=1000 \
+                         train.n_steps=101000 \
+                         train.lr_scheduler=True\
+                         train.lr=2e-5\
+                         train.warmup_epochs=8\
+                         train.precision=32\
+                         train.batch_size=16\
+                         train.batchnorm=True\
+                         train.load_from_last_ckpt=False\
+                         train.log=False\
+                         mae_model=mae_robot_lang \
+                         pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big/checkpoint-160.pth\
+                         cliport_checkpoint=False\
+                         dataset.cache=False \
+                         train.sep_mode=pick \
+                         dataset.type=multi\
 
                          

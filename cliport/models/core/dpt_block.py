@@ -282,7 +282,7 @@ class FeatureFusionBlock_ours(nn.Module):
         Args:
             features (int): number of features
         """
-        super(FeatureFusionBlock_custom, self).__init__()
+        super(FeatureFusionBlock_ours, self).__init__()
         self.width_ratio = width_ratio
 
         self.deconv = deconv
@@ -310,12 +310,14 @@ class FeatureFusionBlock_ours(nn.Module):
 
         self.skip_add = nn.quantized.FloatFunctional()
 
+        self.cat = Cat(features, features)
+
+
     def forward(self, *xs):
         """Forward pass.
         Returns:
             tensor: output
         """
-        import pdb; pdb.set_trace()
         output = xs[0]
 
         if len(xs) == 3:
@@ -340,7 +342,11 @@ class FeatureFusionBlock_ours(nn.Module):
             output = nn.functional.interpolate(output, scale_factor=2,
                     mode="bilinear", align_corners=self.align_corners)
         output = self.out_conv(output)
+
+        output = self.cat(output, xs[-1])
+        
         return output
+
 
 def make_fusion_ours(features, use_bn, width_ratio=1):
     return FeatureFusionBlock_ours(
@@ -352,7 +358,6 @@ def make_fusion_ours(features, use_bn, width_ratio=1):
         align_corners=True,
         width_ratio=width_ratio,
     )
-
 
 
 class Interpolate(nn.Module):
@@ -594,7 +599,7 @@ class DPTOutputAdapterOurs(DPTOutputAdapter):
                  head_type: str = 'semseg',
                  output_width_ratio=1,
                  **kwargs):
-        super().__init__()
+        super().__init__(num_channels, stride_level, patch_size, main_tasks, hooks, layer_dims, feature_dim, last_dim, use_bn, dim_tokens_enc, head_type, output_width_ratio, **kwargs)
         self.scratch.refinenet1 = make_fusion_ours(feature_dim, use_bn, output_width_ratio)
         self.scratch.refinenet2 = make_fusion_ours(feature_dim, use_bn, output_width_ratio)
         self.scratch.refinenet3 = make_fusion_ours(feature_dim, use_bn, output_width_ratio)
@@ -615,21 +620,21 @@ class DPTOutputAdapterOurs(DPTOutputAdapter):
 
         # Extract only task-relevant tokens and ignore global tokens.
         layers = [self.adapt_tokens(l) for l in layers]
-
+        
         # Reshape tokens to spatial representation
         layers = [rearrange(l, 'b (nh nw) c -> b c nh nw', nh=N_H, nw=N_W) for l in layers]
 
         layers = [self.act_postprocess[idx](l) for idx, l in enumerate(layers)]
         # Project layers to chosen feature dim
-        layers = [self.scratch.layer_rn[idx](l) for idx, l in enumerate(layers)]
-
+        layers = [self.scratch.layer_rn[idx](l) for idx, l in enumerate(layers)] 
         # Fuse layers using refinement stages
-        path_4 = self.scratch.refinenet4(layers[3], rgb)
-        path_3 = self.scratch.refinenet3(path_4, layers[2], rgb)
-        path_2 = self.scratch.refinenet2(path_3, layers[1], rgb)
-        path_1 = self.scratch.refinenet1(path_2, layers[0], rgb)
+        path_4 = self.scratch.refinenet4(layers[3], rgb)  # layers[3] : [16, 256, 10, 5]
+        path_3 = self.scratch.refinenet3(path_4, layers[2], rgb) # layers[2] : [16, 256, 20, 10]
+        path_2 = self.scratch.refinenet2(path_3, layers[1], rgb) # layers[1] : [16, 256, 40, 20]
+        path_1 = self.scratch.refinenet1(path_2, layers[0], rgb) # layers[0] : [16, 256, 80, 40]
 
         # Output head
         out = self.head(path_1)
 
         return out
+    

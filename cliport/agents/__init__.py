@@ -19,13 +19,13 @@ from cliport.agents.transporter_lang_goal import TwoStreamClipFilmLingUNetLatTra
 
 # Ours
 from cliport.agents.mae_transporter import MAETransporterAgent, MAESegTransporterAgent, MAEFixTransporterAgent
-from cliport.agents.mae_transporter import MAEFixGloss, MAESeg2TransporterAgent, MAESeg2TransporterAgentRenor
+from cliport.agents.mae_transporter import MAEFixGloss, MAESeg2TransporterAgent, MAESeg2TransporterAgentRenor, MAESeg2DTransporterAgent
 from cliport.agents.mae_transporter import MAESeg2ModelFullMaskAgent, MAESeg3TransporterAgent, MAEFeatUpTransporterAgent, MAESegDPT3TransporterAgent
 from cliport.agents.mae_transporter import MAESeg2DepthTransporterAgent, MAESegBaseAgent, MAESegCLIPModel, MAESegDPTTransporterAgent, MAESegDPT2LossTransporterAgent
 from cliport.agents.mae_transporter_two_stream import MAESeg2TwoStreamTransporterAgent, MAESeg2PlusTwoStreamTransporterAgent
 from cliport.agents.sep_transporter import PickAgent, PlaceAgent
 
-from cliport.agents.transporter_sep_models import MAESepSeg2Agent, MAESepDPTAgent, MAESepDPTSKAgent, MAESepDPTSegAgent
+from cliport.agents.transporter_sep_models import MAESepSeg2Agent, MAESepDPTAgent, MAESepDPTSKAgent, MAESepDPTSegAgent, MAESepSeg2DAgent
 
 
 names = {
@@ -48,11 +48,13 @@ names = {
          'mae_seg_dpt': MAESegDPTTransporterAgent,
          'mae_seg_dpt_2loss': MAESegDPT2LossTransporterAgent,
          'mae_seg2_dpt': MAESegDPT3TransporterAgent,
+         'mae_seg2d': MAESeg2DTransporterAgent,
 
          'mae_sep_seg2': MAESepSeg2Agent,
          'mae_sep_dpt': MAESepDPTAgent,
          'mae_sep_dpt_sk': MAESepDPTSKAgent,
          'mae_sep_dpt_seg': MAESepDPTSegAgent,
+         'mae_sep_seg2d': MAESepSeg2DAgent,
 
          ## Separated Transporter
          'pick': PickAgent,

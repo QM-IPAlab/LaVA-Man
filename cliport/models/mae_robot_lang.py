@@ -1015,7 +1015,7 @@ class MAESegDPTSKModel(MAESegDPTModel):
     def __init__(self, input_shape, output_dim, cfg, 
                  device, preprocess, model_name='mae_robot_lang', 
                  pretrain_path = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big/checkpoint-160.pth'):
-        super().__init__()
+        super().__init__(input_shape, output_dim, cfg, device, preprocess, model_name, pretrain_path)
         model_name = 'mae_robot_lang' if model_name is None else model_name
         self.model = models_lib.__dict__[model_name](
             img_size=input_shape[:2],
@@ -1072,7 +1072,51 @@ class MAESegDPTSKModel(MAESegDPTModel):
         all_feats = [x[:,1:,:] for x in all_feats]
 
         img_info = {'height': in_shape[2], 'width': in_shape[3]}
-        import pdb; pdb.set_trace()
         predict = self.head(all_feats, img_info, rgb)
 
+        return predict
+
+
+class MAESeg2ModelDual(MAESeg2Model):
+    """MAESeg2Model, but do not drop one cross-attention.
+    Instead, copy the input as the masked image"""
+
+    def forward(self, x, lang):
+        x = self.preprocess(x, dist='clip')
+
+        in_type = x.dtype
+        in_shape = x.shape
+        device = x.device
+        rgb = x[:, :3]  # select RGB, b, c, h, w
+        latent, mask, ids_restore = self.model.forward_encoder(rgb, mask_ratio=0)
+        lang_emb = self.get_lang_embed(lang, device)
+
+        fea = self.model.decoder_embed(latent)
+        fea = fea + self.model.decoder_pos_embed
+
+        out1 = fea
+        out2 = fea
+        if out1.shape[0] != lang_emb[0].shape[0]:
+            lang_emb = lang_emb[0].repeat([int(out1.shape[0]//lang_emb[0].shape[0]), 1, 1])
+
+        for blk in self.model.decoder_blocks:
+            out1, out2 = blk(out1, out2, lang_emb)
+        out = self.model.decoder_norm(out1)
+        out = out[:, 1:, :]  # 1, 200, 512
+        out = self.unpatchify(out) # 1, 512, 20, 10
+
+        out = self.layer1(out)    # 1, 256, 40, 20
+        out = self.cat1(out, rgb) # 1, 256, 40, 20
+        out = self.layer2(out)    # 1, 128, 80, 40
+        out = self.cat2(out, rgb) # 1, 128, 80, 40
+        out = self.layer3(out)    # 1, 64, 160, 80
+        out = self.cat3(out, rgb) # 1, 64, 160, 80
+        out = self.layer4(out)    # 1, 16, 320, 160
+        out = self.cat4(out, rgb) # 1, 16, 320, 160
+
+        # incase of different size (patch size = 8)
+        if out.shape[-2:] != in_shape[-2:]:
+            out = F.interpolate(out, size=(in_shape[-2], in_shape[-1]), mode='bilinear')
+
+        predict = self.conv(out) # 1, 1, 320, 160
         return predict
