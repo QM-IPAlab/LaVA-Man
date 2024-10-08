@@ -81,16 +81,13 @@ def main(vcfg):
     else:
         eval_pick, eval_place = ckpt_manager.get_test_ckpt()
     #TODO: other checkpoint types
-
-    # Evaluation loop
-    for ckpt_pick, ckpt_place in zip(eval_pick, eval_place):
-        print(f"Pick: {ckpt_pick} | Place: {ckpt_place}")
-    
-    tcfg['pretrain_path'] = None
-    tcfg['train']['batchnorm'] = True
+   
+    tcfg['pretrain_path'] = None 
+    tcfg['train']['batchnorm'] = True 
     agent = agents.names[vcfg['agent']](name, tcfg, None, ds, 'both')
     agent.eval()
 
+    # Evaluation loop
     for ckpt_pick, ckpt_place in zip(eval_pick, eval_place):
         
         model_pick, model_place, test_name, to_eval = get_model_path(

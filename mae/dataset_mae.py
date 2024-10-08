@@ -34,8 +34,8 @@ class MAEDataset(Dataset):
         img1 = self.file['image_s1'][idx]
         img2 = self.file['image_s2'][idx]
         lang = self.file['language'][idx]
-        pick = self.file['gt_pick'][idx]
-        place = self.file['gt_place'][idx]
+        pick = self.file['gt_pick'][idx] if 'gt_pick' in self.file else 0.0
+        place = self.file['gt_place'][idx] if 'gt_pick' in self.file else 0.0
 
         if self.aug:
             angle = np.random.choice([0, 15, 30])

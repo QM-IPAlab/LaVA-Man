@@ -151,7 +151,7 @@ class RealDataset(Dataset):
             'img': img,
             'p0': p0, 'p0_theta': p0_theta,
             'p1': p1, 'p1_theta': p1_theta,
-            'perturb_params': None,
+            'perturb_params': False,
             'lang_goal': lang_goal,
             'pick_radius': pick_radius,
             'place_radius': place_radius

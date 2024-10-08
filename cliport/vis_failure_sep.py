@@ -20,7 +20,7 @@ import cv2
 import torch
 
 import cliport.utils.visual_utils as vu
-
+from cliport.eval_sep import CkptManager, get_model_path
 
 @hydra.main(config_path='./cfg', config_name='eval')
 def main(vcfg):
@@ -38,6 +38,7 @@ def main(vcfg):
 
     # Choose eval mode and task.
     mode = vcfg['mode']
+    checkpoint_type = vcfg['checkpoint_type']
     eval_task = vcfg['eval_task']
     if mode not in {'train', 'val', 'test'}:
         raise Exception("Invalid mode. Valid options: train, val, test")
@@ -83,18 +84,27 @@ def main(vcfg):
             existing_results = json.load(f)
 
     # Make a list of checkpoints to eval.
-    ckpts_to_eval = list_ckpts_to_eval(vcfg, existing_results)
+    ckpt_manager = CkptManager(vcfg)
+    if checkpoint_type == 'val_missing':
+        eval_pick, eval_place = ckpt_manager.get_eval_list()
+    elif checkpoint_type == 'last':
+        eval_pick, eval_place = ckpt_manager.get_last_ckpt()
+    else:
+        eval_pick, eval_place = ckpt_manager.get_test_ckpt()
+    #TODO: other checkpoint types
+
+    tcfg['pretrain_path'] = None
+    tcfg['train']['batchnorm'] = True
+    agent = agents.names[vcfg['agent']](name, tcfg, None, ds, 'both')
+    agent.eval()
 
     # Evaluation loop
-    print(f"Evaluating: {str(ckpts_to_eval)}")
-    for ckpt in ckpts_to_eval:
-        model_file = os.path.join(vcfg['model_path'], ckpt)
+    for ckpt_pick, ckpt_place in zip(eval_pick, eval_place):
+        
+        model_pick, model_place, test_name, to_eval = get_model_path(
+            ckpt_pick, ckpt_place, vcfg, existing_results)
 
-        if not os.path.exists(model_file) or not os.path.isfile(model_file):
-            print(f"Checkpoint not found: {model_file}")
-            continue
-        elif not vcfg['update_results'] and ckpt in existing_results:
-            print(f"Skipping because of existing results for {model_file}.")
+        if not to_eval:
             continue
 
         results = []
@@ -106,12 +116,9 @@ def main(vcfg):
             # Initialize agent.
             utils.set_seed(train_run, torch=True)
 
-            agent = agents.names[vcfg['agent']](name, tcfg, None, ds)
-
             # Load checkpoint
-            agent.load(model_file)
-            agent.to('cuda')
-            print(f"Loaded: {model_file}")
+            agent.load_sep(model_pick, model_place)
+            print(f"Loaded: {ckpt_pick}, {ckpt_place}")
 
             record = vcfg['record']['save_video']
             n_demos = vcfg['n_demos']
@@ -119,41 +126,42 @@ def main(vcfg):
             # Run testing and save total rewards with last transition info.
             # Each test is a full episode.
             recording_end = 0
+            
             for i in range(0, n_demos):
+                
+                total_reward = 0
                 if recording_end >= 10:
                     print("Reocorded 10 videos. Recording finished")
                     break
+                
+                # set task
+                if 'multi' in dataset_type:
+                    task_name = ds.get_curr_task()
+                    task = tasks.names[task_name]()
+                    print(f'Evaluating on {task_name}')
+                else:
+                    task_name = vcfg['eval_task']
+                    task = tasks.names[task_name]()
+
+                episode, seed = ds.load(i)
+                goal = episode[-1]
+                np.random.seed(seed)
+                task.mode = mode
+                env.seed(seed)
+                env.set_task(task)
 
                 for j in range(2):
+
                     # run 2 times, first time for testing,
                     # second time for recording.
                     # If success, then no need to record.
-
+                    obs = env.reset()
+                    info = env.info              
+                    reward = 0
                     if j == 0:  # if first time
                         print(f'Test: {i + 1}/{n_demos}')
                     else:  # if second time
-                        print(f'Recording: {i + 1}/{n_demos}')
-
-                    episode, seed = ds.load(i)
-                    goal = episode[-1]
-                    total_reward = 0
-                    np.random.seed(seed)
-
-                    # set task
-                    if 'multi' in dataset_type:
-                        task_name = ds.get_curr_task()
-                        task = tasks.names[task_name]()
-                        print(f'Evaluating on {task_name}')
-                    else:
-                        task_name = vcfg['eval_task']
-                        task = tasks.names[task_name]()
-
-                    task.mode = mode
-                    env.seed(seed)
-                    env.set_task(task)
-                    obs = env.reset()
-                    info = env.info
-                    reward = 0
+                        print(f'Recording: {i + 1}/{n_demos}')  
 
                     if j == 1 and record:  # if this is the second time, start recording
                         video_name = f'{task_name}-{i + 1:06d}'
@@ -207,7 +215,6 @@ def main(vcfg):
                     if j == 0:
                         results.append((total_reward, info))
                         mean_reward = np.mean([r for r, i in results])
-                        print(f'Mean: {mean_reward} | Task: {task_name} | Ckpt: {ckpt}')
                         if total_reward > 0.9:
                             print("Task success. No need to record.")
                             break

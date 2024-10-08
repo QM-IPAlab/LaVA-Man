@@ -32,6 +32,7 @@ from save_relevance import save_relevance_maps
 from dataset_mae import MAEDataset
 import models_lib
 from transformers import AutoTokenizer
+from cliport.models.core.clip import CLIPResTokenizer
 import sys
 
 
@@ -97,7 +98,7 @@ def get_args_parser():
     parser.add_argument('--pin_mem', action='store_true',
                         help='Pin CPU memory in DataLoader for more efficient (sometimes) transfer to GPU.')
     parser.add_argument('--no_pin_mem', action='store_false', dest='pin_mem')
-    parser.set_defaults(pin_mem=True)
+    parser.set_defaults(pin_mem=False)
 
     # distributed training parameters
     parser.add_argument('--world_size', default=1, type=int,
@@ -221,8 +222,12 @@ def main(args):
     model_without_ddp = model
     # print("Model = %s" % str(model_without_ddp))
 
-    text_processor = AutoTokenizer.from_pretrained("openai/clip-vit-base-patch32")
-
+    # define the text processor
+    if 'res' in args.model:
+        text_processor = CLIPResTokenizer()
+    else:
+        text_processor = AutoTokenizer.from_pretrained("openai/clip-vit-base-patch32")
+        
     eff_batch_size = args.batch_size * args.accum_iter * misc.get_world_size()
 
     if args.lr is None:  # only base_lr is specified

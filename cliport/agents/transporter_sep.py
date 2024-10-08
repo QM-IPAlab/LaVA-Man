@@ -208,10 +208,10 @@ class TransporterAgentSep(LightningModule):
                 raise NotImplementedError()
             
             # Back prop and step
-            if self.sch: s_att.step(epoch=self.current_epoch)
             self.manual_backward(loss, attn_optim)
             attn_optim.step()
             attn_optim.zero_grad()
+            if self.sch: s_att.step(epoch=self.current_epoch)
 
         # Pixel and Rotation error (not used anywhere).
         err = {}
@@ -304,11 +304,11 @@ class TransporterAgentSep(LightningModule):
             else:
                 raise NotImplementedError()
             
-            # Back prop and step
-            if self.sch: s_trans.step(epoch=self.current_epoch)    
+            # Back prop and step    
             self.manual_backward(loss, transport_optim)
             transport_optim.step()
             transport_optim.zero_grad()
+            if self.sch: s_trans.step(epoch=self.current_epoch)
  
         # Pixel and Rotation error (not used anywhere).
         err = {}

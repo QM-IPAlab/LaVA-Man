@@ -614,3 +614,24 @@ def tokenize(texts: Union[str, List[str]], context_length: int = 77):
         result[i, :len(tokens)] = torch.tensor(tokens)
 
     return result
+
+
+class CLIPResTokenizer(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.tokenizer = _Tokenizer()
+
+    def forward(self, text: Union[str, List[str]], context_length: int = 77, padding=None, return_tensors=False):        
+        
+        texts = text 
+        sot_token = _tokenizer.encoder["<|startoftext|>"]
+        eot_token = _tokenizer.encoder["<|endoftext|>"]
+        all_tokens = [[sot_token] + _tokenizer.encode(text_one) + [eot_token] for text_one in texts]
+        result = torch.zeros(len(all_tokens), context_length, dtype=torch.long)
+
+        for i, tokens in enumerate(all_tokens):
+            if len(tokens) > context_length:
+                raise RuntimeError(f"Input {texts[i]} is too long for context length {context_length}")
+            result[i, :len(tokens)] = torch.tensor(tokens)
+
+        return result

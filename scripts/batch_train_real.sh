@@ -1,16 +1,16 @@
-# #!/bin/bash
-# #SBATCH --partition=small
-# #SBATCH --gres=gpu:1
-# #SBATCH --job-name=real
-# #SBATCH --cpus-per-task=16
+#!/bin/bash
+#SBATCH --partition=small
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=real
+#SBATCH --cpus-per-task=16
 
-# module load python/3.8
-# source py-mae-cliport/bin/activate
+module load python/3.8
+source py-mae-cliport/bin/activate
 export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 
-exps_name="exps_extra_unbatched"
+exps_name="exps_mix_unbatched_v2"
 agent_name="mae_seg2"
 
 # ======== task name ========= #
@@ -30,11 +30,11 @@ task_name="pack_objects"
 #                          mae_model=mae_robot_lang \
 #                          train.linear_probe=False \
 #                          train.accumulate_grad_batches=1 \
-#                          pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big_extra/checkpoint-140.pth\
+#                          pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_mix_v2/checkpoint-160.pth\
 #                          train.lr_scheduler=True\
 #                          train.lr=5e-5\
 #                          dataset.type=real\
-#                          train.warmup_epochs=10\
+#                          train.warmup_epochs=3\
 #                          train.load_pretrained_ckpt=False\
                          #cliport_checkpoint=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/exps_extra_unbatched/multi-language-conditioned-mae_seg2-n1000-train/checkpoints/best.ckpt\
                          

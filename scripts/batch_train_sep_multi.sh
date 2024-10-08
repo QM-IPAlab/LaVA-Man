@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --partition=small
 #SBATCH --gres=gpu:1
-#SBATCH --job-name=dpt2
+#SBATCH --job-name=clip
 #SBATCH --cpus-per-task=16
 
 module load python/3.8
@@ -17,33 +17,17 @@ export TOKENIZERS_PARALLELISM=false
 # 2. The number of job array is 0 indexed
 # 3. pretrain_path is correct
 # 4. dataset.type is set to multi
-# 5. train.sep_mode is set to pick or place
-# 6. train.batchnorm is set to True
-# 7. task name is multi-language-conditioned
-# 8. wandb.run_name is set to exps_name_multi
+# 5. train.batchnorm is set to True
+# 6. task name is multi-language-conditioned
+# 7. wandb.run_name is set to exps_name_multi
+# 8. check the agent name: sep or not sept, if sep, check train.sep_mode is set to pick or place
 
 
-exps_name="exps_extra_dpt2"
-agent_name="mae_sep_dpt_sk"
-#pretrain_path="/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big/checkpoint-160.pth"
-#pretrain_path="/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big_m050/checkpoint-120.pth"
-#pretrain_path="/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big_m075/checkpoint-120.pth"
-#pretrain_path="/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big_m100/checkpoint-120.pth"
-#pretrain_path="/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_full_color/checkpoint-160.pth"
-#pretrain_path="/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_full_color/checkpoint-399.pth"
-#pretrain_path="/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_full_color/checkpoint-280.pth"
-#pretrain_path="/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big/checkpoint-160.pth"
-#pretrain_path="/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big/checkpoint-280.pth"
-#pretrain_path="/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big/checkpoint-380.pth"
-pretrain_path="/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big_extra2/checkpoint-160.pth"
-#pretrain_path="/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_dual_masking/checkpoint-159.pth"
-#pretrain_path="/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_recon/checkpoint-159.pth"
-#pretrain_path="/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_full_color_repeat/checkpoint-399.pth"
-#pretrain_path="/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_full_color2/checkpoint-160.pth"
-#pretrain_path="/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_full_color3/checkpoint-399.pth"
-#pretrain_path="/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big_extra2_recon/checkpoint-140.pth"
-#pretrain_path="/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_full_color_aug/checkpoint-160.pth"
+exps_name="exps_fullcolor_clip"
+agent_name="mae_sep_clip"
+pretrain_path="/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_robot_clip/checkpoint-160.pth"
 
+#pretrain_path=False
 
 # tasks for ablation study (mask ratio)
 # tasks=("assembling-kits-seq-seen-colors"
@@ -80,19 +64,20 @@ python -m cliport.train  train.task=multi-language-conditioned\
                          train.n_demos=1000 \
                          train.n_steps=101000 \
                          train.lr_scheduler=True\
-                         train.lr=2e-5\
+                         train.lr=5e-5\
                          train.warmup_epochs=10\
                          train.precision=32\
                          train.batch_size=32\
                          train.batchnorm=True\
                          train.load_from_last_ckpt=False\
                          train.log=True\
-                         mae_model=mae_robot_lang \
+                         mae_model=robot_clip \
                          pretrain_path=${pretrain_path}\
                          cliport_checkpoint=False\
                          dataset.cache=False \
                          train.sep_mode=pick\
                          dataset.type=multi\
+                         train.linear_probe=True\
 
 
 python -m cliport.train  train.task=multi-language-conditioned\
@@ -102,19 +87,20 @@ python -m cliport.train  train.task=multi-language-conditioned\
                          train.n_demos=1000 \
                          train.n_steps=101000 \
                          train.lr_scheduler=True\
-                         train.lr=2e-5\
+                         train.lr=5e-5\
                          train.warmup_epochs=10\
                          train.precision=32\
                          train.batch_size=16\
                          train.batchnorm=True\
                          train.load_from_last_ckpt=False\
                          train.log=True\
-                         mae_model=mae_robot_lang \
+                         mae_model=robot_clip \
                          pretrain_path=${pretrain_path}\
                          cliport_checkpoint=False\
                          dataset.cache=False \
                          train.sep_mode=place\
                          dataset.type=multi\
+                         train.linear_probe=True\
 
                        
 for task in "${tasks[@]}"

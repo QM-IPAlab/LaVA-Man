@@ -72,7 +72,6 @@ def merge_datasets(file1, file2, output_file):
             data1 = f1[dset_name][:] # read all data from the dataset
             data2 = f2[dset_name][:]
 
-
             if dset_name != 'language':
                 combined_data = np.concatenate((data1, data2), axis=0)
                 
@@ -95,10 +94,9 @@ def merge_datasets(file1, file2, output_file):
             # create a dataset in the output file
             
            
-
-file1 = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/extra_dataset_no_aug.hdf5'
-file2 = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/exist_dataset_no_aug_all.hdf5'
-output_file = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/extra_full_color_obj.hdf5'
+file1 = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/real_img_v2_full.hdf5'
+file2 = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/full_color_seen_obj.hdf5'
+output_file = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/mix_seen_v2_full.hdf5'
 
 merge_datasets(file1, file2, output_file)
 

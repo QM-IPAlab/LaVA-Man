@@ -15,7 +15,7 @@ def generate_token(text_processor, lang, device):
     if type(lang) is str:
         decoded_strings = [lang]
     else:
-        decoded_strings = [s.decode('ascii') for s in lang]
+        decoded_strings = [s.decode('ascii', errors='replace') for s in lang]
     processed_lang = text_processor(text=decoded_strings, padding="max_length", return_tensors='pt')
     processed_lang = processed_lang.to(device)
     return processed_lang
@@ -106,7 +106,7 @@ def validate_vis_img2(model: torch.nn.Module,
 
         with torch.no_grad():
             
-            processed_lang = generate_token(text_processor, lang, device)       
+            processed_lang = generate_token(text_processor, lang, device)    
             loss, predict, mask = model(img1, img2, pick, place, processed_lang, mask_ratio=args.mask_ratio)
             loss += loss.item()
 
@@ -142,6 +142,8 @@ def validate_vis_img2(model: torch.nn.Module,
                     combined_image = torch.cat((img1, img2, im_masked, predict, im_paste), dim=2)
                 
                 else:
+
+                    predict = model.unpatchify(predict)
                     predict = predict.detach().cpu()
                     predict = predict[0]
                     combined_image = torch.cat((img1, img2, predict), dim=2)

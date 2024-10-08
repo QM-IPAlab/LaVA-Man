@@ -684,7 +684,7 @@ class MAESegCLIPModel(nn.Module):
         self.text_processor = AutoTokenizer.from_pretrained("openai/clip-vit-base-patch32")
 
         self.layer1 = nn.Sequential(
-            ConvBlock(3, [256, 256, 256], kernel_size=3, stride=1, batchnorm=self.batchnorm),
+            ConvBlock(512, [256, 256, 256], kernel_size=3, stride=1, batchnorm=self.batchnorm),
             IdentityBlock(256, [256, 256, 256], kernel_size=3, stride=1, batchnorm=self.batchnorm),
         )
 
@@ -711,19 +711,21 @@ class MAESegCLIPModel(nn.Module):
             nn.Conv2d(16, self.output_dim, kernel_size=1)
         )
 
-    def get_lang_embed(self, lang, device):
-        if type(lang) is str:
-            decoded_strings = [lang]
-        else:
-            decoded_strings = [s.decode('ascii') for s in lang]
-        processed_lang = self.text_processor(text=decoded_strings, padding="max_length", return_tensors='pt')
-        processed_lang = processed_lang.to(device)
-        lang_emb = self.model.clip_text(**processed_lang, return_dict=False)
-        return lang_emb
+    def unpatchify(self, x):
+        p = self.model.patch_embed.patch_size[0]
+        h = self.model.img_size[0] // p
+        w = self.model.img_size[1] // p
+        x = rearrange(x, 'b (nh nw) c -> b c nh nw', nh=h, nw=w)
+        return x
     
     def get_lang_processed(self, lang, device):
         if type(lang) is str:
             decoded_strings = [lang]
+        elif type(lang) is list: # if batch size
+            if type(lang[0]) is str:
+                decoded_strings = [s for s in lang]
+            else:
+                decoded_strings = [s.decode('ascii') for s in lang]
         else:
             decoded_strings = [s.decode('ascii') for s in lang]
         processed_lang = self.text_processor(text=decoded_strings, padding="max_length", return_tensors='pt')
@@ -736,10 +738,10 @@ class MAESegCLIPModel(nn.Module):
 
         in_shape = img_processed.shape
         rgb = img_processed[:, :3]  # select RGB
-
         mae_output = self.model.cliport_forward(rgb, lang_processed)
         #relevance = self.model.show_relevance_map(rgb, lang_processed)
-        out = self.layer1(mae_output)
+        out = self.unpatchify(mae_output)
+        out = self.layer1(out)
         out = self.cat1(out, rgb)
         out = self.layer2(out)
         out = self.cat2(out, rgb)
@@ -1058,9 +1060,8 @@ class MAESegDPTSKModel(MAESegDPTModel):
 
         out1 = fea
         out2 = None
-
         if out1.shape[0] != lang_emb[0].shape[0]:
-            lang_emb = lang_emb[0].repeat([out1.shape[0]//lang_emb[0], 1, 1])
+            lang_emb = lang_emb[0].repeat([out1.shape[0]//lang_emb[0].shape[0], 1, 1])
 
         out_list = []
         for blk in self.model.decoder_blocks:

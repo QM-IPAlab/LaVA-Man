@@ -211,10 +211,10 @@ class OneStreamTransportMAEBatch(OneStreamTransportMAEFixSize):
     def correlate(self, in0, in1, softmax):
         """Correlate two input tensors."""
         batch_size = in0.shape[0]
-        in0 = in0.view(1, -1, in0.shape[-2], in0.shape[-1])
+        in0 = in0.reshape(1, -1, in0.shape[-2], in0.shape[-1])
         output = F.conv2d(in0, in1, padding=(self.pad_size, self.pad_size), groups=batch_size)
         output = F.interpolate(output, size=(in0.shape[-2], in0.shape[-1]), mode='bilinear')
-        output = output.view(batch_size, self.n_rotations, output.shape[2], output.shape[3])
+        output = output.reshape(batch_size, self.n_rotations, output.shape[2], output.shape[3])
         output = output.permute(0, 2, 3, 1)  # [B W H 1]
         output_shape = output.shape
         output = output.reshape(batch_size, -1)

@@ -125,3 +125,21 @@ class MAESepSeg2DAgent(MAESepSeg2Agent):
         else:
             raise ValueError(f"Invalid sep_mode: {self.sep_mode}")
 
+class MAESepCLIP(MAESepSeg2Agent):
+    def _build_model(self):
+        stream_fcn = 'mae_clip'
+        if self.sep_mode == 'pick':
+            self.attention = self.create_attention(stream_fcn)
+            self.transport = None
+        
+        elif self.sep_mode == 'place':
+            self.transport = self.create_transport(stream_fcn)
+            self.attention = None
+        
+        elif self.sep_mode == 'both':
+            self.attention = self.create_attention(stream_fcn)
+            self.transport = self.create_transport(stream_fcn)
+        
+        else:
+            raise ValueError(f"Invalid sep_mode: {self.sep_mode}")
+

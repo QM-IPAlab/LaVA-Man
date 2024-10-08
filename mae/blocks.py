@@ -397,28 +397,59 @@ class DecoderCLIPBlock(nn.Module):
     def __init__(self, dim, num_heads, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop=0., attn_drop=0.,
                  drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm, norm_mem=True, rope=None):
         super().__init__()
-        
+        self.norm1 = norm_layer(dim)
         self.attn = Attention(
             dim, num_heads=num_heads, qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=drop)
         self.cross_attn_clip = CrossAttention(dim, rope=rope, num_heads=num_heads, qkv_bias=qkv_bias, attn_drop=attn_drop,
                                               proj_drop=drop)
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
         
-        self.norm = norm_layer(dim)        
+        self.norm2 = norm_layer(dim)
+        self.norm3 = norm_layer(dim)        
         mlp_hidden_dim = int(dim * mlp_ratio)
         self.mlp = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, act_layer=act_layer, drop=drop)       
 
-    def forward(self, img, lang):
+    def forward(self, x, lang):
         """
         x: norm -> self_attn -> drop -> norm -> cross_attn -> drop
         """
+        x = x + self.drop_path(self.attn(self.norm1(x)))
+        
         # cross attention between text and image
-        x = self.drop_path(self.cross_attn_clip(img, lang, lang))
+        if lang is not None:
+            lang = lang[0] if type(lang) is tuple else lang
+            x = x + self.drop_path(self.cross_attn_clip(self.norm2(x), lang, lang))
 
         # final output
-        x = x + self.drop_path(self.mlp(self.norm(x)))
+        x = x + self.drop_path(self.mlp(self.norm3(x)))
         return x 
 
+
+class DecoderCABlockLangReverse(DecoderCABlockLang):
+    """
+    Reverse the order of cross attention
+    Masked image -> query, lang and input -> key, value
+    """
+    def forward(self, x, y=None, lang=None):
+        """
+        x: norm -> self_attn -> drop -> norm -> cross_attn -> drop
+        """
+        x = x + self.drop_path(self.attn(self.norm1(x)))
+
+        # cross attention between current (K,V) ang goal image (Q)
+        if y is not None:
+            y = self.norm_y(y)
+            x = self.norm2(x)
+            x = x + self.drop_path(self.cross_attn_img(x, y, y))
+
+        # cross attention between current (Q) and language (K,V)
+        if lang is not None:
+            lang = lang[0] if type(lang) is tuple else lang
+            x = x + self.drop_path(self.cross_attn_lang(self.norm3(x), lang, lang))
+
+        # final output
+        x = x + self.drop_path(self.mlp(self.norm4(x)))
+        return x, y
 
 class EncoderCABlockVision(nn.Module):
     """Encoder + CLIP Vision"""

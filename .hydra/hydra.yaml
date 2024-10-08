@@ -107,19 +107,19 @@ hydra:
     hydra: []
     task:
     - model_task=multi-language-conditioned
-    - eval_task=packing-shapes
-    - agent=mae_sep_seg2d
+    - eval_task=packing-seen-google-objects-seq
+    - agent=mae_sep_clip
     - mode=test
     - n_demos=100
     - train_demos=1000
-    - exp_folder=exps_full_color_2d_aug
+    - exp_folder=exps_fullcolor_clip
     - checkpoint_type=best
     - update_results=True
     - disp=False
     - record.save_video=False
   job:
     name: eval_sep
-    override_dirname: agent=mae_sep_seg2d,checkpoint_type=best,disp=False,eval_task=packing-shapes,exp_folder=exps_full_color_2d_aug,mode=test,model_task=multi-language-conditioned,n_demos=100,record.save_video=False,train_demos=1000,update_results=True
+    override_dirname: agent=mae_sep_clip,checkpoint_type=best,disp=False,eval_task=packing-seen-google-objects-seq,exp_folder=exps_fullcolor_clip,mode=test,model_task=multi-language-conditioned,n_demos=100,record.save_video=False,train_demos=1000,update_results=True
     id: ???
     num: ???
     config_name: eval
