@@ -7,11 +7,12 @@ import h5py
 import torchvision.transforms as transforms
 from cliport.utils import utils
 import numpy as np
+import random
 PATH = "/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/exist_dataset.hdf5"
 
 
 class MAEDataset(Dataset):
-    def __init__(self, data_path=PATH, transform=None, aug=False):
+    def __init__(self, data_path=PATH, transform=None, aug=False, condition_free=False):
         super().__init__()
         self.data_path = data_path
         self.file = None
@@ -22,6 +23,7 @@ class MAEDataset(Dataset):
 
         self.transform = transform
         self.aug = aug
+        self.condition_free = condition_free
 
     def __len__(self):
         return self.length
@@ -50,6 +52,11 @@ class MAEDataset(Dataset):
 
             img1 = self.transform(img1)
             img2 = self.transform(img2)
+
+        if self.condition_free:
+            if random.random() < 0.5:
+                lang = ''.encode('ascii')
+                img2 = img1
 
         return img1, img2, lang, pick, place
 

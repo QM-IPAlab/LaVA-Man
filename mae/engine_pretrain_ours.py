@@ -1,6 +1,7 @@
 import math
 import sys
 from typing import Iterable
+from unittest.util import _MAX_LENGTH
 
 import torch
 
@@ -11,12 +12,12 @@ import torchvision.utils as vutils
 import os
 TESTSET_IDX = [0,716,1216,1716,2205,2694,2928,3205,3305,3535,3757,3924,4091,5015,5933,6570,7207,7920,8633]
 
-def generate_token(text_processor, lang, device):
+def generate_token(text_processor, lang, device, max_length):
     if type(lang) is str:
         decoded_strings = [lang]
     else:
         decoded_strings = [s.decode('ascii', errors='replace') for s in lang]
-    processed_lang = text_processor(text=decoded_strings, padding="max_length", return_tensors='pt')
+    processed_lang = text_processor(text=decoded_strings, padding="max_length", return_tensors='pt', max_length=max_length, truncation=True)
     processed_lang = processed_lang.to(device)
     return processed_lang
 
@@ -25,7 +26,8 @@ def train_one_epoch_ours(model: torch.nn.Module,
                          device: torch.device, epoch: int, loss_scaler,
                          log_writer=None,
                          args=None,
-                         text_processor=None):
+                         text_processor=None,
+                         momentum_scheduler=None):
     model.train(True)
     metric_logger = misc.MetricLogger(delimiter="  ")
     metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
@@ -36,21 +38,26 @@ def train_one_epoch_ours(model: torch.nn.Module,
 
     optimizer.zero_grad()
 
+    # training loop (steps)
     for data_iter_step, batch in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
 
         # we use a per iteration (instead of per epoch) lr scheduler
         if data_iter_step % accum_iter == 0:
             lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
 
+        # get batch
         img1, img2, lang, pick, place = batch
         img1 = img1.to(device, non_blocking=True).half()
         img2 = img2.to(device, non_blocking=True).half()
         pick = pick.to(device, non_blocking=True).half()
         place = place.to(device, non_blocking=True).half()
 
+        # tokenizer
         # put the tokenizer here to avoid deadlock caused by the fork of the tokenizer
-        processed_lang = generate_token(text_processor, lang, device)       
+        max_length = 20 if 'voltron' in args.model else 77
+        processed_lang = generate_token(text_processor, lang, device, max_length)       
 
+        # model forward
         with torch.cuda.amp.autocast():
             loss, _, _ = model(img1, img2, pick, place, processed_lang, mask_ratio=args.mask_ratio)
 
@@ -60,11 +67,23 @@ def train_one_epoch_ours(model: torch.nn.Module,
             print("Loss is {}, stopping training".format(loss_value))
             sys.exit(1)
 
+        # loss
         loss /= accum_iter
         loss_scaler(loss, optimizer, parameters=model.parameters(),
                     update_grad=(data_iter_step + 1) % accum_iter == 0)
         if (data_iter_step + 1) % accum_iter == 0:
             optimizer.zero_grad()
+
+        # update momentum encoder2
+        if momentum_scheduler is not None:            
+            with torch.no_grad():
+                m = next(momentum_scheduler)
+                for param_q, param_k in zip(model.module.blocks.parameters(), model.module.blocks2.parameters()):
+                    param_k.data.mul_(m).add_((1.-m) * param_q.detach().data)
+                for param_q, param_k in zip(model.module.patch_embed.parameters(), model.module.patch_embed2.parameters()):
+                    param_k.data.mul_(m).add_((1.-m) * param_q.detach().data)
+                for param_q, param_k in zip(model.module.norm.parameters(), model.module.norm2.parameters()):
+                    param_k.data.mul_(m).add_((1.-m) * param_q.detach().data)
 
         torch.cuda.synchronize()
 
@@ -105,8 +124,8 @@ def validate_vis_img2(model: torch.nn.Module,
         place = place.to(device, non_blocking=True).float()
 
         with torch.no_grad():
-            
-            processed_lang = generate_token(text_processor, lang, device)    
+            max_length = 20 if 'voltron' in args.model else 77
+            processed_lang = generate_token(text_processor, lang, device, max_length)    
             loss, predict, mask = model(img1, img2, pick, place, processed_lang, mask_ratio=args.mask_ratio)
             loss += loss.item()
 
@@ -139,23 +158,22 @@ def validate_vis_img2(model: torch.nn.Module,
                     predict = (predict - predict.min()) / (predict.max() - predict.min())
                     im_paste = img2 * (1 - mask) + predict * mask
 
-                    combined_image = torch.cat((img1, img2, im_masked, predict, im_paste), dim=2)
-                
-                else:
-
+                    combined_image = torch.cat((img1, img2, im_masked, predict, im_paste), dim=2)                
+                elif predict is not None: # no mask but prediction
                     predict = model.unpatchify(predict)
                     predict = predict.detach().cpu()
                     predict = predict[0]
                     combined_image = torch.cat((img1, img2, predict), dim=2)
-                    
+                else: # no mask and no prediction
+                    continue
+
                 if log_writer is not None:
                     combined_image = combined_image.permute(1, 2, 0).numpy()
                     image = wandb.Image(combined_image, caption=lang)
-                    log_writer.log({f'validation_vis_{data_iter_step}': [image]}, epoch)
-                
+                    log_writer.log({f'validation_vis_{data_iter_step}': [image]}, epoch)               
                 else:
                     os.makedirs('vis_tmp', exist_ok=True)
-                    vutils.save_image(combined_image, f'vis_tmp/vis_{args.model}_{data_iter_step}.png', normalize=True, range=(0, 1))
+                    vutils.save_image(combined_image, f'vis_tmp/vis_{args.model}_{data_iter_step}.png')
                     print("saved image to vis_tmp/vis_{}.png".format(data_iter_step))
 
     loss /= len(data_loader)

@@ -10,9 +10,9 @@ export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 
-exps_name="exps_full_color_aug_2d_nobatch"
+exps_name="exps_other_demos_cliport"
 #agent_name="transporter"
-agent_name="mae_seg2d"
+agent_name="cliport"
 #agent_name="rn50_bert"
 #agent_name="clip_lingunet_transporter"
 
@@ -53,22 +53,20 @@ declare -a tasks=("assembling-kits-seq-full"\
 python -m cliport.train  train.task=multi-language-conditioned\
                          train.agent=${agent_name}\
                          dataset.type=multi\
-                         train.n_demos=1000 \
+                         train.n_demos=100 \
                          train.n_steps=60100 \
                          train.exp_folder=${exps_name} \
                          dataset.cache=True \
-                         train.load_from_last_ckpt=True \
+                         train.load_from_last_ckpt=False \
                          train.n_rotations=36\
-                         train.log=True \
+                         train.log=False \
                          wandb.run_name=${exps_name}_${task_name} \
-                         mae_model=mae_robot_lang \
                          train.linear_probe=False \
-                         train.accumulate_grad_batches=1 \
                          pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_full_color_aug/checkpoint-160.pth\
                          cliport_checkpoint=False\
-                         train.lr_scheduler=True\
-                         train.lr=5e-5\
-                         train.warmup_epochs=10\
+                         train.lr_scheduler=False\
+                         train.batch_size=1\
+                         train.lr=1e-4\
 
 
 for task in "${tasks[@]}"
@@ -79,7 +77,7 @@ do
                         agent=${agent_name} \
                         mode=test \
                         n_demos=100 \
-                        train_demos=1000 \
+                        train_demos=100 \
                         exp_folder=${exps_name} \
                         checkpoint_type=best \
                         update_results=True \

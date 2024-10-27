@@ -147,6 +147,7 @@ class RealDataset(Dataset):
         if self.augment:
             img, _, (p0, p1), perturb_params = utils.perturb(img, [p0, p1])
 
+        img = np.float32(img)
         sample = {
             'img': img,
             'p0': p0, 'p0_theta': p0_theta,

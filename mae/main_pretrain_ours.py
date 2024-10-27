@@ -84,7 +84,7 @@ def get_args_parser():
 
     parser.add_argument('--output_dir', default='./debug',
                         help='path where to save, empty for no saving')
-    parser.add_argument('--log', action='store_true',
+    parser.add_argument('--my_log', action='store_true',
                         help='log training process')
     parser.add_argument('--device', default='cuda',
                         help='device to use for training / testing')
@@ -117,7 +117,8 @@ def get_args_parser():
     #parser.add_argument('--stand_norm',action='store_true')  abandoned
     parser.add_argument('--transform', default='None', type=str)
     parser.add_argument('--aug', action='store_true')
-
+    parser.add_argument('--text_model', default="openai/clip-vit-base-patch32")
+    parser.add_argument('--condition_free', action='store_true')
     return parser
 
 def get_flip_transform():
@@ -157,6 +158,15 @@ def get_aug_transform(input_size):
         transforms.Normalize(mean=MEAN_CLIPORT, std=STD_CLIPORT)])
     return transform_train
 
+def get_voltron_transform():
+    NORMALIZATION = ((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+    transform_voltron = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Resize(224),
+            transforms.CenterCrop(224),
+            transforms.ConvertImageDtype(torch.float),
+            transforms.Normalize(mean=NORMALIZATION[0], std=NORMALIZATION[1])])
+    return transform_voltron
 
 def main(args):
     misc.init_distributed_mode(args)
@@ -171,7 +181,8 @@ def main(args):
     torch.manual_seed(seed)
     np.random.seed(seed)
 
-    cudnn.benchmark = True
+    # enable this one if inputs are varient during training
+    #cudnn.benchmark = True
 
     # choose augmentations
     if args.transform == 'flip':
@@ -180,8 +191,12 @@ def main(args):
         transform_train = get_fix_transform_standnorm()
     else:
         transform_train = get_fix_transform()
+    
+    # replace with voltron transform if model is voltron
+    #if 'voltron' in args.model:
+    #    transform_train = get_voltron_transform()
 
-    dataset_train = MAEDataset(transform=transform_train, data_path=args.data_path, aug=args.aug)
+    dataset_train = MAEDataset(transform=transform_train, data_path=args.data_path, aug=args.aug, condition_free=args.condition_free)
     dataset_vis = MAEDataset(transform=transform_train, data_path=TEST_PATH, aug=False)
     #dataset_train = Subset(dataset_train, range(600))
 
@@ -196,7 +211,7 @@ def main(args):
     else:
         sampler_train = torch.utils.data.RandomSampler(dataset_train)
 
-    if global_rank == 0 and args.log:
+    if global_rank == 0 and args.my_log:
         wandb.init(project='MAE', name=args.model, entity='cxz', mode='offline', id=args.wandb_resume)
         log_writer = wandb
     else:
@@ -216,18 +231,32 @@ def main(args):
     )
 
     # define the model
-    model = models_lib.__dict__[args.model](norm_pix_loss=args.norm_pix_loss)
+    model = models_lib.__dict__[args.model](norm_pix_loss=args.norm_pix_loss, text_model=args.text_model)
     print("Imported model: %s" % args.model)
     model.to(device)
     model_without_ddp = model
     # print("Model = %s" % str(model_without_ddp))
 
+    # momentum schedule
+    if 'jepa' in args.model:
+        print("Using JEPA hyperparameters")
+        ema = [0.996, 1.0]
+        ipe_scale = 1.0
+        ipe = len(data_loader_train)
+        num_epochs = args.epochs
+        momentum_scheduler = (ema[0] + i*(ema[1]-ema[0])/(ipe*num_epochs*ipe_scale)
+                            for i in range(int(ipe*num_epochs*ipe_scale)+1))
+    else:
+        momentum_scheduler = None
+
     # define the text processor
     if 'res' in args.model:
         text_processor = CLIPResTokenizer()
+    elif 'voltron' in args.model:
+        text_processor = AutoTokenizer.from_pretrained("distilbert-base-uncased", cache_dir='cache/hf-cache')
     else:
-        text_processor = AutoTokenizer.from_pretrained("openai/clip-vit-base-patch32")
-        
+        text_processor = AutoTokenizer.from_pretrained(args.text_model)
+    
     eff_batch_size = args.batch_size * args.accum_iter * misc.get_world_size()
 
     if args.lr is None:  # only base_lr is specified
@@ -249,11 +278,17 @@ def main(args):
     print(optimizer)
     loss_scaler = NativeScaler()
 
+    # load pre-trained model
     if args.pretrain:
         misc.dynamic_load_pretrain(model_without_ddp, args.pretrain)
     else:
         misc.load_model(args=args, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler)
     
+    # condition free
+    if args.condition_free:
+        print("Enabled condition free training")
+        model_without_ddp.copy_mask_tokens()
+
 # ============== Demo mode ==============
     if args.demo:
         validate_vis_img2(model_without_ddp,
@@ -291,7 +326,8 @@ def main(args):
             optimizer, device, epoch, loss_scaler,
             log_writer=log_writer,
             args=args,
-            text_processor=text_processor
+            text_processor=text_processor,
+            momentum_scheduler=momentum_scheduler
         )
 
         if args.output_dir and (epoch % 20 == 0 or epoch + 1 == args.epochs):

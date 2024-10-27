@@ -558,16 +558,28 @@ def load_clip(name: str, device: Union[str, torch.device] = "cuda" if torch.cuda
     device_holder = torch.jit.trace(lambda: torch.ones([]).to(torch.device(device)), example_inputs=[])
     device_node = [n for n in device_holder.graph.findAllNodes("prim::Constant") if "Device" in repr(n)][-1]
 
+    def _node_get(node: torch._C.Node, key: str):
+        """Gets attributes of a node which is polymorphic over return type.
+        
+        From https://github.com/pytorch/pytorch/pull/82628
+        """
+        sel = node.kindOf(key)
+        return getattr(node, sel)(key)
+
     def patch_device(module):
-        graphs = [module.graph] if hasattr(module, "graph") else []
+        try:
+            graphs = [module.graph] if hasattr(module, "graph") else []
+        except RuntimeError:
+            graphs = []
+
         if hasattr(module, "forward1"):
             graphs.append(module.forward1.graph)
 
         for graph in graphs:
             for node in graph.findAllNodes("prim::Constant"):
-                if "value" in node.attributeNames() and str(node["value"]).startswith("cuda"):
+                if "value" in node.attributeNames() and str(_node_get(node, "value")).startswith("cuda"):
                     node.copyAttributes(device_node)
-
+                    
     model.apply(patch_device)
     patch_device(model.encode_image)
     patch_device(model.encode_text)

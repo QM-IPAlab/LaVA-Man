@@ -18,8 +18,7 @@ from pathlib import Path
 
 import torch
 import torch.distributed as dist
-from torch._six import inf
-
+from torch import inf
 from timm.models.vision_transformer import PatchEmbed
 from mae.util.pos_embed import interpolate_pos_embed
 
@@ -257,8 +256,8 @@ class NativeScalerWithGradNormCount:
     def __init__(self):
         self._scaler = torch.cuda.amp.GradScaler()
 
-    def __call__(self, loss, optimizer, clip_grad=None, parameters=None, create_graph=False, update_grad=True):
-        self._scaler.scale(loss).backward(create_graph=create_graph)
+    def __call__(self, loss, optimizer, clip_grad=None, parameters=None, create_graph=False, update_grad=True, retain_graph=False):
+        self._scaler.scale(loss).backward(create_graph=create_graph, retain_graph=retain_graph)
         if update_grad:
             if clip_grad is not None:
                 assert parameters is not None
@@ -279,6 +278,62 @@ class NativeScalerWithGradNormCount:
     def load_state_dict(self, state_dict):
         self._scaler.load_state_dict(state_dict)
 
+
+
+class ScalerJEPA:
+    state_dict_key = "amp_scaler"
+
+    def __init__(self):
+        self._scaler = torch.cuda.amp.GradScaler()
+
+    def __call__(self, loss1, loss2, optimizer1, optimizer2, clip_grad=None, parameters1=None, parameters2=None, create_graph=False, update_grad=True, retain_graph=False):
+        # 对第一个损失进行缩放并反向传播
+        scaled_loss1 = self._scaler.scale(loss1)
+        scaled_loss1.backward(retain_graph=True)
+
+        # 对第二个损失进行缩放并反向传播
+        scaled_loss2 = self._scaler.scale(loss2)
+        scaled_loss2.backward(create_graph=create_graph, retain_graph=retain_graph)
+
+        if update_grad:
+            # 在更新参数之前，先对所有优化器进行 unscale 操作
+            self._scaler.unscale_(optimizer1)
+            self._scaler.unscale_(optimizer2)
+
+            # 初始化梯度范数列表
+            norms = []
+
+            if clip_grad is not None:
+                assert parameters1 is not None
+                assert parameters2 is not None
+                # 对第一组参数进行梯度裁剪
+                norm1 = torch.nn.utils.clip_grad_norm_(parameters1, clip_grad)
+                norms.append(norm1)
+                # 对第二组参数进行梯度裁剪
+                norm2 = torch.nn.utils.clip_grad_norm_(parameters2, clip_grad)
+                norms.append(norm2)
+            else:
+                # 如果不进行梯度裁剪，计算梯度范数
+                norm1 = get_grad_norm_(parameters1)
+                norms.append(norm1)
+                norm2 = get_grad_norm_(parameters2)
+                norms.append(norm2)
+
+            # 分别对两个优化器进行参数更新
+            self._scaler.step(optimizer1)
+            self._scaler.step(optimizer2)
+            # 更新 GradScaler
+            self._scaler.update()
+        else:
+            norms = [None, None]
+
+        return norms[0]  # 返回包含两个梯度范数的列表
+
+    def state_dict(self):
+        return self._scaler.state_dict()
+
+    def load_state_dict(self, state_dict):
+        self._scaler.load_state_dict(state_dict)
 
 def get_grad_norm_(parameters, norm_type: float = 2.0) -> torch.Tensor:
     if isinstance(parameters, torch.Tensor):
@@ -347,13 +402,17 @@ def all_reduce_mean(x):
 def dynamic_load_pretrain(model, checkpoint_path, dict_name='model', interpolate=False):
     # load checkpoint
     print("Load pretrain from %s" % checkpoint_path)
-
     checkpoint_dict = torch.load(checkpoint_path)
     if dict_name in checkpoint_dict:
         checkpoint_dict = checkpoint_dict[dict_name]
+    if isinstance(checkpoint_dict, list):
+        checkpoint_dict = checkpoint_dict[0]
 
     if os.path.basename(checkpoint_path) == 'mae_pretrain_vit_base.pth':
         ori = True
+    elif 'clip_vit_base' in checkpoint_path:
+        ori = True
+        interpolate = True
     else :
         ori = False
 
@@ -379,6 +438,7 @@ def dynamic_load_pretrain(model, checkpoint_path, dict_name='model', interpolate
                 # size mismatch
                 size_mismatched_params += 1
                 size_mismatch_names.append(ck_name)
+                print(ck_name, model_dict[ck_name].shape, ck_param.shape)
         else:
             extra_params += 1
 
@@ -417,8 +477,8 @@ class PatchEmbedVarSize(PatchEmbed):
 
     def forward(self, x):
         B, C, H, W = x.shape
-        assert H == self.img_size[0] and W == self.img_size[1], \
-            f"Input image size ({H}*{W}) doesn't match model ({self.img_size[0]}*{self.img_size[1]})."
+        #assert H == self.img_size[0] and W == self.img_size[1], \
+        #    f"Input image size ({H}*{W}) doesn't match model ({self.img_size[0]}*{self.img_size[1]})."
         x = self.proj(x).flatten(2).transpose(1, 2)
         return x
 
@@ -473,3 +533,4 @@ def interpolate_pos_embed_ours(model, checkpoint_model, ori=False):
             pos_tokens = pos_tokens.permute(0, 2, 3, 1).flatten(1, 2)
             new_pos_embed = torch.cat((extra_tokens, pos_tokens), dim=1)
             checkpoint_model['decoder_pos_embed'] = new_pos_embed
+

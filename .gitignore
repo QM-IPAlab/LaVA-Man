@@ -23,7 +23,8 @@ checkpoints/
 /diffuser_models
 # Large Asserts
 cliport/environments/assets/google/
-
+cache/
+lightning_logs/
 # Idea
 .idea
 

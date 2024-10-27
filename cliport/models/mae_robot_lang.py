@@ -11,6 +11,7 @@ from cliport.models.resnet import IdentityBlock, ConvBlock
 from transformers import AutoTokenizer
 from cliport.models.featup_pretrained import FeatUp
 from cliport.models.dpt_head import PixelwiseTaskWithDPT, PixelwiseTaskWithDPTOurs
+CACHE_PATH = "/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/cache/hf-cache"
 
 class MAEModel(nn.Module):
 
@@ -166,9 +167,11 @@ class MAESeg2Model(nn.Module):
                  pretrain_path = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big/checkpoint-160.pth'):
         super(MAESeg2Model, self).__init__()
         model_name = 'mae_robot_lang' if model_name is None else model_name
+        text_model=cfg['text_model'] if 'text_model' in cfg else 'openai/clip-vit-base-patch32'
         self.model = models_lib.__dict__[model_name](
             img_size=input_shape[:2],
-            norm_pix_loss=False)
+            norm_pix_loss=False,
+            text_model=text_model)
         
         # linear probe
         self.linear_probe = False if 'linear_probe' not in cfg['train'] else cfg['train']['linear_probe']
@@ -182,7 +185,8 @@ class MAESeg2Model(nn.Module):
         self.preprocess = preprocess
         self.output_dim = output_dim
         self.batchnorm = cfg['train']['batchnorm']
-        self.text_processor = AutoTokenizer.from_pretrained("openai/clip-vit-base-patch32")
+        text_model = cfg['text_model'] if 'text_model' in cfg else 'openai/clip-vit-base-patch32'
+        self.text_processor = AutoTokenizer.from_pretrained(text_model)
         print(f"batchnorm: {self.batchnorm}")
         self.layer1 = nn.Sequential(
             ConvBlock(512, [256, 256, 256], kernel_size=3, stride=1, batchnorm=self.batchnorm),
@@ -570,8 +574,7 @@ class MAESegBaseModel(nn.Module):
         self.preprocess = preprocess
         self.output_dim = output_dim
         self.batchnorm = False
-        self.text_processor = AutoTokenizer.from_pretrained("openai/clip-vit-base-patch32")
-
+        
         self.layer1 = nn.Sequential(
             ConvBlock(512, [256, 256, 256], kernel_size=3, stride=1, batchnorm=self.batchnorm),
             IdentityBlock(256, [256, 256, 256], kernel_size=3, stride=1, batchnorm=self.batchnorm),
@@ -604,6 +607,17 @@ class MAESegBaseModel(nn.Module):
             nn.Conv2d(16, self.output_dim, kernel_size=1)
         )
 
+        if 'voltron' in model_name: 
+            self.text_processor = AutoTokenizer.from_pretrained("distilbert-base-uncased", cache_dir=CACHE_PATH)
+            self.layer1 = nn.Sequential(
+                ConvBlock(384, [256, 256, 256], kernel_size=3, stride=1, batchnorm=self.batchnorm),
+                IdentityBlock(256, [256, 256, 256], kernel_size=3, stride=1, batchnorm=self.batchnorm),
+                nn.UpsamplingBilinear2d(scale_factor=2),
+            )
+        else:
+            self.text_processor = AutoTokenizer.from_pretrained("openai/clip-vit-base-patch32")
+
+
     def unpatchify(self, x):
         p = self.model.patch_embed.patch_size[0]
         h = self.model.img_size[0] // p
@@ -624,6 +638,11 @@ class MAESegBaseModel(nn.Module):
     def get_lang_processed(self, lang, device):
         if type(lang) is str:
             decoded_strings = [lang]
+        elif type(lang) is list: # if batch size
+            if type(lang[0]) is str:
+                decoded_strings = [s for s in lang]
+            else:
+                decoded_strings = [s.decode('ascii') for s in lang]
         else:
             decoded_strings = [s.decode('ascii') for s in lang]
         processed_lang = self.text_processor(text=decoded_strings, padding="max_length", return_tensors='pt')

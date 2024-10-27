@@ -1,11 +1,12 @@
 #!/bin/bash
 #SBATCH --partition=small
 #SBATCH --gres=gpu:1
-#SBATCH --job-name=clip
+#SBATCH --job-name=mae_clip
 #SBATCH --cpus-per-task=16
 
 module load python/3.8
 source py-mae-cliport/bin/activate
+module load cuda/12.4
 export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
@@ -23,10 +24,10 @@ export TOKENIZERS_PARALLELISM=false
 # 8. check the agent name: sep or not sept, if sep, check train.sep_mode is set to pick or place
 
 
-exps_name="exps_fullcolor_clip"
+exps_name="exps_extra_mae_clip2"
 agent_name="mae_sep_clip"
-pretrain_path="/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_robot_clip/checkpoint-160.pth"
-
+pretrain_path="/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_clip_2/checkpoint-100.pth"
+mae_model="mae_clip"
 #pretrain_path=False
 
 # tasks for ablation study (mask ratio)
@@ -53,8 +54,8 @@ tasks=("assembling-kits-seq-full"\
     "packing-unseen-google-objects-group"\
     "packing-seen-google-objects-seq"\
     "packing-unseen-google-objects-seq"\
-#"align-rope"\
-#"packing-shapes"\
+    #"align-rope"\
+    #"packing-shapes"\
 )
 
 python -m cliport.train  train.task=multi-language-conditioned\
@@ -71,13 +72,14 @@ python -m cliport.train  train.task=multi-language-conditioned\
                          train.batchnorm=True\
                          train.load_from_last_ckpt=False\
                          train.log=True\
-                         mae_model=robot_clip \
+                         mae_model=${mae_model} \
                          pretrain_path=${pretrain_path}\
                          cliport_checkpoint=False\
                          dataset.cache=False \
                          train.sep_mode=pick\
                          dataset.type=multi\
-                         train.linear_probe=True\
+                         #text_model="openai/clip-vit-base-patch16"\
+                         #train.linear_probe=True\
 
 
 python -m cliport.train  train.task=multi-language-conditioned\
@@ -94,15 +96,42 @@ python -m cliport.train  train.task=multi-language-conditioned\
                          train.batchnorm=True\
                          train.load_from_last_ckpt=False\
                          train.log=True\
-                         mae_model=robot_clip \
+                         mae_model=${mae_model} \
                          pretrain_path=${pretrain_path}\
                          cliport_checkpoint=False\
                          dataset.cache=False \
                          train.sep_mode=place\
                          dataset.type=multi\
-                         train.linear_probe=True\
+                         #text_model="openai/clip-vit-base-patch16"\
+                         #train.linear_probe=True\
 
-                       
+
+# python cliport/eval_pick_place_sep.py model_task=multi-language-conditioned\
+#                        eval_task=pack_objects \
+#                        agent=${agent_name} \
+#                        mode=test_unseen \
+#                        n_demos=100 \
+#                        train_demos=1000 \
+#                        exp_folder=${exps_name} \
+#                        checkpoint_type=best \
+#                        update_results=True \
+#                        disp=False\
+#                        record.save_video=False\
+#                        type=real\
+
+# python cliport/eval_pick_place_sep.py model_task=multi-language-conditioned\
+#                        eval_task=pack_objects \
+#                        agent=${agent_name} \
+#                        mode=test_seen \
+#                        n_demos=100 \
+#                        train_demos=1000 \
+#                        exp_folder=${exps_name} \
+#                        checkpoint_type=best \
+#                        update_results=True \
+#                        disp=False\
+#                        record.save_video=False\
+#                        type=real\
+
 for task in "${tasks[@]}"
 do
     echo "Running evaluation for agent: $agent with task: $task"

@@ -1,10 +1,10 @@
 - model_task=multi-language-conditioned
 - eval_task=packing-seen-google-objects-seq
-- agent=mae_sep_clip
+- agent=cliport
 - mode=test
 - n_demos=100
-- train_demos=1000
-- exp_folder=exps_fullcolor_clip
+- train_demos=100
+- exp_folder=exps_other_demos_cliport
 - checkpoint_type=best
 - update_results=True
 - disp=False

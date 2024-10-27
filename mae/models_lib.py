@@ -2,11 +2,13 @@
 Choose which model to load
 """
 from models_mae_robot import MAERobotBase, MAERobot
-from models_mae_robot_lang import MAERobotLang, MAERobotLangNoRef, MAERobotLang2, MAERobotLangRecon, MAERobotLangDualMasking, MAERobotLangReverse
+from models_mae_robot_lang import MAERobotLang, MAERobotLangNoRef, MAERobotLang2, MAERobotLangRecon, MAERobotLangDualMasking, MAERobotLangReverse, MAERobotLangCF
 from models_mae_robot_lang_vision import MAERobotLangVisonE, MAERobotLangVisonProjector, MAERobotLangVisonProMul, MAERobotLangVisonProMulCat
-from models_mae_robot_lang_vision2 import MAERobotLangVisonCLIP, MAERobotLangVisonCLIPRes
+from models_mae_robot_lang_vision2 import MAERobotLangVisonCLIP, MAERobotLangVisonCLIPRes, MAECLIP
 from models_mae_robot_lang_relevance import MAERobotLangRel
 from models_mae_robot_cliploss import MAERobotLangCLIPLoss
+from models_mae_robot_lang_jepa import JEPARobotLang, JEPARobotLang2loss
+from voltron_instantiate import voltron_vcond
 from functools import partial
 import torch.nn as nn
 
@@ -94,6 +96,13 @@ def vit_base_patch16_clip_only(**kwargs):
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
+def vit_base_patch16_mae_clip(**kwargs):
+    model = MAECLIP(
+        patch_size=16, embed_dim=768, depth=12, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
 def vit_base_patch16_clip_res_only(**kwargs):
     model = MAERobotLangVisonCLIPRes(
         patch_size=16, embed_dim=768, depth=12, num_heads=12,
@@ -140,6 +149,30 @@ def mae_vit_base_patch16_rl_rev(**kwargs):
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
+def jepa_vit_base_patch16_rl(**kwargs):
+    model = JEPARobotLang(
+        patch_size=16, embed_dim=768, depth=12, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
+def jepa_vit_base_patch16_rl_2loss(**kwargs):
+    model = JEPARobotLang2loss(
+        patch_size=16, embed_dim=768, depth=12, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
+def vcond(**kwargs):
+    model = voltron_vcond()
+    return model
+
+def mae_vit_base_patch16_rlcf(**kwargs):
+    model = MAERobotLangCF(
+        patch_size=16, embed_dim=768, depth=12, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
 
 # models
 mae_robot_base = mae_vit_base_patch16_robot_base  # original mae model with cliport image
@@ -159,3 +192,8 @@ mae_robot_cliploss = mae_vit_base_patch16_rl_cliploss
 mae_robot_recon = mae_vit_base_patch16_rl_recon
 mae_robot_dm = mae_vit_base_patch16_rl_dm
 mae_robot_lang_rev = mae_vit_base_patch16_rl_rev
+jepa_robot_lang = jepa_vit_base_patch16_rl
+jepa_2loss = jepa_vit_base_patch16_rl_2loss
+voltron = vcond
+mae_robot_lang_cf = mae_vit_base_patch16_rlcf
+mae_clip = vit_base_patch16_mae_clip

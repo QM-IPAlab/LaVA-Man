@@ -210,7 +210,9 @@ class RavensDataset(Dataset):
             'img': img,
             'p0': p0, 'p0_theta': p0_theta,
             'p1': p1, 'p1_theta': p1_theta,
-            #'perturb_params': perturb_params
+            'perturb_params': False,
+            'pick_radius': 5.0,
+            'place_radius': 5.0
         }
 
         # Add language goal if available.

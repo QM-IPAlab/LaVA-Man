@@ -4,6 +4,66 @@ hydra:
   sweep:
     dir: multirun/${now:%Y-%m-%d}/${now:%H-%M-%S}
     subdir: ${hydra.job.num}
+  launcher:
+    _target_: hydra._internal.core_plugins.basic_launcher.BasicLauncher
+  sweeper:
+    _target_: hydra._internal.core_plugins.basic_sweeper.BasicSweeper
+    max_batch_size: null
+  help:
+    app_name: ${hydra.job.name}
+    header: '${hydra.help.app_name} is powered by Hydra.
+
+      '
+    footer: 'Powered by Hydra (https://hydra.cc)
+
+      Use --hydra-help to view Hydra specific help
+
+      '
+    template: '${hydra.help.header}
+
+      == Configuration groups ==
+
+      Compose your configuration from those groups (group=option)
+
+
+      $APP_CONFIG_GROUPS
+
+
+      == Config ==
+
+      Override anything in the config (foo.bar=value)
+
+
+      $CONFIG
+
+
+      ${hydra.help.footer}
+
+      '
+  hydra_help:
+    template: 'Hydra (${hydra.runtime.version})
+
+      See https://hydra.cc for more info.
+
+
+      == Flags ==
+
+      $FLAGS_HELP
+
+
+      == Configuration groups ==
+
+      Compose your configuration from those groups (For example, append hydra/job_logging=disabled
+      to command line)
+
+
+      $HYDRA_CONFIG_GROUPS
+
+
+      Use ''--cfg hydra'' to Show the Hydra config.
+
+      '
+    hydra_help: ???
   hydra_logging:
     version: 1
     formatters:
@@ -42,84 +102,27 @@ hydra:
       - console
       - file
     disable_existing_loggers: false
-  sweeper:
-    _target_: hydra._internal.core_plugins.basic_sweeper.BasicSweeper
-    max_batch_size: null
-  launcher:
-    _target_: hydra._internal.core_plugins.basic_launcher.BasicLauncher
-  help:
-    app_name: ${hydra.job.name}
-    header: '${hydra.help.app_name} is powered by Hydra.
-
-      '
-    footer: 'Powered by Hydra (https://hydra.cc)
-
-      Use --hydra-help to view Hydra specific help
-
-      '
-    template: '${hydra.help.header}
-
-      == Configuration groups ==
-
-      Compose your configuration from those groups (group=option)
-
-
-      $APP_CONFIG_GROUPS
-
-
-      == Config ==
-
-      Override anything in the config (foo.bar=value)
-
-
-      $CONFIG
-
-
-      ${hydra.help.footer}
-
-      '
-  hydra_help:
-    hydra_help: ???
-    template: 'Hydra (${hydra.runtime.version})
-
-      See https://hydra.cc for more info.
-
-
-      == Flags ==
-
-      $FLAGS_HELP
-
-
-      == Configuration groups ==
-
-      Compose your configuration from those groups (For example, append hydra/job_logging=disabled
-      to command line)
-
-
-      $HYDRA_CONFIG_GROUPS
-
-
-      Use ''--cfg hydra'' to Show the Hydra config.
-
-      '
+  env: {}
+  searchpath: []
+  callbacks: {}
   output_subdir: .hydra
   overrides:
     hydra: []
     task:
     - model_task=multi-language-conditioned
     - eval_task=packing-seen-google-objects-seq
-    - agent=mae_sep_clip
+    - agent=cliport
     - mode=test
     - n_demos=100
-    - train_demos=1000
-    - exp_folder=exps_fullcolor_clip
+    - train_demos=100
+    - exp_folder=exps_other_demos_cliport
     - checkpoint_type=best
     - update_results=True
     - disp=False
     - record.save_video=False
   job:
-    name: eval_sep
-    override_dirname: agent=mae_sep_clip,checkpoint_type=best,disp=False,eval_task=packing-seen-google-objects-seq,exp_folder=exps_fullcolor_clip,mode=test,model_task=multi-language-conditioned,n_demos=100,record.save_video=False,train_demos=1000,update_results=True
+    name: eval
+    override_dirname: agent=cliport,checkpoint_type=best,disp=False,eval_task=packing-seen-google-objects-seq,exp_folder=exps_other_demos_cliport,mode=test,model_task=multi-language-conditioned,n_demos=100,record.save_video=False,train_demos=100,update_results=True
     id: ???
     num: ???
     config_name: eval
@@ -131,6 +134,26 @@ hydra:
         item_sep: ','
         exclude_keys: []
   runtime:
-    version: 1.0.5
+    version: 1.1.1
     cwd: /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport
+    config_sources:
+    - path: hydra.conf
+      schema: pkg
+      provider: hydra
+    - path: /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/cliport/cfg
+      schema: file
+      provider: main
+    - path: ''
+      schema: structured
+      provider: schema
+    choices:
+      hydra/env: default
+      hydra/callbacks: null
+      hydra/job_logging: default
+      hydra/hydra_logging: default
+      hydra/hydra_help: default
+      hydra/help: default
+      hydra/sweeper: basic
+      hydra/launcher: basic
+      hydra/output: default
   verbose: false

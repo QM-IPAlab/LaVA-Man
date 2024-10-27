@@ -12,6 +12,7 @@ from cliport.models.streams.two_stream_attention_lang_fusion import TwoStreamAtt
 from cliport.models.streams.two_stream_transport_lang_fusion import TwoStreamTransportLangFusionLat
 
 import cliport.utils.visual_utils as vu
+from pytorch_lightning.loggers import WandbLogger
 
 # from visualizer import get_local
 
@@ -57,7 +58,7 @@ class TwoStreamClipLingUNetTransporterAgent(TransporterAgent):
         out = self.attn_forward(inp, softmax=False)
 
         # save attention map in validation
-        if backprop is False and compute_err is True and self.logger is not None and self.save_visuals == 0:
+        if backprop is False and compute_err is True and isinstance(self.logger, WandbLogger) and self.save_visuals == 0:
             image = inp_img[:, :, :3]
             image = vu.tensor_to_cv2_img(image, to_rgb=False)
             heatmap = out.reshape(image.shape[0], image.shape[1]).detach().cpu().numpy()

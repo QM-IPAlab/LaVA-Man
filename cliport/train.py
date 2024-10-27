@@ -23,6 +23,7 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import LearningRateMonitor
+from lightning.pytorch.tuner import Tuner
 
 WANDB_DIR = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/wandb_cliport'
 TB_DIR = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/tensorboard'
@@ -63,19 +64,22 @@ def main(cfg):
     
     if sep_mode:
         checkpoint_callback = ModelCheckpoint(
-            monitor=cfg['wandb']['saver']['monitor'],
-            filepath=os.path.join(checkpoint_path, f'{sep_mode}-best'),
+            monitor='vl/loss',
+            dirpath=os.path.join(checkpoint_path),
+            filename= f'{sep_mode}-best',
             save_top_k=1,
             save_last=False,
         )
 
     else:
         checkpoint_callback = ModelCheckpoint(
-            monitor=cfg['wandb']['saver']['monitor'],
-            filepath=os.path.join(checkpoint_path, 'best'),
+            monitor='vl/loss',
+            dirpath=os.path.join(checkpoint_path),
+            filename= f'best',
             save_top_k=1,
             save_last=True,
         )
+    callbacks.append(checkpoint_callback)
 
     # repeat the demos, to avoid too few steps per epoch
     n_cycle = (200//n_demos) if (batch_size!=1 and n_demos <= 100) else 1
@@ -86,19 +90,14 @@ def main(cfg):
     if cfg['train']['log']:
         lr_monitor = LearningRateMonitor(logging_interval='step')
         callbacks.append(lr_monitor)
-
     trainer = Trainer(
-        gpus=cfg['train']['gpu'],
         fast_dev_run=cfg['debug'],
         logger=wandb_logger,
-        checkpoint_callback=checkpoint_callback,
+        callbacks=callbacks,
         max_epochs=max_epochs,
-        automatic_optimization=False,
         check_val_every_n_epoch=max_epochs // 20,
-        resume_from_checkpoint=last_checkpoint,
         accumulate_grad_batches=acc,
-        precision=cfg['train']['precision'],
-        callbacks=callbacks
+        precision=cfg['train']['precision']
     )
 
     # Resume epoch and global_steps
@@ -117,6 +116,19 @@ def main(cfg):
     elif 'real' in dataset_type:
         train_ds = RealDataset(task_name=task, data_type='train', augment=True)
         val_ds = RealDataset(task_name=task,data_type='train', augment=False)
+    elif 'mix' in dataset_type:
+        train_ds_sim = RavensMultiTaskDataset(data_dir, cfg, group=task, mode='train', n_demos=n_demos, augment=True)
+        val_ds_sim = RavensMultiTaskDataset(data_dir, cfg, group=task, mode='val', n_demos=n_val, augment=False)
+        
+        train_ds_real_pack_obj = RealDataset(task_name="pack_objects", data_type='train', augment=True)
+        val_ds_real_pack_obj = RealDataset(task_name="pack_objects",data_type='train', augment=False)
+
+        train_ds_real_pick_b = RealDataset(task_name="blocks_in_bowl", data_type='train', augment=True)
+        val_ds_real_pick_b = RealDataset(task_name="blocks_in_bowl",data_type='train', augment=False)
+        
+        train_ds = torch.utils.data.ConcatDataset([train_ds_sim, train_ds_real_pack_obj, train_ds_real_pick_b])
+        val_ds = torch.utils.data.ConcatDataset([val_ds_sim, val_ds_real_pack_obj, val_ds_real_pick_b])
+        print("Using mixed dataset")
     else:
         train_ds = RavensDataset(os.path.join(data_dir, '{}-train'.format(task)), cfg, n_demos=n_demos, augment=True)
         val_ds = RavensDataset(os.path.join(data_dir, '{}-val'.format(task)), cfg, n_demos=n_val, augment=False)
@@ -127,8 +139,8 @@ def main(cfg):
         ###FIXME: The batchnorm=True is not saved in the hydra config file during training.
         ###       Be careful when evaluating the model.
         cfg['train']['batchnorm'] = True
-        train_ds = DataLoader(train_ds, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=2)
-        val_ds = DataLoader(val_ds, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=2)
+        train_ds = DataLoader(train_ds, batch_size=batch_size, shuffle=True, pin_memory=False, num_workers=2)
+        val_ds = DataLoader(val_ds, batch_size=batch_size, shuffle=False, pin_memory=False, num_workers=2)
 
     # Initialize agent
     if not sep_mode:
@@ -148,6 +160,8 @@ def main(cfg):
         
     # Main training loop
     trainer.fit(agent)
+    #tuner = Tuner(trainer)
+    #tuner.lr_find(agent)
 
 if __name__ == '__main__':
     main()

@@ -9,8 +9,9 @@ from pytorch_lightning import LightningModule
 from cliport.tasks import cameras
 from cliport.utils import utils
 import cliport.utils.visual_utils as vu
+from pytorch_lightning.loggers import WandbLogger
 from cliport.models.core.attention import Attention
-
+import cv2
 from visualizer import get_local
 
 
@@ -58,6 +59,9 @@ class TransporterAgentSep(LightningModule):
         self.sep_mode = sep_mode # train or test
         assert self.sep_mode in ['pick', 'place', 'both'], "Mode should be either pick, place, or both"
 
+        self.automatic_optimization = False
+        self.on_test = False
+
     def _build_model(self):
         self.attention = None
         self.transport = None
@@ -78,9 +82,6 @@ class TransporterAgentSep(LightningModule):
         opt = torch.optim.AdamW(trainable, lr=lr, betas=(0.9, 0.95))
         self.max_epochs = self.trainer.max_epochs
         
-        
-        # configure learning rate schedulr
-
         # configure learning rate schedulr
         if self.sch:
             print('Using cosine annealing learning rate scheduler with warm up !')
@@ -158,12 +159,11 @@ class TransporterAgentSep(LightningModule):
         inp_img = frame['img']
         p0, p0_theta = frame['p0'], frame['p0_theta']
         lang_goal = frame['lang_goal']
-
         inp = {'inp_img': inp_img, 'lang_goal': lang_goal}
         out = self.attn_forward(inp, softmax=False)
 
-        # save attention map in validation
-        if backprop is False and compute_err is True and self.logger is not None and self.save_visuals == 0:
+        # save attention map in logger in validation
+        if backprop is False and compute_err is True and isinstance(self.logger, WandbLogger) and self.save_visuals == 0:
             image = inp_img[0, :, :, :3]
             image = vu.tensor_to_cv2_img(image, to_rgb=False)
             heatmap = out[0].reshape(image.shape[0], image.shape[1]).detach().cpu().numpy()
@@ -172,11 +172,15 @@ class TransporterAgentSep(LightningModule):
             combined = combined[:, :, ::-1]
             self.logger.log_image(key='heatmap', images=[combined], caption=[lang_goal[0]])
             self.save_visuals += 1
+        
+        # save attention map in test
+        if self.on_test:
+            self.save_heatmap.append(out)
 
         return self.attn_criterion(backprop, compute_err, inp, out, p0, p0_theta)
 
     def attn_criterion(self, backprop, compute_err, inp, out, p, theta):
-        # Get the rotation index
+        # Get label.
         theta_i = theta / (2 * np.pi / self.attention.n_rotations)
         theta_i = torch.round(theta_i).long() % self.attention.n_rotations
         
@@ -208,7 +212,7 @@ class TransporterAgentSep(LightningModule):
                 raise NotImplementedError()
             
             # Back prop and step
-            self.manual_backward(loss, attn_optim)
+            self.manual_backward(loss)
             attn_optim.step()
             attn_optim.zero_grad()
             if self.sch: s_att.step(epoch=self.current_epoch)
@@ -220,6 +224,7 @@ class TransporterAgentSep(LightningModule):
         if compute_err:
             pick_conf = self.attn_forward(inp)
             pick_conf = pick_conf.detach().cpu().numpy()
+            dis_ord = 2 if self.on_test else 1
 
             for i in range(batch_size):
                 argmax = np.argmax(pick_conf[i])
@@ -227,7 +232,7 @@ class TransporterAgentSep(LightningModule):
                 p0_pix = argmax[:2]
                 p0_theta = argmax[2] * (2 * np.pi / pick_conf[i].shape[2])
                 p_numpy = [p[0][i].cpu().numpy(), p[1][i].cpu().numpy()]
-                dist.append(np.linalg.norm(np.array(p_numpy) - p0_pix, ord=1))
+                dist.append(np.linalg.norm(np.array(p_numpy) - p0_pix, ord=dis_ord))
                 theta_dist.append(np.absolute((theta[i].cpu().numpy() - p0_theta) % np.pi))
             
             dist = np.sum(np.array(dist))
@@ -256,7 +261,7 @@ class TransporterAgentSep(LightningModule):
         err, loss = self.transport_criterion(backprop, compute_err, inp, out, p0, p1, p1_theta)
         
         # save heatmap
-        if backprop is False and compute_err is True and self.logger is not None and self.save_visuals == 0:
+        if backprop is False and compute_err is True and isinstance(self.logger, WandbLogger) and self.save_visuals == 0:
             image = inp_img[0, :, :, :3]
             image = vu.tensor_to_cv2_img(image, to_rgb=False)
 
@@ -305,7 +310,7 @@ class TransporterAgentSep(LightningModule):
                 raise NotImplementedError()
             
             # Back prop and step    
-            self.manual_backward(loss, transport_optim)
+            self.manual_backward(loss)
             transport_optim.step()
             transport_optim.zero_grad()
             if self.sch: s_trans.step(epoch=self.current_epoch)
@@ -317,14 +322,14 @@ class TransporterAgentSep(LightningModule):
         if compute_err:
             pick_conf = self.trans_forward(inp)
             pick_conf = pick_conf.detach().cpu().numpy()
-
+            dis_ord = 2 if self.on_test else 1
             for i in range(batch_size):
                 argmax = np.argmax(pick_conf[i])
                 argmax = np.unravel_index(argmax, shape=pick_conf[i].shape)
                 p0_pix = argmax[:2]
                 p0_theta = argmax[2] * (2 * np.pi / pick_conf[i].shape[2])
                 p_numpy = [q[0][i].cpu().numpy(), q[1][i].cpu().numpy()]
-                dist.append(np.linalg.norm(np.array(p_numpy) - p0_pix, ord=1))
+                dist.append(np.linalg.norm(np.array(p_numpy) - p0_pix, ord=dis_ord))
                 theta_dist.append(np.absolute((theta[i].cpu().numpy() - p0_theta) % np.pi))
             
             dist = np.sum(np.array(dist))
@@ -335,7 +340,7 @@ class TransporterAgentSep(LightningModule):
             }
         return err, loss
 
-    def training_step(self, batch, optimizer_idx):        
+    def training_step(self, batch):        
         if self.attention is not None: self.attention.train()  
         if self.transport is not None: self.transport.train()
         frame, _ = batch
@@ -366,7 +371,6 @@ class TransporterAgentSep(LightningModule):
             raise NotImplementedError
             
         # final loss and checkpoint
-        self.trainer.train_loop.running_loss.append(total_loss)
         self.total_steps += 1
         return total_loss
 
@@ -376,7 +380,7 @@ class TransporterAgentSep(LightningModule):
         #FIXME hard coded save checkpoint for now
         selected_epochs = [34, 54, 84, 114]
         if epoch in selected_epochs: 
-            val_loss = self.trainer.callback_metrics['val_loss']
+            val_loss = self.trainer.callback_metrics['vl/loss']
             filename = f"epochs={epoch}-val_loss={val_loss:0.8f}.ckpt"
             filename = f"{suffix}-{filename}"
             checkpoint_path = os.path.join(self.cfg['train']['train_dir'], 'checkpoints')
@@ -389,9 +393,11 @@ class TransporterAgentSep(LightningModule):
         self.trainer.save_checkpoint(ckpt_path)
 
     def on_validation_epoch_start(self) -> None:
+        super().on_validation_epoch_start()
         self.save_visuals = 0
+        self.val_output_list = []
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch):
         if self.attention is not None: self.attention.eval() 
         if self.transport is not None: self.transport.eval()
         frame, _ = batch
@@ -417,22 +423,23 @@ class TransporterAgentSep(LightningModule):
         
         # totoal loss and return
         val_total_loss = loss0 + loss1
-        self.trainer.evaluation_loop.trainer.train_loop.running_loss.append(val_total_loss)
-        return dict(
-            val_loss=val_total_loss,
-            val_loss0=loss0,
-            val_loss1=loss1,
-            val_attn_dist_err=err0['dist'],
-            val_attn_theta_err=err0['theta'],
-            val_trans_dist_err=err1['dist'],
-            val_trans_theta_err=err1['theta'],
+        self.val_output_list.append(
+            dict(
+                val_loss=val_total_loss,
+                val_loss0=loss0,
+                val_loss1=loss1,
+                val_attn_dist_err=err0['dist'],
+                val_attn_theta_err=err0['theta'],
+                val_trans_dist_err=err1['dist'],
+                val_trans_theta_err=err1['theta'],
+            )
         )
 
-    def training_epoch_end(self, all_outputs):
-        super().training_epoch_end(all_outputs)
+    def on_train_epoch_end(self):
         utils.set_seed(self.trainer.current_epoch+1)
 
-    def validation_epoch_end(self, all_outputs):
+    def on_validation_epoch_end(self):
+        all_outputs = self.val_output_list
         mean_val_total_loss = np.mean([v['val_loss'].item() for v in all_outputs])
         mean_val_loss0 = np.mean([v['val_loss0'].item() for v in all_outputs])
         mean_val_loss1 = np.mean([v['val_loss1'].item() for v in all_outputs])
@@ -456,15 +463,7 @@ class TransporterAgentSep(LightningModule):
         if self.trainer.current_epoch > 0:
             self.check_save_iteration(suffix=self.sep_mode)
         
-        return dict(
-            val_loss=mean_val_total_loss,
-            val_loss0=mean_val_loss0,
-            mean_val_loss1=mean_val_loss1,
-            total_attn_dist_err=total_attn_dist_err,
-            total_attn_theta_err=total_attn_theta_err,
-            total_trans_dist_err=total_trans_dist_err,
-            total_trans_theta_err=total_trans_theta_err,
-        )
+        self.val_output_list.clear()
 
     @get_local('img', 'place_heatmap')
     def act(self, obs, info, goal=None):  # pylint: disable=unused-argument
@@ -517,36 +516,42 @@ class TransporterAgentSep(LightningModule):
     def val_dataloader(self):
         return self.test_ds
 
+    def on_test_epoch_start(self) -> None:
+        super().on_test_epoch_start()
+        self.on_test=True
+        self.test_output_list = []
+        self.save_heatmap = []
+
     def test_step(self, batch, batch_idx):
-        self.attention.eval()
-        self.transport.eval()
+        if self.attention is not None: self.attention.eval() 
+        if self.transport is not None: self.transport.eval()
+        frame, _ = batch
 
-        loss0, loss1 = 0, 0
-        assert self.val_repeats >= 1
-        for i in range(self.val_repeats):
-            frame, _ = batch
-            l0, err0 = self.attn_training_step(frame, backprop=False, compute_err=True)
-            loss0 += l0
-            if isinstance(self.transport, Attention):
-                l1, err1 = self.attn_training_step(frame, backprop=False, compute_err=True)
-                loss1 += l1
-            else:
-                l1, err1 = self.transport_training_step(frame, backprop=False, compute_err=True)
-                loss1 += l1
-        loss0 /= self.val_repeats
-        loss1 /= self.val_repeats
-        val_total_loss = loss0 + loss1
-
-        self.trainer.evaluation_loop.trainer.train_loop.running_loss.append(val_total_loss)
+        # Init recordings
+        loss0, loss1 = torch.tensor(0.).to(self.device), torch.tensor(0.).to(self.device)
+        err0 = {'dist': 0., 'theta': 0.}
+        err1 = {'dist': 0., 'theta': 0.}
         
+        if self.sep_mode == 'both':        
+            loss0, err0 = self.attn_training_step(frame, backprop=False, compute_err=True)
+            if isinstance(self.transport, Attention):
+                loss1, err1 = self.attn_training_step(frame, backprop=False, compute_err=True)
+            else:
+                loss1, err1 = self.transport_training_step(frame, backprop=False, compute_err=True)
+        elif self.sep_mode == 'pick':
+            loss0, err0 = self.attn_training_step(frame, backprop=False, compute_err=True)
+        elif self.sep_mode == 'place':
+            loss1, err1 = self.transport_training_step(frame, backprop=False, compute_err=True)
+        
+        # totoal loss and return
+        val_total_loss = loss0 + loss1    
 
         # #import pdb; pdb.set_trace()
-        # img = frame['img'][:,:,:3]
         # pick_place = frame['p0']
         # place_place = frame['p1']
         # pick_radius = frame['pick_radius']
         # place_radius = frame['place_radius']
-        # text = frame['lang_goal']
+        
 
         # img = img.astype(np.uint8)
 
@@ -558,6 +563,22 @@ class TransporterAgentSep(LightningModule):
         # idx = len(os.listdir(foler))
         # cv2.imwrite(f'data_gt_real_images/real{idx}.png', brg)
         
+        # save heatmaps
+        img = frame['img'][0,:,:,:3]
+        img = (img- img.min()) / (img.max() - img.min())
+        img = img.cpu().numpy()
+        text = frame['lang_goal']
+        out_attn = self.save_heatmap.pop()
+        out_attn = out_attn.reshape(*self.in_shape[:2]).detach().cpu().numpy()
+        save_path = os.path.join(self.cfg['train']['train_dir'], 'real_vis')
+        os.makedirs(save_path, exist_ok=True)
+        img = (img * 255.0).astype(np.uint8)
+        image = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        name = self.name.split('-')[0]
+        save = vu.save_tensor_with_heatmap(image, out_attn,
+            f'{save_path}/{name}_pick{batch_idx + 1:06d}.png',
+            l=text)
+
 
         # whether successful pick and place ?
         if err0['dist'] < frame['pick_radius']:
@@ -575,21 +596,23 @@ class TransporterAgentSep(LightningModule):
         else:
             success = 0
                 
-        return dict(
-            val_loss=val_total_loss,
-            val_loss0=loss0,
-            val_loss1=loss1,
-            val_attn_dist_err=err0['dist'],
-            val_attn_theta_err=err0['theta'],
-            val_trans_dist_err=err1['dist'],
-            val_trans_theta_err=err1['theta'],
-            success=success,
-            success_pick=success_pick,
-            success_place=success_place
+        self.test_output_list.append(
+            dict(
+                val_loss=val_total_loss,
+                val_loss0=loss0,
+                val_loss1=loss1,
+                val_attn_dist_err=err0['dist'],
+                val_attn_theta_err=err0['theta'],
+                val_trans_dist_err=err1['dist'],
+                val_trans_theta_err=err1['theta'],
+                success=success,
+                success_pick=success_pick,
+                success_place=success_place
+            )   
         )
 
-    def test_epoch_end(self, all_outputs):
-
+    def on_test_epoch_end(self):
+        all_outputs = self.test_output_list
         mean_val_total_loss = np.mean([v['val_loss'].item() for v in all_outputs])
         mean_val_loss0 = np.mean([v['val_loss0'].item() for v in all_outputs])
         mean_val_loss1 = np.mean([v['val_loss1'].item() for v in all_outputs])
@@ -616,18 +639,7 @@ class TransporterAgentSep(LightningModule):
         print('success_place_rate', success_place_rate,file=saved_file)
         saved_file.close()
 
-        return dict(
-            val_loss=mean_val_total_loss,
-            val_loss0=mean_val_loss0,
-            mean_val_loss1=mean_val_loss1,
-            total_attn_dist_err=total_attn_dist_err,
-            total_attn_theta_err=total_attn_theta_err,
-            total_trans_dist_err=total_trans_dist_err,
-            total_trans_theta_err=total_trans_theta_err,
-            success_rate=success_rate,
-            success_pick_rate=success_pick_rate,
-            success_place_rate=success_place_rate
-        )
+        self.return_dis = False
     
     def load(self, model_path):
         self.load_state_dict(torch.load(model_path)['state_dict'])

@@ -1,7 +1,10 @@
+root_dir: ${env:CLIPORT_ROOT}
+tag: default
+debug: false
 mode: test
-agent: mae_sep_clip
+agent: cliport
 n_demos: 100
-train_demos: 1000
+train_demos: 100
 n_repeats: 1
 gpu:
 - 0
@@ -15,7 +18,7 @@ eval_task: packing-seen-google-objects-seq
 model_task: multi-language-conditioned
 type: single
 model_dir: ${root_dir}
-exp_folder: exps_fullcolor_clip
+exp_folder: exps_other_demos_cliport
 data_dir: ${root_dir}/data
 assets_root: ${root_dir}/cliport/environments/assets/
 model_path: ${model_dir}/${exp_folder}/${model_task}-${agent}-n${train_demos}-train/checkpoints/
@@ -32,6 +35,3 @@ record:
   fps: 20
   video_height: 640
   video_width: 720
-root_dir: ${env:CLIPORT_ROOT}
-tag: default
-debug: false

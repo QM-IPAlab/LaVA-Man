@@ -1,3 +1,4 @@
+import random
 import torch
 import torch.nn as nn
 
@@ -13,7 +14,8 @@ class MAERobotLang(MAERobot):
     def __init__(self, img_size=(320, 160), patch_size=16, in_chans=3,
                  embed_dim=768, depth=12, num_heads=12,
                  decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
-                 mlp_ratio=4., norm_layer=nn.LayerNorm, norm_im2_in_dec=True, norm_pix_loss=False):
+                 mlp_ratio=4., norm_layer=nn.LayerNorm, norm_im2_in_dec=True, norm_pix_loss=False,
+                 text_model="openai/clip-vit-base-patch32"):
         super().__init__(img_size, patch_size, in_chans, embed_dim, depth, num_heads,
                          decoder_embed_dim, decoder_depth, decoder_num_heads,
                          mlp_ratio, norm_layer, norm_im2_in_dec, norm_pix_loss)
@@ -24,8 +26,9 @@ class MAERobotLang(MAERobot):
             for _ in range(decoder_depth)])
 
         # The CLIP model
-        self.clip_text = CLIPTextModel.from_pretrained("openai/clip-vit-base-patch32")
+        self.clip_text = CLIPTextModel.from_pretrained(text_model)
         self.clip_text.requires_grad_(False)
+        print(f"Loaded CLIP text model: {text_model}")
 
         # modify name
         # self.decoder_pos_embed2 = nn.Parameter(torch.zeros(1, self.patch_embed.num_patches + 1, decoder_embed_dim),
@@ -423,3 +426,107 @@ class MAERobotLangReverse(MAERobot):
         return out
 
 
+class MAERobotLangCF(MAERobot):
+    """
+    Condition free trianing of MAE with language
+    """
+
+    def __init__(self, img_size=(320, 160), patch_size=16, in_chans=3,
+                 embed_dim=768, depth=12, num_heads=12,
+                 decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
+                 mlp_ratio=4., norm_layer=nn.LayerNorm, norm_im2_in_dec=True, norm_pix_loss=False,
+                 text_model="openai/clip-vit-base-patch32"):
+        super().__init__(img_size, patch_size, in_chans, embed_dim, depth, num_heads,
+                         decoder_embed_dim, decoder_depth, decoder_num_heads,
+                         mlp_ratio, norm_layer, norm_im2_in_dec, norm_pix_loss)
+
+        self.decoder_blocks = nn.ModuleList([
+            DecoderCABlockLang(decoder_embed_dim, decoder_num_heads, mlp_ratio, qkv_bias=True, norm_layer=norm_layer,
+                               norm_mem=norm_im2_in_dec)
+            for _ in range(decoder_depth)])
+
+        # The CLIP model
+        self.clip_text = CLIPTextModel.from_pretrained(text_model)
+        self.clip_text.requires_grad_(False)
+        print(f"Loaded CLIP text model: {text_model}")
+
+        self.mask_token_lang = nn.Parameter(torch.zeros(1, 1, decoder_embed_dim))
+        self.mask_token_recon = nn.Parameter(torch.zeros(1, 1, decoder_embed_dim))
+        self.mask_token_mae = nn.Parameter(torch.zeros(1, 1, decoder_embed_dim))
+
+    def copy_mask_tokens(self):
+        """Deep copy the mask tokens for condition free training
+        """
+        self.mask_token_lang.data = self.mask_token.data.clone()
+        self.mask_token_recon.data = self.mask_token.data.clone()
+        self.mask_token_mae.data = self.mask_token.data.clone()
+        print("Mask tokens deepy copied")
+
+    def get_lang_embed(self, processed_lang):
+        lang_emb = self.clip_text(**processed_lang, return_dict=False)
+        return lang_emb
+
+    def forward(self, img1, img2, pick=None, place=None, lang=None, mask_ratio=0.75):
+        
+        # Reconstruction training
+        if random.random() < 0.5 and self.training: 
+            input_mask_ratio = 0.75        
+            latent1, mask1, ids_restore1 = self.forward_encoder(img1, mask_ratio=input_mask_ratio)
+            pred = self.forward_recon_decoder(latent1, ids_restore1)
+            loss = self.forward_loss(img1, pred, mask1)
+            mask2 = mask1
+
+        # Prediciton training
+        else: 
+            input_mask_ratio = 0.0
+            latent1, mask1, ids_restore1 = self.forward_encoder(img1, mask_ratio=input_mask_ratio)
+            latent2, mask2, ids_restore2 = self.forward_encoder(img2, mask_ratio)
+
+            lang_emb = self.get_lang_embed(lang)
+
+            pred = self.forward_ca_decoder(latent1, latent2, ids_restore2, lang_emb)
+            loss = self.forward_loss(img2, pred, mask2)
+
+        return loss, pred, mask2
+
+    def forward_recon_decoder(self, masked_latent, ids_restore):
+        """
+        latent1: visible
+        masked_latent2: masked goal image
+        """
+        # encoder to decoder layer
+        fea = self.decoder_embed(masked_latent)
+
+        # append masked tokens to the sequence
+        masked_tokens = self.mask_token_mae.repeat(fea.shape[0],
+                                               ids_restore.shape[1] + 1 - fea.shape[1], 1)
+        fea_ = torch.cat([fea[:, 1:, :], masked_tokens], dim=1)  # no cls token
+        fea_ = torch.gather(fea_, dim=1,
+                             index=ids_restore.unsqueeze(-1).repeat(1, 1, fea.shape[2]))  # unshuffle
+        fea = torch.cat([fea[:, :1, :], fea_], dim=1)  # append cls token
+
+        # add positional embedding
+        fea = fea + self.decoder_pos_embed
+        
+        # reconstruction tokens
+        fea2 = self.mask_token_recon.repeat(fea.shape[0], fea.shape[1], 1)
+        fea2 = fea2 + self.decoder_pos_embed
+
+        # lang_emb tokens
+        lang_emb = self.mask_token_lang.repeat(fea.shape[0], 77, 1)
+
+        out1 = fea
+        out2 = fea2
+        # apply Transformer blocks
+        for blk in self.decoder_blocks:
+            out1, out2 = blk(out1, out2, lang_emb)
+        out = self.decoder_norm(out1)
+
+        out = self.decoder_pred(out)
+        out = out[:, 1:, :]
+
+        return out
+    
+    def cliport_forward(self):
+        
+        latent1, mask1, ids_restore1 = self.forward_encoder(img1, mask_ratio=input_mask_ratio)

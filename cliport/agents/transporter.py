@@ -54,6 +54,8 @@ class TransporterAgent(LightningModule):
         self.lr = cfg['train']['lr']
         self.lr_min = cfg['train']['lr_min']
 
+        self.automatic_optimization = False
+
     def _build_model(self):
         self.attention = None
         self.transport = None
@@ -147,7 +149,7 @@ class TransporterAgent(LightningModule):
             if self.sch:
                 s_att, _ = self.lr_schedulers()
                 s_att.step(epoch=self.current_epoch)
-            self.manual_backward(loss, attn_optim)
+            self.manual_backward(loss)
             attn_optim.step()
             attn_optim.zero_grad()
 
@@ -210,7 +212,7 @@ class TransporterAgent(LightningModule):
             if self.sch:
                 _, s_trans = self.lr_schedulers()
                 s_trans.step(epoch=self.current_epoch)
-            self.manual_backward(loss, transport_optim)
+            self.manual_backward(loss)
             transport_optim.step()
             transport_optim.zero_grad()
  
@@ -235,7 +237,7 @@ class TransporterAgent(LightningModule):
         else:
             return err, loss, argmax[2]
 
-    def training_step(self, batch, batch_idx, optimizer_idx):
+    def training_step(self, batch, batch_idx):
         self.attention.train()
         self.transport.train()
 
@@ -253,8 +255,6 @@ class TransporterAgent(LightningModule):
         self.log('tr/loss', total_loss)
         self.total_steps = step
 
-        self.trainer.train_loop.running_loss.append(total_loss)
-
         self.check_save_iteration()
 
         return dict(
@@ -264,8 +264,8 @@ class TransporterAgent(LightningModule):
     def check_save_iteration(self):
         global_step = self.trainer.global_step
         if (global_step + 1) in self.save_steps:
-            self.trainer.run_evaluation()
-            val_loss = self.trainer.callback_metrics['val_loss']
+            self.trainer.fit_loop.epoch_loop.val_loop.run()
+            val_loss = self.trainer.callback_metrics['vl/loss']
             steps = f'{global_step + 1:05d}'
             filename = f"steps={steps}-val_loss={val_loss:0.8f}.ckpt"
             checkpoint_path = os.path.join(self.cfg['train']['train_dir'], 'checkpoints')
@@ -283,7 +283,9 @@ class TransporterAgent(LightningModule):
         self.trainer.save_checkpoint(ckpt_path)
 
     def on_validation_epoch_start(self) -> None:
+        super().on_validation_epoch_start()
         self.save_visuals = 0
+        self.val_output_list = []
 
     def validation_step(self, batch, batch_idx):
         self.attention.eval()
@@ -305,23 +307,23 @@ class TransporterAgent(LightningModule):
         loss1 /= self.val_repeats
         val_total_loss = loss0 + loss1
 
-        self.trainer.evaluation_loop.trainer.train_loop.running_loss.append(val_total_loss)
-
-        return dict(
-            val_loss=val_total_loss,
-            val_loss0=loss0,
-            val_loss1=loss1,
-            val_attn_dist_err=err0['dist'],
-            val_attn_theta_err=err0['theta'],
-            val_trans_dist_err=err1['dist'],
-            val_trans_theta_err=err1['theta'],
+        self.val_output_list.append(
+            dict(
+                val_loss=val_total_loss,
+                val_loss0=loss0,
+                val_loss1=loss1,
+                val_attn_dist_err=err0['dist'],
+                val_attn_theta_err=err0['theta'],
+                val_trans_dist_err=err1['dist'],
+                val_trans_theta_err=err1['theta'],
+            )
         )
 
-    def training_epoch_end(self, all_outputs):
-        super().training_epoch_end(all_outputs)
+    def on_train_epoch_end(self):
         utils.set_seed(self.trainer.current_epoch+1)
 
-    def validation_epoch_end(self, all_outputs):
+    def on_validation_epoch_end(self):
+        all_outputs = self.val_output_list
         mean_val_total_loss = np.mean([v['val_loss'].item() for v in all_outputs])
         mean_val_loss0 = np.mean([v['val_loss0'].item() for v in all_outputs])
         mean_val_loss1 = np.mean([v['val_loss1'].item() for v in all_outputs])
@@ -341,15 +343,7 @@ class TransporterAgent(LightningModule):
         print("\nAttn Err - Dist: {:.2f}, Theta: {:.2f}".format(total_attn_dist_err, total_attn_theta_err))
         print("Transport Err - Dist: {:.2f}, Theta: {:.2f}".format(total_trans_dist_err, total_trans_theta_err))
 
-        return dict(
-            val_loss=mean_val_total_loss,
-            val_loss0=mean_val_loss0,
-            mean_val_loss1=mean_val_loss1,
-            total_attn_dist_err=total_attn_dist_err,
-            total_attn_theta_err=total_attn_theta_err,
-            total_trans_dist_err=total_trans_dist_err,
-            total_trans_theta_err=total_trans_theta_err,
-        )
+        self.val_output_list.clear()
 
     def act(self, obs, info=None, goal=None):  # pylint: disable=unused-argument
         """Run inference and return best action given visual observations."""
@@ -396,7 +390,7 @@ class TransporterAgent(LightningModule):
         return self.test_ds
 
     def load(self, model_path):
-        self.load_state_dict(torch.load(model_path)['state_dict'])
+        self.load_state_dict(torch.load(model_path)['state_dict'], strict=False)
         self.to(device=self.device_type)
 
     def test_step(self, batch, batch_idx):

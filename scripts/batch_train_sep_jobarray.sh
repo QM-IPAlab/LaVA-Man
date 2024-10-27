@@ -18,8 +18,8 @@ export TOKENIZERS_PARALLELISM=false
 # 2. The number of job array is 0 indexed
 
 
-exps_name="exps_extra_10demos_cliport"
-agent_name="cliport"
+exps_name="exps_extra_10demos_loadMulti"
+agent_name="mae_sep_seg2"
 
 tasks=("assembling-kits-seq-full"\
     "packing-boxes-pairs-full"\
@@ -31,8 +31,8 @@ tasks=("assembling-kits-seq-full"\
     "packing-unseen-google-objects-group"\
     "packing-seen-google-objects-seq"\
     "packing-unseen-google-objects-seq"\
-    "align-rope"\
-    "packing-shapes"\
+    #"align-rope"\
+    #"packing-shapes"\
 )
 
 # tasks=("assembling-kits-seq-unseen-colors"\
@@ -66,9 +66,9 @@ python -m cliport.train  train.task=${task_name}\
                          train.exp_folder=${exps_name}\
                          wandb.run_name=${exps_name}_place_${short_name}\
                          train.n_demos=10 \
-                         train.n_steps=20100 \
-                         train.lr_scheduler=False\
-                         train.lr=5e-5\
+                         train.n_steps=10100 \
+                         train.lr_scheduler=True\
+                         train.lr=1e-5\
                          train.warmup_epochs=10\
                          train.precision=32\
                          train.batch_size=16\
@@ -76,7 +76,7 @@ python -m cliport.train  train.task=${task_name}\
                          train.log=False\
                          mae_model=mae_robot_lang \
                          pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big_extra/checkpoint-140.pth\
-                         train.load_pretrained_ckpt=True\
+                         train.load_pretrained_ckpt=False\
                          dataset.cache=False \
                          train.sep_mode=place\
                          cliport_checkpoint=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/exps_extra_seg2/multi-language-conditioned-mae_sep_seg2-n1000-train/checkpoints/place-best.ckpt\
@@ -88,9 +88,9 @@ python -m cliport.train  train.task=${task_name}\
                          train.exp_folder=${exps_name}\
                          wandb.run_name=${exps_name}_pick_${short_name}\
                          train.n_demos=10 \
-                         train.n_steps=20100 \
-                         train.lr_scheduler=False\
-                         train.lr=5e-5\
+                         train.n_steps=10100 \
+                         train.lr_scheduler=True\
+                         train.lr=1e-5\
                          train.warmup_epochs=10\
                          train.precision=32\
                          train.batch_size=32\
@@ -98,7 +98,7 @@ python -m cliport.train  train.task=${task_name}\
                          train.log=False\
                          mae_model=mae_robot_lang \
                          pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big_extra/checkpoint-140.pth\
-                         train.load_pretrained_ckpt=True\
+                         train.load_pretrained_ckpt=False\
                          dataset.cache=False \
                          train.sep_mode=pick\
                          cliport_checkpoint=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/exps_extra_seg2/multi-language-conditioned-mae_sep_seg2-n1000-train/checkpoints/pick-best.ckpt\
@@ -110,7 +110,7 @@ python cliport/eval_sep.py model_task=${task_name}\
                       agent=${agent_name} \
                       mode=val \
                       n_demos=100 \
-                      train_demos=100 \
+                      train_demos=10 \
                       exp_folder=${exps_name} \
                       checkpoint_type=val_missing \
                       update_results=True \
@@ -123,7 +123,7 @@ python cliport/eval_sep.py model_task=${task_name}\
                       agent=${agent_name} \
                       mode=test \
                       n_demos=100 \
-                      train_demos=100 \
+                      train_demos=10 \
                       exp_folder=${exps_name} \
                       checkpoint_type=test_best \
                       update_results=True \

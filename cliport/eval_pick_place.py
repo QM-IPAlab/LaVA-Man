@@ -27,7 +27,7 @@ from cliport.environments.environment import Environment
 from cliport.real_dataset import RealDataset
 from pytorch_lightning.loggers import WandbLogger
 WANDB_DIR = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/wandb_cliport'
-
+from cliport.real_dataset_207 import Real207Dataset
 
 @hydra.main(config_path='./cfg', config_name='eval')
 def main(vcfg):
@@ -57,6 +57,8 @@ def main(vcfg):
                                             augment=False)
     elif 'real' in dataset_type:
         ds = RealDataset(task_name=eval_task, data_type=mode, augment=True)
+    elif dataset_type == 'real_ours':
+        ds = Real207Dataset(task_name=eval_task, data_type=mode, augment=True)
     else:
         ds = dataset.RavensDataset(os.path.join(vcfg['data_dir'], f"{eval_task}-{mode}"),
                                    tcfg,
@@ -108,9 +110,7 @@ def main(vcfg):
 
 
             trainer = Trainer(
-                gpus=vcfg['gpu'],
-                limit_test_batches=1.0,
-                logger=wandb_logger
+                logger=None
             )
 
             a = trainer.test(agent,ds)
