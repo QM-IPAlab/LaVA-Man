@@ -27,6 +27,7 @@ cache/
 lightning_logs/
 # Idea
 .idea
+*.o*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
