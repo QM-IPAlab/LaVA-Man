@@ -7,9 +7,8 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 export TOKENIZERS_PARALLELISM=false
 export HYDRA_FULL_ERROR=1
 
-exps_name="debug"
-agent_name="mae_sep_clip"
 
+agent_name="mae_sep_seg2"
 task_name="multi-language-conditioned"
 
 # "packing-unseen-google-objects-seq"
@@ -92,20 +91,20 @@ task_name="multi-language-conditioned"
 
 python cliport/train.py  train.task=multi-language-conditioned\
                          train.agent=${agent_name}\
-                         train.exp_folder=${exps_name}\
+                         train.exp_folder=debug\
                          wandb.run_name=debug\
                          train.n_demos=1000 \
                          train.n_steps=101000 \
                          train.lr_scheduler=True\
-                         train.lr=5e-5\
+                         train.lr=2e-5\
                          train.warmup_epochs=10\
                          train.precision=32\
                          train.batch_size=16\
                          train.batchnorm=True\
                          train.load_from_last_ckpt=False\
-                         train.log=True\
-                         mae_model=mae_clip \
-                         pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_clip_2/checkpoint-100.pth\
+                         train.log=False\
+                         mae_model=mae_robot_lang \
+                         pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big_extra2/encoder_only_ck-160.pth\
                          cliport_checkpoint=False\
                          dataset.cache=False \
                          train.sep_mode=place \

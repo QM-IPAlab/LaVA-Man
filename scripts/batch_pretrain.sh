@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --partition=big
 #SBATCH --gres=gpu:8
-#SBATCH --job-name=mae_clip
+#SBATCH --job-name=reverse
 #SBATCH --cpus-per-task=16
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=chaoran.zhu@qmul.ac.uk
@@ -71,16 +71,16 @@ export TOKENIZERS_PARALLELISM=false
 #     --my_log
 
 
-# torchrun --nproc_per_node 8 --master_port=$PORT mae/main_pretrain_ours.py \
+# torchrun --nproc_per_node 4 --master_port=$PORT mae/main_pretrain_ours.py \
 #     --model mae_robot_lang \
 #     --batch_size 64 \
-#     --output_dir output_extra_clip_mae2 \
-#     --pretrain /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/checkpoints/clip_vit_base_patch16_converted.pth\
+#     --output_dir output_mae_robot_lang_realv2 \
+#     --pretrain /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/checkpoints/mae_pretrain_vit_base.pth\
 #     --mask_ratio 0.95 \
-#     --data_path /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/extra_full_color_obj.hdf5 \
+#     --data_path /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/real_img_v2_full.hdf5 \
 #     --epochs 400 \
 #     --my_log \
-#     --text_model openai/clip-vit-base-patch16 \
+#     #--text_model openai/clip-vit-base-patch16 \
 
 
 # torchrun --nproc_per_node 8 --master_port=$PORT mae/main_pretrain_ours.py \
@@ -94,23 +94,33 @@ export TOKENIZERS_PARALLELISM=false
 #     --my_log \
 #     --condition_free
 
-torchrun --nproc_per_node 8 --master_port=$PORT mae/main_pretrain_ours.py \
-    --model robot_clip \
-    --batch_size 64 \
-    --output_dir output_robot_clip_nofreeze_2 \
-    --pretrain /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/checkpoints/mae_pretrain_vit_base.pth\
-    --mask_ratio 0.95 \
-    --data_path /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/extra_dataset_no_aug.hdf5 \
-    --epochs 400 \
-    --my_log \
+# torchrun --nproc_per_node 8 --master_port=$PORT mae/main_pretrain_ours.py \
+#     --model jepa_2loss \
+#     --batch_size 64 \
+#     --output_dir output_jepa_2loss \
+#     --pretrain /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/checkpoints/mae_pretrain_vit_base.pth\
+#     --mask_ratio 0.95 \
+#     --data_path /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/extra_full_color_obj.hdf5 \
+#     --epochs 400 \
+#     --my_log \
 
 
 # torchrun --nproc_per_node 8 --master_port=$PORT mae/main_pretrain_ours.py \
 #     --model mae_clip \
 #     --batch_size 64 \
-#     --output_dir output_mae_clip_2 \
+#     --output_dir output_mae_clip_pe \
 #     --pretrain /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/checkpoints/mae_pretrain_vit_base.pth\
 #     --mask_ratio 0.95 \
 #     --data_path /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/extra_dataset_no_aug.hdf5 \
 #     --epochs 400 \
 #     --my_log \
+
+torchrun --nproc_per_node 8 --master_port=$PORT mae/main_pretrain_ours.py \
+    --model mae_robot_lang_rev2 \
+    --batch_size 64 \
+    --output_dir output_ablation_reverse \
+    --pretrain /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/checkpoints/mae_pretrain_vit_base.pth\
+    --mask_ratio 0.95 \
+    --data_path /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/extra_full_color_obj.hdf5 \
+    --epochs 400 \
+    --my_log \

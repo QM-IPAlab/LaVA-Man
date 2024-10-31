@@ -276,15 +276,15 @@ class JEPARobotLang2loss(MAERobot):
         # forward target and context images
         latent1, mask1, ids_restore1 = self.forward_encoder(img1, mask_ratio=0.0)
         latent2, mask2, ids_restore2 = self.forward_encoder2(img2, mask_ratio=mask_ratio)
+        latent2_full, _, _ = self.forward_encoder2(img2, mask_ratio=0.0)
 
         # encoder of the language goal
         lang_emb = self.get_lang_embed(lang)
 
         # decoder (predictor)
         latent = self.forward_ca_decoder(latent1, latent2, ids_restore2, lang_emb)
-        import pdb; pdb.set_trace()
         latent_pred = self.projector(latent)
-        latent_loss = self.forward_latent_loss(latent2, latent_pred)
+        latent_loss = self.forward_latent_loss(latent2_full, latent_pred)
 
         pixel_pred = self.decoder_pred(latent)
         pixel_pred = pixel_pred[:, 1:, :]

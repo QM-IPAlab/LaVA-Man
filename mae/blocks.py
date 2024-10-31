@@ -451,6 +451,34 @@ class DecoderCABlockLangReverse(DecoderCABlockLang):
         x = x + self.drop_path(self.mlp(self.norm4(x)))
         return x, y
 
+
+class DecoderCABlockLangReverse2(DecoderCABlockLang):
+    """
+    Reverse the order of cross attention
+    first cross attention between text and masked image,
+    then with masked image
+    """
+    def forward(self, x, y=None, lang=None):
+        """
+        x: norm -> self_attn -> drop -> norm -> cross_attn -> drop
+        """
+        x = x + self.drop_path(self.attn(self.norm1(x)))
+
+        # cross attention between current (Q) and language (K,V)
+        if lang is not None:
+            lang = lang[0] if type(lang) is tuple else lang
+            x = x + self.drop_path(self.cross_attn_lang(self.norm3(x), lang, lang))
+        
+        # cross attention between current (K,V) ang goal image (Q)
+        if y is not None:
+            y = self.norm_y(y)
+            x = x + self.drop_path(self.cross_attn_img(y, self.norm2(x), self.norm2(x)))
+
+        # final output
+        x = x + self.drop_path(self.mlp(self.norm4(x)))
+        return x, y
+
+
 class EncoderCABlockVision(nn.Module):
     """Encoder + CLIP Vision"""
 

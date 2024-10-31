@@ -2,9 +2,9 @@ root_dir: ${env:CLIPORT_ROOT}
 tag: default
 debug: false
 mode: test
-agent: cliport
+agent: mae_sep_seg2
 n_demos: 100
-train_demos: 100
+train_demos: 1000
 n_repeats: 1
 gpu:
 - 0
@@ -14,11 +14,11 @@ checkpoint_type: best
 val_on_heldout: true
 disp: false
 shared_memory: false
-eval_task: packing-seen-google-objects-seq
+eval_task: packing-unseen-google-objects-seq
 model_task: multi-language-conditioned
 type: single
 model_dir: ${root_dir}
-exp_folder: exps_other_demos_cliport
+exp_folder: exps_extra_jepa_2loss
 data_dir: ${root_dir}/data
 assets_root: ${root_dir}/cliport/environments/assets/
 model_path: ${model_dir}/${exp_folder}/${model_task}-${agent}-n${train_demos}-train/checkpoints/

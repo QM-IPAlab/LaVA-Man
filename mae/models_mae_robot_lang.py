@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 
 from transformers import CLIPTextModel
-from blocks import DecoderCABlockLang, DecoderCABlockLangNoRef, EncoderCABlockLang, DecoderCABlockLangReverse
+from blocks import DecoderCABlockLang, DecoderCABlockLangNoRef, DecoderCABlockLangReverse2, EncoderCABlockLang, DecoderCABlockLangReverse
 from models_mae_robot import MAERobot
 import transformers
 
@@ -424,6 +424,24 @@ class MAERobotLangReverse(MAERobot):
         out = out[:, 1:, :]
 
         return out
+
+
+class MAERobotLangReverse2(MAERobotLang):
+    """
+    Reverse the order of two cross attention in the decoder
+    """
+    def __init__(self, img_size=(320, 160), patch_size=16, in_chans=3,
+                 embed_dim=768, depth=12, num_heads=12,
+                 decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
+                 mlp_ratio=4., norm_layer=nn.LayerNorm, norm_im2_in_dec=True, norm_pix_loss=False, **kwargs):
+        super().__init__(img_size, patch_size, in_chans, embed_dim, depth, num_heads,
+                         decoder_embed_dim, decoder_depth, decoder_num_heads,
+                         mlp_ratio, norm_layer, norm_im2_in_dec, norm_pix_loss)
+
+        self.decoder_blocks = nn.ModuleList([
+            DecoderCABlockLangReverse2(decoder_embed_dim, decoder_num_heads, mlp_ratio, qkv_bias=True, norm_layer=norm_layer,
+                               norm_mem=norm_im2_in_dec)
+            for _ in range(decoder_depth)])
 
 
 class MAERobotLangCF(MAERobot):

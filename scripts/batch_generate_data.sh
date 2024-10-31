@@ -1,10 +1,10 @@
-#!/bin/bash
-#SBATCH --partition=small
-#SBATCH --gres=gpu:1
-#SBATCH --job-name=gen_data
-#SBATCH --cpus-per-task=16
-module load python/3.8
-source py-mae-cliport/bin/activate
+# #!/bin/bash
+# #SBATCH --partition=small
+# #SBATCH --gres=gpu:1
+# #SBATCH --job-name=gen_data
+# #SBATCH --cpus-per-task=16
+# module load python/3.8
+# source py-mae-cliport/bin/activate
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 export CLIPORT_ROOT=$(pwd)
@@ -48,13 +48,13 @@ tasks=(
 )
 
 
-for task in "${tasks[@]}"
-do
-    echo "Running data colloection for task: $task"
-    python -m cliport.dataset_to_hdf5 \
-                            train.task="${task}"\
-                            train.n_demos=1000
-done
+# for task in "${tasks[@]}"
+# do
+#     echo "Running data colloection for task: $task"
+#     python -m cliport.dataset_to_hdf5 \
+#                             train.task="${task}"\
+#                             train.n_demos=1000
+# done
 
 
 # for task in "${tasks[@]}"
@@ -65,3 +65,11 @@ done
 #                             mode=test \
 #                             hdf5_path=extra2_dataset_no_aug
 # done
+
+
+echo "Running data colloection for task: multi-language-conditioned"
+python -m cliport.dataset_to_hdf5_multi \
+                        train.task="multi-language-conditioned"\
+                        train.n_demos=1000 \
+                        dataset.type=multi
+

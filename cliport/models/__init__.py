@@ -38,6 +38,11 @@ names = {
     'mae_seg_dpt_2loss': MAESegDPT2LossModel,
     'mae_seg_dpt_sk': MAESegDPTSKModel,
     'mae_seg2_dual': MAESeg2ModelDual,
+
+    #ablation study:
+    'mae_seg2_reverse': 'pass',
+    'mae_seg2_froz_e':'pass', # frozen encoder
+    'mae_seg2_non_d' : 'pass',  # no loading decoder
     
     # resnet
     'plain_resnet': ResNet43_8s,

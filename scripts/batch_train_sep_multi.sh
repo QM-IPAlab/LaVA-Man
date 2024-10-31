@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --partition=small
 #SBATCH --gres=gpu:1
-#SBATCH --job-name=mae_clip
+#SBATCH --job-name=jepa
 #SBATCH --cpus-per-task=16
 
 module load python/3.8
@@ -24,10 +24,10 @@ export TOKENIZERS_PARALLELISM=false
 # 8. check the agent name: sep or not sept, if sep, check train.sep_mode is set to pick or place
 
 
-exps_name="exps_extra_mae_clip2"
-agent_name="mae_sep_clip"
-pretrain_path="/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_clip_2/checkpoint-100.pth"
-mae_model="mae_clip"
+exps_name="exps_extra_jepa_2loss"
+agent_name="mae_sep_seg2"
+pretrain_path="/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_jepa_2loss/checkpoint-80.pth"
+mae_model="jepa_2loss"
 #pretrain_path=False
 
 # tasks for ablation study (mask ratio)
@@ -65,7 +65,7 @@ python -m cliport.train  train.task=multi-language-conditioned\
                          train.n_demos=1000 \
                          train.n_steps=101000 \
                          train.lr_scheduler=True\
-                         train.lr=5e-5\
+                         train.lr=2e-5\
                          train.warmup_epochs=10\
                          train.precision=32\
                          train.batch_size=32\
@@ -89,7 +89,7 @@ python -m cliport.train  train.task=multi-language-conditioned\
                          train.n_demos=1000 \
                          train.n_steps=101000 \
                          train.lr_scheduler=True\
-                         train.lr=5e-5\
+                         train.lr=2e-5\
                          train.warmup_epochs=10\
                          train.precision=32\
                          train.batch_size=16\

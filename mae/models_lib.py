@@ -2,9 +2,9 @@
 Choose which model to load
 """
 from models_mae_robot import MAERobotBase, MAERobot
-from models_mae_robot_lang import MAERobotLang, MAERobotLangNoRef, MAERobotLang2, MAERobotLangRecon, MAERobotLangDualMasking, MAERobotLangReverse, MAERobotLangCF
+from models_mae_robot_lang import MAERobotLang, MAERobotLangNoRef, MAERobotLang2, MAERobotLangRecon, MAERobotLangDualMasking, MAERobotLangReverse, MAERobotLangCF, MAERobotLangReverse2
 from models_mae_robot_lang_vision import MAERobotLangVisonE, MAERobotLangVisonProjector, MAERobotLangVisonProMul, MAERobotLangVisonProMulCat
-from models_mae_robot_lang_vision2 import MAERobotLangVisonCLIP, MAERobotLangVisonCLIPRes, MAECLIP
+from models_mae_robot_lang_vision2 import MAERobotLangVisonCLIP, MAERobotLangVisonCLIPRes, MAECLIP, MAECLIPPE
 from models_mae_robot_lang_relevance import MAERobotLangRel
 from models_mae_robot_cliploss import MAERobotLangCLIPLoss
 from models_mae_robot_lang_jepa import JEPARobotLang, JEPARobotLang2loss
@@ -103,6 +103,13 @@ def vit_base_patch16_mae_clip(**kwargs):
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
+def vit_base_patch16_mae_clip_pe(**kwargs):
+    model = MAECLIPPE(
+        patch_size=16, embed_dim=768, depth=12, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
 def vit_base_patch16_clip_res_only(**kwargs):
     model = MAERobotLangVisonCLIPRes(
         patch_size=16, embed_dim=768, depth=12, num_heads=12,
@@ -144,6 +151,13 @@ def mae_vit_base_patch16_rl_dm(**kwargs):
 
 def mae_vit_base_patch16_rl_rev(**kwargs):
     model = MAERobotLangReverse(
+        patch_size=16, embed_dim=768, depth=12, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
+def mae_vit_base_patch16_rl_rev2(**kwargs):
+    model = MAERobotLangReverse2(
         patch_size=16, embed_dim=768, depth=12, num_heads=12,
         decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
@@ -197,3 +211,5 @@ jepa_2loss = jepa_vit_base_patch16_rl_2loss
 voltron = vcond
 mae_robot_lang_cf = mae_vit_base_patch16_rlcf
 mae_clip = vit_base_patch16_mae_clip
+mae_clip_pe = vit_base_patch16_mae_clip_pe
+mae_robot_lang_rev2 = mae_vit_base_patch16_rl_rev2
