@@ -3,7 +3,7 @@ import numpy as np
 import os
 import hydra
 from cliport.dataset import RavensDataset, RavensMultiTaskDataset
-
+from tqdm import tqdm
 
 def interpret(sample, goal=None):
         # Interpret the sample and goal data
@@ -26,7 +26,7 @@ def save_to_hdf5(hdf5_path, dataset):
     with h5py.File(hdf5_path, 'a') as hdf5_file:
                 
         for task in dataset.tasks:
-
+            print(f"Saving task {task} to {hdf5_path}...")
             # Create a group for each task if it doesn't already exist
             if task not in hdf5_file:
                 task_group = hdf5_file.create_group(task)
@@ -47,7 +47,7 @@ def save_to_hdf5(hdf5_path, dataset):
             dataset._path=os.path.join(dataset.root_path, f'{dataset._task}')
 
             # Load sample and goal
-            for episode_id in sample_set:
+            for episode_id in tqdm(sample_set):
                 # Load sample and goal
                 episode, _ = dataset.load(episode_id, True, False)
 
@@ -102,7 +102,7 @@ def main(cfg):
         ds = RavensDataset(os.path.join(data_dir, '{}-train'.format(task)), cfg, n_demos=n_demos, augment=False)
   
     # Save to HDF5
-    PATH = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/ravens_multi_1000.hdf5'
+    PATH = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/ravens_multi_1000_2.hdf5'
     save_to_hdf5(PATH, ds)
 
 

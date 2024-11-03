@@ -41,6 +41,7 @@ def main(cfg):
     n_val = cfg['train']['n_val']
     batch_size = cfg['train']['batch_size']
     name = '{}-{}-{}'.format(task, agent_type, n_demos)
+    augment = cfg['dataset']['aug'] if 'aug' in cfg['dataset'] else True
 
     # Wandb Logger
     try:
@@ -130,7 +131,7 @@ def main(cfg):
         val_ds = torch.utils.data.ConcatDataset([val_ds_sim, val_ds_real_pack_obj, val_ds_real_pick_b])
         print("Using mixed dataset")
     else:
-        train_ds = RavensDataset(os.path.join(data_dir, '{}-train'.format(task)), cfg, n_demos=n_demos, augment=True)
+        train_ds = RavensDataset(os.path.join(data_dir, '{}-train'.format(task)), cfg, n_demos=n_demos, augment=augment)
         val_ds = RavensDataset(os.path.join(data_dir, '{}-val'.format(task)), cfg, n_demos=n_val, augment=False)
 
     # Set data loaders if batch_size > 1

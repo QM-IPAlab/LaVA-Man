@@ -36,6 +36,7 @@ class RavensDataset(Dataset):
         self.cache = self.cfg['dataset']['cache']
         self.n_demos = n_demos
         self.augment = augment
+        print(f"Augment: {self.augment}")
 
         self.aug_theta_sigma = self.cfg['dataset']['augment']['theta_sigma'] if 'augment' in self.cfg['dataset'] else 60  # legacy code issue: theta_sigma was newly added
         self.pix_size = 0.003125

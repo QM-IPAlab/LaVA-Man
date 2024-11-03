@@ -35,7 +35,7 @@ class MAERobotLangVisonCLIP(MAERobot):
         # The CLIP model
         self.clip = CLIPModel.from_pretrained("openai/clip-vit-base-patch16")
         self.clip.text_model.requires_grad_(False)
-        self.clip.vision_model.requires_grad_(True)
+        self.clip.vision_model.requires_grad_(False)
         self.resize_transform = transforms.Resize((224, 224))
         self.decoder_pred = nn.Linear(decoder_embed_dim, 16 ** 2 * in_chans, bias=True)
 
@@ -54,8 +54,8 @@ class MAERobotLangVisonCLIP(MAERobot):
             # processed_img = F.pad(processed_img, (80, 80, 0, 0), value=0)
             # processed_img = self.resize_transform(processed_img)
 
-        img_emb = self.clip.vision_model(processed_img, output_hidden_states=True, return_dict=False, interpolate_pos_encoding=True) 
-        img_emb = img_emb[0] # (b, 50, 768)
+            img_emb = self.clip.vision_model(processed_img, output_hidden_states=True, return_dict=False, interpolate_pos_encoding=True) 
+            img_emb = img_emb[0] # (b, 50, 768)
         
         return lang_emb, img_emb
 

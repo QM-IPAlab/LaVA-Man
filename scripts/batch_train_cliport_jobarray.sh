@@ -45,17 +45,17 @@ tasks=("assembling-kits-seq-full"\
 
 task_name=${tasks[$SLURM_ARRAY_TASK_ID]}
 
-# python -m cliport.train  train.task=${task_name}\
-#                          train.agent=${agent_name}\
-#                          train.exp_folder=${exps_name}\
-#                          wandb.run_name=${exps_name}_${task_name}\
-#                          train.n_demos=10 \
-#                          train.n_steps=4010 \
-#                          train.load_from_last_ckpt=True\
-#                          dataset.cache=True \
-#                          train.load_pretrained_ckpt=False\
-#                          train.sep_mode=False\
-#                          cliport_checkpoint=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/exps_cliport_pretrained/multi-language-conditioned-${agent_name}-n1000-train/checkpoints/best.ckpt\
+python -m cliport.train  train.task=${task_name}\
+                         train.agent=${agent_name}\
+                         train.exp_folder=${exps_name}\
+                         wandb.run_name=${exps_name}_${task_name}\
+                         train.n_demos=10 \
+                         train.n_steps=20100 \
+                         train.load_from_last_ckpt=True\
+                         dataset.cache=True \
+                         train.load_pretrained_ckpt=False\
+                         train.sep_mode=False\
+                         #cliport_checkpoint=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/exps_cliport_pretrained/multi-language-conditioned-${agent_name}-n1000-train/checkpoints/best.ckpt\
                          
                          
 

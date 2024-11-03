@@ -2,7 +2,8 @@
 Choose which model to load
 """
 from models_mae_robot import MAERobotBase, MAERobot
-from models_mae_robot_lang import MAERobotLang, MAERobotLangNoRef, MAERobotLang2, MAERobotLangRecon, MAERobotLangDualMasking, MAERobotLangReverse, MAERobotLangCF, MAERobotLangReverse2
+from models_mae_robot_lang import MAERobotLang, MAERobotLangNoRef, MAERobotLang2, MAERobotLangRecon
+from models_mae_robot_lang import MAERobotLangDualMasking, MAERobotLangReverse, MAERobotLangCF, MAERobotLangReverse2, MAERobotLangNodec
 from models_mae_robot_lang_vision import MAERobotLangVisonE, MAERobotLangVisonProjector, MAERobotLangVisonProMul, MAERobotLangVisonProMulCat
 from models_mae_robot_lang_vision2 import MAERobotLangVisonCLIP, MAERobotLangVisonCLIPRes, MAECLIP, MAECLIPPE
 from models_mae_robot_lang_relevance import MAERobotLangRel
@@ -68,6 +69,14 @@ def mae_vit_base_patch16_rlre(**kwargs):
 def mae_vit_base_path16_rl2(**kwargs):
     """MAE with language in both encoder and decoder"""
     model = MAERobotLang2(
+        patch_size=16, embed_dim=768, depth=12, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
+def mae_vit_base_path16_rl2_enc_only(**kwargs):
+    """MAE with language in both encoder and decoder"""
+    model = MAERobotLangNodec(
         patch_size=16, embed_dim=768, depth=12, num_heads=12,
         decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
@@ -196,7 +205,8 @@ mae_robot_lang_p8 = mae_vit_base_patch8_rl
 mae_robot_lang_noref = mae_vit_base_patch16_rl_noref  # two state mae with language in decoder only
 mae_robot_lang_visonencoder = mae_vit_base_patch16_rlv  # two state mae with language in decoder only
 mae_robot_lang_relevance = mae_vit_base_patch16_rlre
-mae_robot_lang2 = mae_vit_base_path16_rl2  # two state with language in both encoder and decoder
+mae_robot_lang2 = mae_vit_base_path16_rl2  # encoder in language
+mae_robot_lang2_enc_only = mae_vit_base_path16_rl2_enc_only  # encoder in language
 mae_robot_projector = mae_vit_base_path16_rlp
 mae_robot_promul = mae_vit_base_path16_rlpm
 robot_clip = vit_base_patch16_clip_only

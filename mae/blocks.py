@@ -528,8 +528,7 @@ class EncoderCABlockLang(nn.Module):
     def forward(self, x, lang=None):
         x = x + self.drop_path(self.attn(self.norm1(x)))
 
-        if lang is not None:
-            x = x + self.drop_path(self.cross_attn(self.norm2(x), lang, lang))
+        x = x + self.drop_path(self.cross_attn(self.norm2(x), lang, lang))
         
         x = x + self.drop_path(self.mlp(self.norm3(x)))
         return x

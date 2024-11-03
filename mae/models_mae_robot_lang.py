@@ -137,7 +137,7 @@ class MAERobotLang2(MAERobot):
     def __init__(self, img_size=(320, 160), patch_size=16, in_chans=3,
                  embed_dim=768, depth=12, num_heads=12,
                  decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
-                 mlp_ratio=4., norm_layer=nn.LayerNorm, norm_im2_in_dec=True, norm_pix_loss=False):
+                 mlp_ratio=4., norm_layer=nn.LayerNorm, norm_im2_in_dec=True, norm_pix_loss=False, **kwargs):
         super().__init__(img_size, patch_size, in_chans, embed_dim, depth, num_heads,
                          decoder_embed_dim, decoder_depth, decoder_num_heads,
                          mlp_ratio, norm_layer, norm_im2_in_dec, norm_pix_loss)
@@ -163,10 +163,11 @@ class MAERobotLang2(MAERobot):
         #                                        requires_grad=False)
 
     def get_lang_embed(self, processed_lang):
-        lang_emb = self.clip_text(**processed_lang, return_dict=False)
+        with torch.no_grad():
+            lang_emb = self.clip_text(**processed_lang, return_dict=False)
         return lang_emb[0]
 
-    def forward(self, img1, img2, pick=None, place=None, lang=None, mask_ratio=0.75):
+    def forward(self, img1, img2, pick=None, place=None, lang=None, mask_ratio=0.95):
         
         # encoder of the language goal
         lang_emb = self.get_lang_embed(lang)
@@ -176,7 +177,7 @@ class MAERobotLang2(MAERobot):
         latent2, mask2, ids_restore2 = self.forward_ca_encoder(img2, lang_emb, mask_ratio)
 
         # decoder
-        pred = self.forward_ca_decoder(latent1, latent2, ids_restore2, lang_emb)
+        pred = self.forward_ca_decoder(latent1, latent2, ids_restore2, None)
         loss = self.forward_loss(img2, pred, mask2)
 
         return loss, pred, mask2
@@ -207,20 +208,48 @@ class MAERobotLang2(MAERobot):
         
         lang_emb = self.get_lang_embed(processed_lang)
         if rgb.shape[0] != lang_emb.shape[0]:
-            lang_emb = lang_emb.repeat([rgb.shape[0], 1, 1])
+            lang_emb = lang_emb.repeat([int(rgb.shape[0]//lang_emb.shape[0]), 1, 1])
         
-        latent, mask, ids_restore = self.forward_ca_encoder(rgb, lang_emb, mask_ratio=0)
-        
-        fea = self.decoder_embed(latent)
-        fea = fea + self.decoder_pos_embed
+        latent1, mask1, ids_restore1 = self.forward_ca_encoder(rgb, lang_emb, mask_ratio=0)
+        latent2, mask2, ids_restore2 = self.forward_ca_encoder(rgb, lang_emb, mask_ratio=1.0)
 
-        out1 = fea
-        out2 = None
+        fea1 = self.decoder_embed(latent1)
+        fea2 = self.decoder_embed(latent2)
+
+        masked_tokens = self.mask_token.repeat(fea2.shape[0],
+                                               ids_restore2.shape[1] + 1 - fea2.shape[1], 1)
+        fea2_ = torch.cat([fea2[:, 1:, :], masked_tokens], dim=1)  # no cls token
+        fea2_ = torch.gather(fea2_, dim=1,
+                             index=ids_restore2.unsqueeze(-1).repeat(1, 1, fea2.shape[2]))  # unshuffle
+        fea2 = torch.cat([fea2[:, :1, :], fea2_], dim=1)  # append cls token
+
+        fea1 = fea1 + self.decoder_pos_embed
+        fea2 = fea2 + self.decoder_pos_embed
+
+        out1 = fea1
+        out2 = fea2
 
         for blk in self.decoder_blocks:
-            out1, out2 = blk(out1, out2, lang_emb)
+            out1, out2 = blk(out1, out2, None)
         out = self.decoder_norm(out1)
         out = out[:, 1:, :]
+        return out
+
+
+class MAERobotLangNodec(MAERobotLang2):
+    """Also encode the language in the encoder"""    
+    def cliport_forward(self, rgb, processed_lang):
+        
+        lang_emb = self.get_lang_embed(processed_lang)
+        if rgb.shape[0] != lang_emb.shape[0]:
+            lang_emb = lang_emb.repeat([int(rgb.shape[0]//lang_emb.shape[0]), 1, 1])
+        
+        latent1, mask1, ids_restore1 = self.forward_ca_encoder(rgb, lang_emb, mask_ratio=0)
+
+        fea1 = self.decoder_embed(latent1)
+        
+        fea1 = fea1 + self.decoder_pos_embed
+        out = fea1[:, 1:, :]
         return out
 
 

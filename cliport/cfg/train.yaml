@@ -19,6 +19,7 @@ dataset:
   augment:
     theta_sigma: 60 # rotation sigma in degrees; N(mu = 0, sigma = theta_sigma).
   mode: 'train' # 'train' or 'val' or 'test'
+  aug: True
 
 train:
   # folders

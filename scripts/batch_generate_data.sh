@@ -1,10 +1,11 @@
-# #!/bin/bash
-# #SBATCH --partition=small
-# #SBATCH --gres=gpu:1
-# #SBATCH --job-name=gen_data
-# #SBATCH --cpus-per-task=16
-# module load python/3.8
-# source py-mae-cliport/bin/activate
+#!/bin/bash
+#SBATCH --partition=small
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=gen_data
+#SBATCH --cpus-per-task=32
+
+module load python/3.8
+source py-mae-cliport/bin/activate
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 export CLIPORT_ROOT=$(pwd)

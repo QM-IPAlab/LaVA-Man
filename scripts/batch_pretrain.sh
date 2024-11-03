@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --partition=big
 #SBATCH --gres=gpu:8
-#SBATCH --job-name=reverse
+#SBATCH --job-name=enc_lang
 #SBATCH --cpus-per-task=16
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=chaoran.zhu@qmul.ac.uk
@@ -116,9 +116,9 @@ export TOKENIZERS_PARALLELISM=false
 #     --my_log \
 
 torchrun --nproc_per_node 8 --master_port=$PORT mae/main_pretrain_ours.py \
-    --model mae_robot_lang_rev2 \
+    --model mae_robot_lang2 \
     --batch_size 64 \
-    --output_dir output_ablation_reverse \
+    --output_dir output_extra_enc_lang \
     --pretrain /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/checkpoints/mae_pretrain_vit_base.pth\
     --mask_ratio 0.95 \
     --data_path /jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/extra_full_color_obj.hdf5 \

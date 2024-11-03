@@ -8,7 +8,7 @@ export TOKENIZERS_PARALLELISM=false
 export HYDRA_FULL_ERROR=1
 
 
-agent_name="mae_sep_seg2"
+agent_name="mae_sep_base"
 task_name="multi-language-conditioned"
 
 # "packing-unseen-google-objects-seq"
@@ -103,8 +103,8 @@ python cliport/train.py  train.task=multi-language-conditioned\
                          train.batchnorm=True\
                          train.load_from_last_ckpt=False\
                          train.log=False\
-                         mae_model=mae_robot_lang \
-                         pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big_extra2/encoder_only_ck-160.pth\
+                         mae_model=mae_robot_lang2_enc_only \
+                         pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_extra_enc_lang/checkpoint-100.pth\
                          cliport_checkpoint=False\
                          dataset.cache=False \
                          train.sep_mode=place \

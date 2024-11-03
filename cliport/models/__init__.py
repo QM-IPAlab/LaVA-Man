@@ -18,7 +18,7 @@ from cliport.models.clip_film_lingunet_lat import CLIPFilmLingUNet
 
 # ours
 from cliport.models.mae_robot_lang import MAEModel, MAESegModel, MAESeg2Model, MAESegCLIPModel, MAESegDPTModel, MAESegDPT2LossModel
-from cliport.models.mae_robot_lang import MAESegBaseModel, MAESeg2ModelFullMask, MAESeg3Model, MAEFeatUpModel, MAESegDPTSKModel, MAESeg2ModelDual
+from cliport.models.mae_robot_lang import MAESegBaseModel, MAESeg2ModelFullMask, MAESeg3Model, MAEFeatUpModel, MAESegDPTSKModel, MAESeg2ModelDual, MAESeg2ModelFozenE, MAESeg2ModelRecon
 from cliport.models.mae_robot_lang_lat import MAESeg2DepthModel, MAESeg2LatModel, MAESeg2LatModelPlus
 
 names = {
@@ -28,7 +28,6 @@ names = {
     'mae_seg2': MAESeg2Model,
     'mae_seg2_depth': MAESeg2DepthModel,
     'mae_seg_base': MAESegBaseModel,
-    'mae_seg2_fm': MAESeg2ModelFullMask,
     'mae_seg2_lat': MAESeg2LatModel,
     'mae_seg3': MAESeg3Model,
     'mae_featup': MAEFeatUpModel,
@@ -37,13 +36,14 @@ names = {
     'mae_seg_dpt': MAESegDPTModel,
     'mae_seg_dpt_2loss': MAESegDPT2LossModel,
     'mae_seg_dpt_sk': MAESegDPTSKModel,
-    'mae_seg2_dual': MAESeg2ModelDual,
 
     #ablation study:
-    'mae_seg2_reverse': 'pass',
-    'mae_seg2_froz_e':'pass', # frozen encoder
-    'mae_seg2_non_d' : 'pass',  # no loading decoder
-    
+    'mae_seg2_froz_e': MAESeg2ModelFozenE, # frozen encoder
+    'mae_seg2_fm': MAESeg2ModelFullMask,
+    'mae_seg2_dual': MAESeg2ModelDual,
+    'mae_seg_recond': MAESeg2ModelRecon,
+
+
     # resnet
     'plain_resnet': ResNet43_8s,
     'plain_resnet_lang': ResNet43_8s_lang,
