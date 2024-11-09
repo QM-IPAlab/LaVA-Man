@@ -30,6 +30,7 @@ lightning_logs/
 *.o*
 *.zip
 /data-real
+*.ckpt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
