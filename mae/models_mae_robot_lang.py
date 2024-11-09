@@ -55,6 +55,24 @@ class MAERobotLang(MAERobot):
         loss = self.forward_loss(img2, pred, mask2)
 
         return loss, pred, mask2
+    
+    def forward_refer(self, img, processed_lang):
+        
+        latent1, mask1, ids_restore1 = self.forward_encoder(img, mask_ratio=0.0)
+        lang_emb = self.get_lang_embed(processed_lang)
+
+        fea = self.decoder_embed(latent1)
+
+        fea = fea + self.decoder_pos_embed
+
+        out1 = fea
+        out2 = None
+
+        for blk in self.decoder_blocks:
+            out1, out2 = blk(out1, out2, lang_emb)
+        out = self.decoder_norm(out1)
+        out = out[:, 1:, :]
+        return out
 
 
 class MAERobotLangNoRef(MAERobot):

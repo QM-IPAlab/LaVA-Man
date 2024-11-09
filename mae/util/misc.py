@@ -8,18 +8,18 @@
 # DeiT: https://github.com/facebookresearch/deit
 # BEiT: https://github.com/microsoft/unilm/tree/master/beit
 # --------------------------------------------------------
-
+from itertools import repeat
 import builtins
 import datetime
 import os
 import time
-from collections import defaultdict, deque
+from collections import defaultdict, deque, abc
 from pathlib import Path
 
 import torch
+import torch.nn as nn
 import torch.distributed as dist
 from torch import inf
-from timm.models.vision_transformer import PatchEmbed
 from mae.util.pos_embed import interpolate_pos_embed
 
 
@@ -461,6 +461,41 @@ def dynamic_load_pretrain(model, checkpoint_path, dict_name='model', interpolate
         print(f"Size mismatched parameters: {size_mismatch_names}")
     print(f"Total extra parameters in checkpoint: {extra_params}")
 
+def _ntuple(n):
+    def parse(x):
+        if isinstance(x, abc.Iterable):
+            return x
+        return tuple(repeat(x, n))
+    return parse
+
+to_1tuple = _ntuple(1)
+to_2tuple = _ntuple(2)
+to_3tuple = _ntuple(3)
+to_4tuple = _ntuple(4)
+to_ntuple = _ntuple
+
+class PatchEmbed(nn.Module):
+    """ Image to Patch Embedding
+    """
+    def __init__(self, img_size=224, patch_size=16, in_chans=3, embed_dim=768):
+        super().__init__()
+        img_size = to_2tuple(img_size)
+        patch_size = to_2tuple(patch_size)
+        num_patches = (img_size[1] // patch_size[1]) * (img_size[0] // patch_size[0])
+        self.img_size = img_size
+        self.patch_size = patch_size
+        self.num_patches = num_patches
+
+        self.proj = nn.Conv2d(in_chans, embed_dim, kernel_size=patch_size, stride=patch_size)
+
+    def forward(self, x):
+        B, C, H, W = x.shape
+        # FIXME look at relaxing size constraints
+        assert H == self.img_size[0] and W == self.img_size[1], \
+            f"Input image size ({H}*{W}) doesn't match model ({self.img_size[0]}*{self.img_size[1]})."
+        x = self.proj(x).flatten(2).transpose(1, 2)
+        return x
+
 
 class PatchEmbedVarSize(PatchEmbed):
     """ Image to Patch Embedding with variable size image support
@@ -533,4 +568,19 @@ def interpolate_pos_embed_ours(model, checkpoint_model, ori=False):
             pos_tokens = pos_tokens.permute(0, 2, 3, 1).flatten(1, 2)
             new_pos_embed = torch.cat((extra_tokens, pos_tokens), dim=1)
             checkpoint_model['decoder_pos_embed'] = new_pos_embed
+
+
+def add_weight_decay(model, weight_decay=1e-5, skip_list=()):
+    decay = []
+    no_decay = []
+    for name, param in model.named_parameters():
+        if not param.requires_grad:
+            continue  # frozen weights
+        if len(param.shape) == 1 or name.endswith(".bias") or name in skip_list:
+            no_decay.append(param)
+        else:
+            decay.append(param)
+    return [
+        {'params': no_decay, 'weight_decay': 0.},
+        {'params': decay, 'weight_decay': weight_decay}]
 

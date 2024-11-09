@@ -2,9 +2,9 @@ from copy import deepcopy
 import torch.nn as nn
 import torch
 from transformers import CLIPTextModel
-from blocks import DecoderCABlockLang
+from mae.blocks import DecoderCABlockLang
 from mae import blocks
-from models_mae_robot import MAERobot
+from mae.models_mae_robot import MAERobot
 
 class JEPARobotLang(MAERobot):
     """ MAE robot lang model with I-JEPA strcuture and loss.

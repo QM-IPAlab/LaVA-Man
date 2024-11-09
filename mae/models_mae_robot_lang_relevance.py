@@ -2,13 +2,12 @@
 Extract the relevance map using clip first and then use MAE
 """
 
-from re import T
 import torch
 import torch.nn as nn
 
 from transformers import CLIPModel
-from blocks import DecoderCABlockLang
-from models_mae_robot import MAERobot
+from mae.blocks import DecoderCABlockLang
+from mae.models_mae_robot import MAERobot
 import transformers
 from torchvision import transforms
 import torch.nn.functional as F

@@ -8,12 +8,12 @@ from typing import Callable, Tuple
 from dataclasses import dataclass
 import torch.nn as nn
 
-from voltron_core.vcond import VCond
-from voltron_core.vdual import VDual
-from voltron_core.vgen import VGen
-from voltron_reproductions.vmvp import VMVP
-from voltron_reproductions.vr3m import VR3M
-from voltron_reproductions.vrn3m import VRN3M
+from mae.voltron_core.vcond import VCond
+from mae.voltron_core.vdual import VDual
+from mae.voltron_core.vgen import VGen
+from mae.voltron_reproductions.vmvp import VMVP
+from mae.voltron_reproductions.vr3m import VR3M
+from mae.voltron_reproductions.vrn3m import VRN3M
 
 def voltron_vcond():
     model = VCond(
