@@ -19,14 +19,14 @@ import torch.nn as nn
 import transformers
 from einops import rearrange, repeat
 import numpy as np
-from util.misc import PatchEmbedVarSize
+from mae.util.misc import PatchEmbedVarSize
 from voltron.models.util.transformer import Block, RMSNorm, get_1D_sine_cosine, PatchEmbed
-from util.pos_embed import get_2d_varsize_sincos_pos_embed
+from mae.util.pos_embed import get_2d_varsize_sincos_pos_embed
 
 # Suppress Transformers Logging
 transformers.logging.set_verbosity_error()
 
-CACHE_PATH = "/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/cache/hf-cache"
+CACHE_PATH = "/home/a/acw694/CLIPort_new_loss/cache"
 
 def get_2D_position_embeddings_ours(embed_dim: int, h: int, w: int, cls_token: bool = False):
     # Create 2D Position embeddings by taking cross product of height and width and splicing 1D embeddings...
@@ -256,6 +256,10 @@ class VCond(nn.Module):
         mask = torch.gather(mask, dim=1, index=restore_idxs)
 
         return visible_patches, mask, restore_idxs
+
+    def forward_refer(self, img, language):
+        return self.get_representations(img, language)
+
 
     def get_representations(
         self, img: torch.Tensor, language: Optional[Union[List[str], Tuple[str]]] = None, mode: str = "multimodal"

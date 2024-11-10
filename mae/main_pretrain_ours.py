@@ -22,8 +22,8 @@ import torch.backends.cudnn as cudnn
 import torchvision.transforms as transforms
 from torch.utils.data import Subset
 
-import timm
-import timm.optim.optim_factory as optim_factory
+#import timm
+#import timm.optim.optim_factory as optim_factory
 
 import util.misc as misc
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
@@ -36,7 +36,7 @@ from cliport.models.core.clip import CLIPResTokenizer
 import sys
 
 
-assert timm.__version__ == "0.3.2"  # version check
+#assert timm.__version__ == "0.3.2"  # version check
 MEAN_CLIPORT = [0.48145466, 0.4578275, 0.40821073]
 STD_CLIPORT = [0.26862954, 0.26130258, 0.27577711]
 PATH = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/exist_dataset_no_aug_all.hdf5'
@@ -273,7 +273,7 @@ def main(args):
         model_without_ddp = model.module
 
     # following timm: set wd as 0 for bias and norm layers
-    param_groups = optim_factory.add_weight_decay(model_without_ddp, args.weight_decay)
+    param_groups = misc.add_weight_decay(model_without_ddp, args.weight_decay)
     optimizer = torch.optim.AdamW(param_groups, lr=args.lr, betas=(0.9, 0.95))
     print(optimizer)
     loss_scaler = NativeScaler()

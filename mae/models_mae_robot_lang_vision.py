@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 
 from transformers import CLIPModel
-from blocks import EncoderCABlockVision, DecoderCABlockVisionLang, DecoderCABlockLang, DecoderCABlockVisionLangMul
-from models_mae_robot import MAERobot
+from mae.blocks import EncoderCABlockVision, DecoderCABlockVisionLang, DecoderCABlockLang, DecoderCABlockVisionLangMul
+from mae.models_mae_robot import MAERobot
 import transformers
 from torchvision import transforms
 import torch.nn.functional as F

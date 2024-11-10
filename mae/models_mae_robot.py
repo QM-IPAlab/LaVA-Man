@@ -1,11 +1,11 @@
 import torch
 import torch.nn as nn
 
-from blocks import Block
+from mae.blocks import Block
 
-from util.misc import PatchEmbedVarSize
-from util.pos_embed import get_2d_varsize_sincos_pos_embed
-from blocks import DecoderCABlock
+from mae.util.misc import PatchEmbedVarSize
+from mae.util.pos_embed import get_2d_varsize_sincos_pos_embed
+from mae.blocks import DecoderCABlock
 
 
 class MAERobotBase(nn.Module):
@@ -55,6 +55,10 @@ class MAERobotBase(nn.Module):
         self.norm_pix_loss = norm_pix_loss
 
         self.initialize_weights()
+
+        # store other parameters:
+        self.embed_dim = embed_dim
+        self.n_heads = num_heads
 
     def initialize_weights(self):
         
