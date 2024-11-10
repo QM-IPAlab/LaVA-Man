@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --partition=small
 #SBATCH --gres=gpu:1
-#SBATCH --job-name=10deomorecon
+#SBATCH --job-name=loadMulti
 #SBATCH --cpus-per-task=16
 #SBATCH --array=0-9
 
@@ -18,8 +18,8 @@ export TOKENIZERS_PARALLELISM=false
 # 2. The number of job array is 0 indexed
 
 
-exps_name="exps_extra_sep_seg2_recon_10demos"
-agent_name="mae_seg_recond"
+exps_name="exps_extra_100demos_add_loadMulti2"
+agent_name="mae_sep_seg2_add"
 
 tasks=("assembling-kits-seq-full"\
     "packing-boxes-pairs-full"\
@@ -61,47 +61,47 @@ task_name=${tasks[$SLURM_ARRAY_TASK_ID]}
 short_name=$(echo $task_name | awk -F '-' '{print $1 "-" $2 "-" $(NF-1)}')
 
 
-# python -m cliport.train  train.task=${task_name}\
-#                          train.agent=${agent_name}\
-#                          train.exp_folder=${exps_name}\
-#                          wandb.run_name=${exps_name}_place_${short_name}\
-#                          train.n_demos=100 \
-#                          train.n_steps=20100 \
-#                          train.lr_scheduler=True\
-#                          train.lr=2e-5\
-#                          train.warmup_epochs=10\
-#                          train.precision=32\
-#                          train.batch_size=16\
-#                          train.load_from_last_ckpt=True\
-#                          train.log=False\
-#                          mae_model=mae_robot_lang \
-#                          pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_full_color/checkpoint-160.pth\
-#                          train.load_pretrained_ckpt=True\
-#                          dataset.cache=False \
-#                          train.sep_mode=place\
-#                          cliport_checkpoint=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/exps_extra_seg2/multi-language-conditioned-mae_sep_seg2-n1000-train/checkpoints/place-best.ckpt\
+python -m cliport.train  train.task=${task_name}\
+                         train.agent=${agent_name}\
+                         train.exp_folder=${exps_name}\
+                         wandb.run_name=${exps_name}_place_${short_name}\
+                         train.n_demos=100 \
+                         train.n_steps=20100 \
+                         train.lr_scheduler=True\
+                         train.lr=2e-5\
+                         train.warmup_epochs=10\
+                         train.precision=32\
+                         train.batch_size=16\
+                         train.load_from_last_ckpt=True\
+                         train.log=False\
+                         mae_model=mae_robot_lang \
+                         pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_full_color/checkpoint-160.pth\
+                         train.load_pretrained_ckpt=False\
+                         dataset.cache=False \
+                         train.sep_mode=place\
+                         cliport_checkpoint=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/exps_extra_sep_seg2_add/multi-language-conditioned-mae_sep_seg2_add-n1000-train/checkpoints/place-best.ckpt\
 
 
 
-# python -m cliport.train  train.task=${task_name}\
-#                          train.agent=${agent_name}\
-#                          train.exp_folder=${exps_name}\
-#                          wandb.run_name=${exps_name}_pick_${short_name}\
-#                          train.n_demos=10 \
-#                          train.n_steps=20100 \
-#                          train.lr_scheduler=True\
-#                          train.lr=2e-5\
-#                          train.warmup_epochs=10\
-#                          train.precision=32\
-#                          train.batch_size=32\
-#                          train.load_from_last_ckpt=True\
-#                          train.log=False\
-#                          mae_model=mae_robot_lang \
-#                          pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_full_color/checkpoint-160.pth\
-#                          train.load_pretrained_ckpt=True\
-#                          dataset.cache=False \
-#                          train.sep_mode=pick\
-#                          cliport_checkpoint=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/exps_extra_seg2/multi-language-conditioned-mae_sep_seg2-n1000-train/checkpoints/pick-best.ckpt\
+python -m cliport.train  train.task=${task_name}\
+                         train.agent=${agent_name}\
+                         train.exp_folder=${exps_name}\
+                         wandb.run_name=${exps_name}_pick_${short_name}\
+                         train.n_demos=100 \
+                         train.n_steps=20100 \
+                         train.lr_scheduler=True\
+                         train.lr=2e-5\
+                         train.warmup_epochs=10\
+                         train.precision=32\
+                         train.batch_size=32\
+                         train.load_from_last_ckpt=True\
+                         train.log=False\
+                         mae_model=mae_robot_lang \
+                         pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_full_color/checkpoint-160.pth\
+                         train.load_pretrained_ckpt=True\
+                         dataset.cache=False \
+                         train.sep_mode=pick\
+                         cliport_checkpoint=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/exps_extra_sep_seg2_add/multi-language-conditioned-mae_sep_seg2_add-n1000-train/checkpoints/pick-best.ckpt\
 
 
                        
@@ -110,7 +110,7 @@ python cliport/eval_sep.py model_task=${task_name}\
                       agent=${agent_name} \
                       mode=val \
                       n_demos=100 \
-                      train_demos=10 \
+                      train_demos=100 \
                       exp_folder=${exps_name} \
                       checkpoint_type=val_missing \
                       update_results=True \
@@ -123,7 +123,7 @@ python cliport/eval_sep.py model_task=${task_name}\
                       agent=${agent_name} \
                       mode=test \
                       n_demos=100 \
-                      train_demos=10 \
+                      train_demos=100 \
                       exp_folder=${exps_name} \
                       checkpoint_type=test_best \
                       update_results=True \

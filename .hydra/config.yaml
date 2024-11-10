@@ -1,10 +1,10 @@
 root_dir: ${env:CLIPORT_ROOT}
 tag: default
 debug: false
-mode: test
-agent: mae_sep_seg2_fm
+mode: test_seen
+agent: mae_sep_seg2_add
 n_demos: 100
-train_demos: 1000
+train_demos: 100
 n_repeats: 1
 gpu:
 - 0
@@ -14,11 +14,11 @@ checkpoint_type: best
 val_on_heldout: true
 disp: false
 shared_memory: false
-eval_task: packing-seen-google-objects-group
-model_task: multi-language-conditioned
-type: single
+eval_task: pack_objects
+model_task: pack_objects
+type: real
 model_dir: ${root_dir}
-exp_folder: exps_extra_sep_seg2_fm_lp
+exp_folder: exps_real_all_sep_seg2_add
 data_dir: ${root_dir}/data
 assets_root: ${root_dir}/cliport/environments/assets/
 model_path: ${model_dir}/${exp_folder}/${model_task}-${agent}-n${train_demos}-train/checkpoints/

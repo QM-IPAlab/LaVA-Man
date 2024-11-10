@@ -8,7 +8,7 @@ export TOKENIZERS_PARALLELISM=false
 export HYDRA_FULL_ERROR=1
 
 
-agent_name="mae_sep_base"
+agent_name="mae_sep_seg2_add_clipv"
 task_name="multi-language-conditioned"
 
 # "packing-unseen-google-objects-seq"
@@ -103,8 +103,8 @@ python cliport/train.py  train.task=multi-language-conditioned\
                          train.batchnorm=True\
                          train.load_from_last_ckpt=False\
                          train.log=False\
-                         mae_model=mae_robot_lang2_enc_only \
-                         pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_extra_enc_lang/checkpoint-100.pth\
+                         mae_model=mae_robot_lang \
+                         pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_mix_v2_full/checkpoint-60.pth\
                          cliport_checkpoint=False\
                          dataset.cache=False \
                          train.sep_mode=place \
@@ -148,3 +148,15 @@ python cliport/train.py  train.task=multi-language-conditioned\
 #                          cliport_checkpoint=False\
 #                          dataset.cache=False \
 #                          dataset.type=mix\
+
+    # python cliport/eval_sep.py model_task=multi-language-conditioned\
+    #                     eval_task=packing-unseen-google-objects-seq \
+    #                     agent=${agent_name} \
+    #                     mode=test \
+    #                     n_demos=100 \
+    #                     train_demos=1000 \
+    #                     exp_folder=exps_extra_sep_seg2_add \
+    #                     checkpoint_type=best \
+    #                     update_results=True \
+    #                     disp=False\
+    #                     record.save_video=False

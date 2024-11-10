@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --partition=small
 #SBATCH --gres=gpu:1
-#SBATCH --job-name=enc_lang
+#SBATCH --job-name=clip_mae
 #SBATCH --cpus-per-task=16
 
 module load python/3.8
@@ -24,10 +24,10 @@ export TOKENIZERS_PARALLELISM=false
 # 8. check the agent name: sep or not sept, if sep, check train.sep_mode is set to pick or place
 
 
-exps_name="exps_extra_sep_seg2_enc_lang_enc_only"
-agent_name="mae_sep_base"
-pretrain_path="/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_extra_enc_lang/checkpoint-100.pth"
-mae_model="mae_robot_lang2_enc_only"
+exps_name="exps_extra_clip_mae_add"
+agent_name="mae_sep_clip"
+pretrain_path="/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_clip_2/checkpoint-160.pth"
+mae_model="mae_clip"
 #pretrain_path=False
 
 # tasks for ablation study (mask ratio)
@@ -47,13 +47,13 @@ mae_model="mae_robot_lang2_enc_only"
 tasks=("assembling-kits-seq-full"\
     "packing-boxes-pairs-full"\
     "stack-block-pyramid-seq-full"\
-    "separating-piles-full"\
     "towers-of-hanoi-seq-full"\
     "put-block-in-bowl-full"\
     "packing-seen-google-objects-group"\
     "packing-unseen-google-objects-group"\
     "packing-seen-google-objects-seq"\
     "packing-unseen-google-objects-seq"\
+    "separating-piles-full"\
     #"align-rope"\
     #"packing-shapes"\
 )
@@ -78,8 +78,9 @@ python -m cliport.train  train.task=multi-language-conditioned\
                          dataset.cache=False \
                          train.sep_mode=pick\
                          dataset.type=multi\
-                         #text_model="openai/clip-vit-base-patch16"\
-                         #train.linear_probe=True\
+                         train.linear_probe=False\
+                         text_model="openai/clip-vit-base-patch16"\
+
 
 
 python -m cliport.train  train.task=multi-language-conditioned\
@@ -102,8 +103,9 @@ python -m cliport.train  train.task=multi-language-conditioned\
                          dataset.cache=False \
                          train.sep_mode=place\
                          dataset.type=multi\
-                         #text_model="openai/clip-vit-base-patch16"\
-                         #train.linear_probe=True\
+                         train.linear_probe=False\
+                         text_model="openai/clip-vit-base-patch16"\
+                         
 
 
 # python cliport/eval_pick_place_sep.py model_task=multi-language-conditioned\

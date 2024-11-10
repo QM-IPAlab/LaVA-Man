@@ -510,6 +510,8 @@ def interpolate_pos_embed_ours(model, checkpoint_model, ori=False):
             pos_tokens = pos_tokens.permute(0, 2, 3, 1).flatten(1, 2)
             new_pos_embed = torch.cat((extra_tokens, pos_tokens), dim=1)
             checkpoint_model['pos_embed'] = new_pos_embed
+        else:
+            print("Size match, no need to interpolate")
 
     if 'decoder_pos_embed' in checkpoint_model:
         pos_embed_checkpoint = checkpoint_model['decoder_pos_embed']
@@ -533,4 +535,5 @@ def interpolate_pos_embed_ours(model, checkpoint_model, ori=False):
             pos_tokens = pos_tokens.permute(0, 2, 3, 1).flatten(1, 2)
             new_pos_embed = torch.cat((extra_tokens, pos_tokens), dim=1)
             checkpoint_model['decoder_pos_embed'] = new_pos_embed
-
+        else:
+            print("Size match, no need to interpolate")

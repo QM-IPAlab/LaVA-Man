@@ -363,7 +363,7 @@ class MAECLIP(MAERobot):
         self.clip = CLIPMaskModel.from_pretrained("openai/clip-vit-base-patch16")
         self.clip.text_model.requires_grad_(False)
         self.clip.vision_model.requires_grad_(True)
-        self.clip.vision_model.embeddings.position_embedding.requires_grad_(False)
+        #self.clip.vision_model.embeddings.position_embedding.requires_grad_(False)
 
     def get_lang_embed(self, processed_lang):
         with torch.no_grad():

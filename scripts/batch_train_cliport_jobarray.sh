@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --partition=small
 #SBATCH --gres=gpu:1
-#SBATCH --job-name=10demo
+#SBATCH --job-name=1demo
 #SBATCH --cpus-per-task=16
 #SBATCH --array=0-9
 
@@ -13,7 +13,7 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 
 # ======== experiments name =======sb== #
 
-exps_name="exps_extra_10demos_cliport"
+exps_name="exps_extra_1demos_cliport"
 
 
 # ======== agent name ========= #
@@ -38,8 +38,7 @@ tasks=("assembling-kits-seq-full"\
     "packing-seen-google-objects-group"\
     "packing-unseen-google-objects-group"\
     "packing-seen-google-objects-seq"\
-    "packing-unseen-google-objects-seq"\
-)
+    "packing-unseen-google-objects-seq")
 
 #/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big/checkpoint-160.pth
 
@@ -49,7 +48,7 @@ python -m cliport.train  train.task=${task_name}\
                          train.agent=${agent_name}\
                          train.exp_folder=${exps_name}\
                          wandb.run_name=${exps_name}_${task_name}\
-                         train.n_demos=10 \
+                         train.n_demos=1 \
                          train.n_steps=20100 \
                          train.load_from_last_ckpt=True\
                          dataset.cache=True \
@@ -64,7 +63,7 @@ python -m cliport.eval model_task=${task_name}\
                        agent=${agent_name} \
                        mode=val \
                        n_demos=100 \
-                       train_demos=10 \
+                       train_demos=1 \
                        exp_folder=${exps_name} \
                        checkpoint_type=val_missing \
                        update_results=True \
@@ -77,7 +76,7 @@ python -m cliport.eval model_task=${task_name}\
                        agent=${agent_name} \
                        mode=test \
                        n_demos=100 \
-                       train_demos=10 \
+                       train_demos=1 \
                        exp_folder=${exps_name} \
                        checkpoint_type=test_best \
                        update_results=True \

@@ -36,6 +36,9 @@ class RealDataset(Dataset):
         elif data_type == 'test_unseen':
             self.path = os.path.join(self.path, task_name, 'test', 'unseen')
             self.augment = False
+        elif data_type == 'train_all':
+            self.path = "/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_real_idiap"
+            self.augment = True
         self.annotation_file = os.path.join(self.path, 'annotations.json')
         self.in_shape = (320, 160, 6)
         self.pix_size = 0.003125

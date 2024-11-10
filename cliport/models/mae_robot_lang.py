@@ -4,7 +4,7 @@ from mae.util import misc
 import torch.nn.functional as F
 import torch.nn as nn
 import torch
-from cliport.models.core.unet import Cat, CatPredic
+from cliport.models.core.unet import Cat, CatPredic, CatPredicVision
 from visualizer import get_local
 from einops import rearrange
 from cliport.models.resnet import IdentityBlock, ConvBlock
@@ -12,7 +12,10 @@ from transformers import AutoTokenizer
 from cliport.models.featup_pretrained import FeatUp
 from cliport.models.dpt_head import PixelwiseTaskWithDPT, PixelwiseTaskWithDPTOurs
 CACHE_PATH = "/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/cache/hf-cache"
-
+from cliport.models.core.clip import build_model, load_clip, tokenize
+from torchvision import transforms
+from cliport.models.core.fusion import FusionMultOurs
+from cliport.models.core.unet import Up
 class MAEModel(nn.Module):
 
     def __init__(self, input_shape, output_dim, cfg, device, preprocess, model_name='mae_robot_lang',
@@ -320,6 +323,19 @@ class MAESeg2ModelFullMask(MAESeg2Model):
         for blk in self.model.decoder_blocks:
             out1, out2 = blk(out1, out2, lang_emb)
         out = self.model.decoder_norm(out1)
+        
+        # from torchvision.utils import save_image
+        # #(C, H, W)
+        # import os;
+        # os.makedirs('recons', exist_ok=True)
+        # recon = self.model.decoder_pred(out)
+        # recon = recon[:, 1:, :]  # 1, 200, 768
+        # recon = self.model.unpatchify(recon)
+        # recon = recon[0]
+        # recon = (recon- recon.min()) / (recon.max() - recon.min())
+        # i = len(os.listdir('recons'))
+        # save_image(recon, f'recons/recon_pick{i}.png')       
+
         out = out[:, 1:, :]  # 1, 400, 512
         out = self.unpatchify(out)
 
@@ -687,66 +703,21 @@ class MAESegBaseModel(nn.Module):
         return predict
 
 
-class MAESegCLIPModel(nn.Module):
+class MAESegCLIPModel(MAESeg2Model):
     
     def __init__(self, input_shape, output_dim, cfg, 
                  device, preprocess, model_name='mae_robot_lang', 
                  pretrain_path = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big/checkpoint-160.pth'):
-        super().__init__()
-        model_name = 'mae_robot_lang' if model_name is None else model_name
-        self.model = models_lib.__dict__[model_name](
-            img_size=input_shape[:2],
-            norm_pix_loss=False)
+        super(MAESegCLIPModel, self).__init__(input_shape, output_dim, cfg, 
+                 device, preprocess, model_name,
+                 pretrain_path)
+        
+        self.cat1 = CatPredic(256, 256)
+        self.cat2 = CatPredic(128, 128)
+        self.cat3 = CatPredic(64, 64)
+        self.cat4 = CatPredic(16, 16)
 
-        self.linear_probe = False if 'linear_probe' not in cfg['train'] else cfg['train']['linear_probe']
-        if self.linear_probe:
-            self.model.requires_grad_(False)
-
-        # load pretrain model
-        if pretrain_path:
-            misc.dynamic_load_pretrain(self.model, pretrain_path, interpolate=True)
-
-        self.preprocess = preprocess
-        self.output_dim = output_dim
-        self.batchnorm = False
-        self.text_processor = AutoTokenizer.from_pretrained("openai/clip-vit-base-patch32")
-
-        self.layer1 = nn.Sequential(
-            ConvBlock(512, [256, 256, 256], kernel_size=3, stride=1, batchnorm=self.batchnorm),
-            IdentityBlock(256, [256, 256, 256], kernel_size=3, stride=1, batchnorm=self.batchnorm),
-        )
-
-        self.cat1 = Cat(256, 256)
-        self.layer2 = nn.Sequential(
-            ConvBlock(256, [128, 128, 128], kernel_size=3, stride=1, batchnorm=self.batchnorm),
-            IdentityBlock(128, [128, 128, 128], kernel_size=3, stride=1, batchnorm=self.batchnorm),
-            nn.UpsamplingBilinear2d(scale_factor=2),
-        )
-
-        self.cat2 = Cat(128, 128)
-        self.layer3 = nn.Sequential(
-            ConvBlock(128, [64, 64, 64], kernel_size=3, stride=1, batchnorm=self.batchnorm),
-            IdentityBlock(64, [64, 64, 64], kernel_size=3, stride=1, batchnorm=self.batchnorm),
-        )
-
-        self.cat3 = Cat(64, 64)
-        self.layer4 = nn.Sequential(
-            ConvBlock(64, [16, 16, 16], kernel_size=3, stride=1, batchnorm=self.batchnorm),
-            IdentityBlock(16, [16, 16, 16], kernel_size=3, stride=1, batchnorm=self.batchnorm),
-        )
-        self.cat4 = Cat(16, 16)
-        self.conv = nn.Sequential(
-            nn.Conv2d(16, self.output_dim, kernel_size=1)
-        )
-
-    def unpatchify(self, x):
-        p = self.model.patch_embed.patch_size[0]
-        h = self.model.img_size[0] // p
-        w = self.model.img_size[1] // p
-        x = rearrange(x, 'b (nh nw) c -> b c nh nw', nh=h, nw=w)
-        return x
-    
-    def get_lang_processed(self, lang, device):
+    def get_lang_embed(self, lang, device):
         if type(lang) is str:
             decoded_strings = [lang]
         elif type(lang) is list: # if batch size
@@ -758,25 +729,57 @@ class MAESegCLIPModel(nn.Module):
             decoded_strings = [s.decode('ascii') for s in lang]
         processed_lang = self.text_processor(text=decoded_strings, padding="max_length", return_tensors='pt')
         processed_lang = processed_lang.to(device)
-        return processed_lang
+        lang_emb = self.model.clip.text_model(**processed_lang, return_dict=False)
+        return lang_emb
 
     def forward(self, x, lang):
-        img_processed = self.preprocess(x, dist='clip')
-        lang_processed = self.get_lang_processed(lang, img_processed.device) 
+        x = self.preprocess(x, dist='clip')
 
-        in_shape = img_processed.shape
-        rgb = img_processed[:, :3]  # select RGB
-        mae_output = self.model.cliport_forward(rgb, lang_processed)
-        #relevance = self.model.show_relevance_map(rgb, lang_processed)
-        out = self.unpatchify(mae_output)
+        in_type = x.dtype
+        in_shape = x.shape
+        device = x.device
+        rgb = x[:, :3]  # select RGB
+        latent1, mask1, ids_restore1 = self.model.clip.vision_model(mask_ratio=0.0, pixel_values=rgb,  output_hidden_states=True, return_dict=False, interpolate_pos_encoding=True)
+        latent2, mask2, ids_restore2 = self.model.clip.vision_model(mask_ratio=1.0, pixel_values=rgb,  output_hidden_states=True, return_dict=False, interpolate_pos_encoding=True)
+        lang_emb = self.get_lang_embed(lang,device)
+
+        fea1 = self.model.decoder_embed(latent1)
+        fea2 = self.model.decoder_embed(latent2)
+        
+        masked_tokens = self.model.mask_token.repeat(fea2.shape[0],
+                                               ids_restore2.shape[1] + 1 - fea2.shape[1], 1)
+        fea2_ = torch.cat([fea2[:, 1:, :], masked_tokens], dim=1)  # no cls token
+        fea2_ = torch.gather(fea2_, dim=1,
+                             index=ids_restore2.unsqueeze(-1).repeat(1, 1, fea2.shape[2]))  # unshuffle
+        fea2 = torch.cat([fea2[:, :1, :], fea2_], dim=1)  # append cls token
+
+        fea1 = fea1 + self.model.decoder_pos_embed
+        fea2 = fea2 + self.model.decoder_pos_embed
+
+        out1 = fea1
+        out2 = fea2
+
+        if out1.shape[0] != lang_emb[0].shape[0]:
+            lang_emb = lang_emb[0].repeat([int(out1.shape[0]//lang_emb[0].shape[0]), 1, 1])
+
+        for blk in self.model.decoder_blocks:
+            out1, out2 = blk(out1, out2, lang_emb)
+        out = self.model.decoder_norm(out1)
+
+        recon = self.model.decoder_pred(out)
+        recon = recon[:, 1:, :]  # 1, 200, 768
+        recon = self.model.unpatchify(recon)
+        out = out[:, 1:, :]  # 1, 400, 512
+        out = self.unpatchify(out)
+
         out = self.layer1(out)
-        out = self.cat1(out, rgb)
+        out = self.cat1(out, rgb, recon)
         out = self.layer2(out)
-        out = self.cat2(out, rgb)
+        out = self.cat2(out, rgb, recon)
         out = self.layer3(out)
-        out = self.cat3(out, rgb)
+        out = self.cat3(out, rgb, recon)
         out = self.layer4(out)
-        out = self.cat4(out, rgb)
+        out = self.cat4(out, rgb, recon)
 
         # incase of different size (patch size = 8)
         if out.shape[-2:] != in_shape[-2:]:
@@ -1271,7 +1274,7 @@ class MAESeg2ModelRecon(MAESeg2Model):
 
 
 class MAESeg2ModelAdd(MAESeg2Model):
-    """MAESeg2 model, but feed the 100 percent masked image to the decoder"""
+    """MAESeg2 model, add the predicted image to the feature map"""
     def __init__(self, input_shape, output_dim, cfg, 
                  device, preprocess, model_name='mae_robot_lang', 
                  pretrain_path = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big/checkpoint-160.pth'):
@@ -1322,8 +1325,6 @@ class MAESeg2ModelAdd(MAESeg2Model):
         recon = self.model.decoder_pred(out)
         recon = recon[:, 1:, :]  # 1, 200, 768
         recon = self.model.unpatchify(recon)
-        import pdb; pdb.set_trace()
-
         out = out[:, 1:, :]  # 1, 400, 512
         out = self.unpatchify(out)
 
@@ -1342,3 +1343,155 @@ class MAESeg2ModelAdd(MAESeg2Model):
 
         predict = self.conv(out)
         return predict
+
+
+class MAESeg2ModelCLIPVision(MAESeg2Model):
+    """MAESeg2 model, add the predicted image to the feature map"""
+    def __init__(self, input_shape, output_dim, cfg, 
+                 device, preprocess, model_name='mae_robot_lang', 
+                 pretrain_path = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_big/checkpoint-160.pth'):
+        super(MAESeg2ModelCLIPVision, self).__init__(input_shape, output_dim, cfg, 
+                 device, preprocess, model_name,
+                 pretrain_path)
+        
+        self.cat1 = CatPredicVision(256, 256)
+        self.cat2 = CatPredicVision(128, 128)
+        self.cat3 = CatPredicVision(64, 64)
+        self.cat4 = CatPredicVision(16, 16)
+
+        model, _ = load_clip("RN50", device='cuda')
+        self.clip = build_model(model.state_dict(), torch.float32).to('cuda')
+        self.clip.requires_grad_(False)
+        self.resize_transform = transforms.Resize((224, 224))
+
+        self.lang_fuser1 = FusionMultOurs(input_dim=1024)
+        self.lang_fuser2 = FusionMultOurs(input_dim=512)
+        self.lang_fuser3 = FusionMultOurs(input_dim=256)
+
+        self.lang_proj1 = nn.Linear(1024, 1024)
+        self.lang_proj2 = nn.Linear(1024, 512)
+        self.lang_proj3 = nn.Linear(1024, 256)
+
+        self.up1 = Up(2048, 1024 // 2)
+        self.up2 = Up(1024, 512 // 2)
+        self.up3 = Up(512, 256 // 2)
+
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(2048, 1024, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.ReLU(True)
+        )
+
+    def encode_image(self, img):
+        img = F.pad(img, (80, 80, 0, 0), value=0)
+        img = self.resize_transform(img)
+        with torch.no_grad():
+            img_encoding, img_im = self.clip.visual.prepool_im(img)
+        return img_encoding, img_im
+
+    def encode_text(self, lang):
+        if type(lang) is str:
+            decoded_strings = [lang]
+        elif type(lang) is list: # if batch size
+            if type(lang[0]) is str:
+                decoded_strings = [s for s in lang]
+            else:
+                decoded_strings = [s.decode('ascii') for s in lang]
+        else:
+            decoded_strings = [s.decode('ascii') for s in lang]
+        
+        processed_lang = self.text_processor(text=decoded_strings, padding="max_length", return_tensors='pt')
+        processed_lang = processed_lang.to('cuda')
+        with torch.no_grad():
+            tokens = processed_lang['input_ids']
+            text_feat, text_emb = self.clip.encode_text_with_embeddings(tokens)
+        return text_feat, text_emb
+    
+    def get_hidden_embeds(self, processed_lang, processed_img):
+        """get the hidden embeddings of the language and the image"""
+        
+        lang_enc, _ = self.encode_text(processed_lang) # 64, 1024; 64, 77, 512
+        
+        _, img_im = self.encode_image(processed_img) #64, 2048, 7, 7
+    
+        if lang_enc.shape[0] != img_im[0].shape[0]:
+            lang_enc = lang_enc.repeat([int(img_im[0].shape[0]//lang_enc.shape[0]), 1, 1])
+        
+        out = self.cliport_lang_fusion(lang_enc, img_im)
+        return out
+    
+    def cliport_lang_fusion(self, l_input, im):
+        x = self.conv1(im[-1]) # 64 1024 7 7
+        x = self.lang_fuser1(x, l_input, x2_mask=None, x2_proj=self.lang_proj1)
+        x = self.up1(x, im[-2]) # # 64 512 14 14
+        x = self.lang_fuser2(x, l_input, x2_mask=None, x2_proj=self.lang_proj2)
+        x = self.up2(x, im[-3]) # #64 512 28 28
+        x = self.lang_fuser3(x, l_input, x2_mask=None, x2_proj=self.lang_proj3)
+        x = self.up3(x, im[-4]) #  64 512 56 56
+        return x
+    
+    def forward(self, x, lang):
+        x = self.preprocess(x, dist='clip')
+
+        in_type = x.dtype
+        in_shape = x.shape
+        device = x.device
+        rgb = x[:, :3]  # select RGB
+        
+        ref = self.get_hidden_embeds(lang, rgb)
+        ref = F.adaptive_avg_pool2d(ref, (320,320))
+        ref = ref[:,:,:,80:-80]
+
+        latent1, mask1, ids_restore1 = self.model.forward_encoder(rgb, mask_ratio=0)
+        latent2, mask2, ids_restore2 = self.model.forward_encoder(rgb, mask_ratio=1.0)
+        
+
+        fea1 = self.model.decoder_embed(latent1)
+        fea2 = self.model.decoder_embed(latent2)
+        
+        masked_tokens = self.model.mask_token.repeat(fea2.shape[0],
+                                               ids_restore2.shape[1] + 1 - fea2.shape[1], 1)
+        fea2_ = torch.cat([fea2[:, 1:, :], masked_tokens], dim=1)  # no cls token
+        fea2_ = torch.gather(fea2_, dim=1,
+                             index=ids_restore2.unsqueeze(-1).repeat(1, 1, fea2.shape[2]))  # unshuffle
+        fea2 = torch.cat([fea2[:, :1, :], fea2_], dim=1)  # append cls token
+
+        fea1 = fea1 + self.model.decoder_pos_embed
+        fea2 = fea2 + self.model.decoder_pos_embed
+
+        out1 = fea1
+        out2 = fea2
+
+        lang_emb = self.get_lang_embed(lang,device)
+        if out1.shape[0] != lang_emb[0].shape[0]:
+            lang_emb = lang_emb[0].repeat([int(out1.shape[0]//lang_emb[0].shape[0]), 1, 1])
+
+        for blk in self.model.decoder_blocks:
+            out1, out2 = blk(out1, out2, lang_emb)
+        out = self.model.decoder_norm(out1)
+
+        recon = self.model.decoder_pred(out)
+        recon = recon[:, 1:, :]  # 1, 200, 768
+        recon = self.model.unpatchify(recon)
+        out = out[:, 1:, :]  # 1, 400, 512
+        out = self.unpatchify(out)
+
+        out = self.layer1(out)
+        out = self.cat1(out, rgb, recon, ref)
+        out = self.layer2(out)
+        
+        out = self.cat2(out, rgb, recon, ref)
+        out = self.layer3(out)
+        
+        out = self.cat3(out, rgb, recon, ref)
+        out = self.layer4(out)
+        
+        out = self.cat4(out, rgb, recon, ref)
+
+        # incase of different size (patch size = 8)
+        if out.shape[-2:] != in_shape[-2:]:
+            out = F.interpolate(out, size=(in_shape[-2], in_shape[-1]), mode='bilinear')
+
+        predict = self.conv(out)
+        return predict
+
+

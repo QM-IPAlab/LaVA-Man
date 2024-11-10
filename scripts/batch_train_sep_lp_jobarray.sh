@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --partition=small
 #SBATCH --gres=gpu:1
-#SBATCH --job-name=10lp
+#SBATCH --job-name=1000ft
 #SBATCH --cpus-per-task=16
-#SBATCH --array=0-4
+#SBATCH --array=0-9%5
 
 module load python/3.8
 source py-mae-cliport/bin/activate
@@ -14,8 +14,8 @@ export TOKENIZERS_PARALLELISM=false
 
 # linear probe benchmark for 10 demos
 
-exps_name="exps_extra_sep_seg2_fm_10demoslp"
-agent_name="mae_sep_seg2_fm"
+exps_name="exps_extra_sep_seg2_add_1000demo"
+agent_name="mae_sep_seg2_add"
 
 tasks=("stack-block-pyramid-seq-full"\
     "packing-seen-google-objects-seq"\
@@ -26,10 +26,7 @@ tasks=("stack-block-pyramid-seq-full"\
     "towers-of-hanoi-seq-full"\
     "put-block-in-bowl-full"\
     "separating-piles-full"\
-    "packing-boxes-pairs-full"\
-    "align-rope"\
-    "packing-shapes"\
-)
+    "packing-boxes-pairs-full")
 
 # tasks=("assembling-kits-seq-unseen-colors"\
 #   "assembling-kits-seq-seen-colors"\
@@ -61,8 +58,8 @@ python -m cliport.train  train.task=${task_name}\
                          train.agent=${agent_name}\
                          train.exp_folder=${exps_name}\
                          wandb.run_name=${exps_name}_place_${short_name}\
-                         train.n_demos=10 \
-                         train.n_steps=20100 \
+                         train.n_demos=1000\
+                         train.n_steps=60100 \
                          train.lr_scheduler=True\
                          train.lr=2e-5\
                          train.warmup_epochs=10\
@@ -76,7 +73,7 @@ python -m cliport.train  train.task=${task_name}\
                          dataset.cache=False \
                          dataset.aug=True \
                          train.sep_mode=place\
-                         train.linear_probe=True
+                         train.linear_probe=False
                          #cliport_checkpoint=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/exps_extra_seg2/multi-language-conditioned-mae_sep_seg2-n1000-train/checkpoints/place-best.ckpt\
 
 
@@ -85,8 +82,8 @@ python -m cliport.train  train.task=${task_name}\
                          train.agent=${agent_name}\
                          train.exp_folder=${exps_name}\
                          wandb.run_name=${exps_name}_pick_${short_name}\
-                         train.n_demos=10 \
-                         train.n_steps=20100 \
+                         train.n_demos=1000 \
+                         train.n_steps=60100 \
                          train.lr_scheduler=True\
                          train.lr=2e-5\
                          train.warmup_epochs=10\
@@ -100,22 +97,22 @@ python -m cliport.train  train.task=${task_name}\
                          dataset.cache=False \
                          dataset.aug=True \
                          train.sep_mode=pick\
-                         train.linear_probe=True
+                         train.linear_probe=False
                          #cliport_checkpoint=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/exps_extra_seg2/multi-language-conditioned-mae_sep_seg2-n1000-train/checkpoints/pick-best.ckpt\
 
 
                        
-python cliport/eval_sep.py model_task=${task_name}\
-                      eval_task=${task_name} \
-                      agent=${agent_name} \
-                      mode=val \
-                      n_demos=100 \
-                      train_demos=10 \
-                      exp_folder=${exps_name} \
-                      checkpoint_type=val_missing \
-                      update_results=True \
-                      disp=False\
-                      record.save_video=False\
+# python cliport/eval_sep.py model_task=${task_name}\
+#                       eval_task=${task_name} \
+#                       agent=${agent_name} \
+#                       mode=val \
+#                       n_demos=100 \
+#                       train_demos=1000 \
+#                       exp_folder=${exps_name} \
+#                       checkpoint_type=val_missing \
+#                       update_results=True \
+#                       disp=False\
+#                       record.save_video=False\
 
 
 python cliport/eval_sep.py model_task=${task_name}\
@@ -123,7 +120,7 @@ python cliport/eval_sep.py model_task=${task_name}\
                       agent=${agent_name} \
                       mode=test \
                       n_demos=100 \
-                      train_demos=10 \
+                      train_demos=1000 \
                       exp_folder=${exps_name} \
                       checkpoint_type=test_best \
                       update_results=True \

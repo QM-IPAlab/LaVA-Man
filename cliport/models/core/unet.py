@@ -104,6 +104,26 @@ class CatPredic(nn.Module):
         cat = torch.cat([x, guidance], dim=1)
         out = self.conv(cat)
         return out
+    
+
+class CatPredicVision(nn.Module):
+    """Upscaling then double conv"""
+
+    def __init__(self, in_channels, out_channels):
+        super().__init__()
+
+        self.conv_g = nn.Conv2d(6+128, in_channels, kernel_size=1)
+        self.conv = DoubleConv(in_channels * 2, out_channels)
+
+    def forward(self, x, img, pred, ref):
+        _, _, h, w = x.shape
+        img = torch.cat([img, pred, ref], dim=1)
+        guidance = F.adaptive_avg_pool2d(img, (h, w))
+        guidance = self.conv_g(guidance)
+        cat = torch.cat([x, guidance], dim=1)
+        out = self.conv(cat)
+        return out
+
 
 class CatDepth(Cat):
     def __init__(self, in_channels, out_channels):

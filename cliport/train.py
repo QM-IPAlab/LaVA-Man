@@ -114,10 +114,13 @@ def main(cfg):
     if 'multi' in dataset_type:
         train_ds = RavensMultiTaskDataset(data_dir, cfg, group=task, mode='train', n_demos=n_demos, augment=True)
         val_ds = RavensMultiTaskDataset(data_dir, cfg, group=task, mode='val', n_demos=n_val, augment=False)
-    elif 'real' in dataset_type:
+    elif 'real' == dataset_type:
         train_ds = RealDataset(task_name=task, data_type='train', augment=True)
         val_ds = RealDataset(task_name=task,data_type='train', augment=False)
-    elif 'mix' in dataset_type:
+    elif 'real_all' == dataset_type:
+        train_ds = RealDataset(task_name=task, data_type='train_all', augment=True)
+        val_ds = RealDataset(task_name=task,data_type='train_all', augment=False)
+    elif 'mix' == dataset_type:
         train_ds_sim = RavensMultiTaskDataset(data_dir, cfg, group=task, mode='train', n_demos=n_demos, augment=True)
         val_ds_sim = RavensMultiTaskDataset(data_dir, cfg, group=task, mode='val', n_demos=n_val, augment=False)
         

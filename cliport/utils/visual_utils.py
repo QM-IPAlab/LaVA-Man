@@ -182,16 +182,23 @@ def save_tensor_with_heatmap(image: np.ndarray, heatmap: np.ndarray, filename, l
     # image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
     combined = np.hstack((image, heatmap, overlay))
 
+    # Create a white line (padding area) for the text below the combined image
+    padding_height = 50  # Height of the white line
+    white_line = np.ones((padding_height, combined.shape[1], 3), dtype=np.uint8) * 255  # RGB white line
+
+    # Concatenate the white line to the bottom of the combined image
+    combined_with_line = np.vstack((combined, white_line))
+
     if l is not None:
         text = str(l)  # 将变量l转换为字符串
-        position = (10, 50)  # 设置文字的开始位置
-        cv2.putText(combined, text, position, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1, cv2.LINE_AA)
+        position = (10, combined.shape[0] + 30)  # 设置文字的开始位置
+        cv2.putText(combined_with_line, text, position, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
 
     if return_img:
-        return combined
+        return combined_with_line
     else:
         #folder_name = os.path.dirname(filename)
-        return cv2.imwrite(filename, combined)
+        return cv2.imwrite(filename, combined_with_line)
 
 
 def move_to_device(batch, device):

@@ -260,8 +260,7 @@ class TransporterAgentSep(LightningModule):
         out = self.trans_forward(inp, softmax=False)
         err, loss = self.transport_criterion(backprop, compute_err, inp, out, p0, p1, p1_theta)
         
-        # save heatmap
-        if backprop is False and compute_err is True and isinstance(self.logger, WandbLogger) and self.save_visuals == 0:
+        def get_heatmap(l=None, return_img=False):
             image = inp_img[0, :, :, :3]
             image = vu.tensor_to_cv2_img(image, to_rgb=False)
 
@@ -271,10 +270,19 @@ class TransporterAgentSep(LightningModule):
             heatmap = out[0].reshape(image.shape[0], image.shape[1], self.n_rotations).detach().cpu().numpy()
             heatmap = heatmap[:, :, itheta]
             combined = vu.save_tensor_with_heatmap(image, heatmap,
-                                                   filename=None, return_img=True)
+                                                   filename=None, return_img=return_img, l=l)
             combined = combined[:, :, ::-1]
+            return combined
+
+        # save heatmap
+        if backprop is False and compute_err is True and isinstance(self.logger, WandbLogger) and self.save_visuals == 0:
+            combined = get_heatmap(return_img=True, l=None)
             self.logger.log_image(key='trans_heatmap', images=[combined], caption=[lang_goal[0]])
             self.save_visuals += 1
+
+        # save heatmap in test
+        if self.on_test:
+            self.save_heatmap.append(get_heatmap(l=lang_goal[0], return_img=True))
 
         return loss, err
 
@@ -552,7 +560,6 @@ class TransporterAgentSep(LightningModule):
         # pick_radius = frame['pick_radius']
         # place_radius = frame['place_radius']
         
-
         # img = img.astype(np.uint8)
 
         # brg = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
@@ -568,7 +575,7 @@ class TransporterAgentSep(LightningModule):
         img = (img- img.min()) / (img.max() - img.min())
         img = img.cpu().numpy()
         text = frame['lang_goal']
-        out_attn = self.save_heatmap.pop()
+        out_attn = self.save_heatmap.pop(0)
         out_attn = out_attn.reshape(*self.in_shape[:2]).detach().cpu().numpy()
         save_path = os.path.join(self.cfg['train']['train_dir'], 'real_vis')
         os.makedirs(save_path, exist_ok=True)
@@ -579,6 +586,9 @@ class TransporterAgentSep(LightningModule):
             f'{save_path}/{name}_pick{batch_idx + 1:06d}.png',
             l=text)
 
+        out_attn = self.save_heatmap.pop(0)
+        out_attn = out_attn[:,:,::-1]
+        save = cv2.imwrite(f'{save_path}/{name}_place{batch_idx + 1:06d}.png', out_attn)
 
         # whether successful pick and place ?
         if err0['dist'] < frame['pick_radius']:
