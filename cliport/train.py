@@ -23,7 +23,8 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import LearningRateMonitor
-from lightning.pytorch.tuner import Tuner
+from cliport.real_dataset_207 import Real207Dataset
+from cliport.real_dataset_ann import RealAnnDataset
 
 WANDB_DIR = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/wandb_cliport'
 TB_DIR = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/tensorboard'
@@ -120,6 +121,9 @@ def main(cfg):
     elif 'real_all' == dataset_type:
         train_ds = RealDataset(task_name=task, data_type='train_all', augment=True)
         val_ds = RealDataset(task_name=task,data_type='train_all', augment=False)
+    elif 'real_ann' == dataset_type:
+        train_ds = RealAnnDataset(task_name=task, data_type="train_ann", augment=True)
+        val_ds = RealAnnDataset(task_name=task, data_type='train_ann', augment=False)
     elif 'mix' == dataset_type:
         train_ds_sim = RavensMultiTaskDataset(data_dir, cfg, group=task, mode='train', n_demos=n_demos, augment=True)
         val_ds_sim = RavensMultiTaskDataset(data_dir, cfg, group=task, mode='val', n_demos=n_val, augment=False)

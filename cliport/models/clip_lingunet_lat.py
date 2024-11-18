@@ -11,6 +11,10 @@ from cliport.models.core import fusion
 from cliport.models.core.fusion import FusionConvLat
 from visualizer import get_local
 
+import cv2
+import numpy as np
+import os
+import time
 class CLIPLingUNetLat(nn.Module):
     """ CLIP RN50 with U-Net skip connections and lateral connections """
 
@@ -33,6 +37,7 @@ class CLIPLingUNetLat(nn.Module):
     def _load_clip(self):
         model, _ = load_clip("RN50", device=self.device)
         self.clip_rn50 = build_model(model.state_dict()).to(self.device)
+        self.clip_rn50.requires_grad_(False)  # freeze weights
         del model
 
     def _build_decoder(self):
@@ -125,6 +130,19 @@ class CLIPLingUNetLat(nn.Module):
         x = self.lat_fusion2(x, lat[-5])
 
         x = self.lang_fuser3(x, l_input, x2_mask=l_mask, x2_proj=self.lang_proj3)
+        
+        # os.makedirs("vis_cos", exist_ok=True)
+        # x_mean = x.mean(dim=1, keepdim=True)
+        # x_cropped = x_mean[:, :, :, :20]
+        # x_expanded = F.interpolate(x_cropped, size=(320, 160), mode='bilinear', align_corners=False)
+        # x_visualize = x_expanded[0, 0, :, :].cpu().numpy()
+        # x_normalized = cv2.normalize(x_visualize, None, 0, 255, norm_type=cv2.NORM_MINMAX)
+        # x_normalized = x_normalized.astype(np.uint8)
+        # heatmap = cv2.applyColorMap(x_normalized, cv2.COLORMAP_JET)
+        # time_now = time.time()
+        # cv2.imwrite(f"vis_cos/{time_now}.png", heatmap)
+        
+        
         x = self.up3(x, im[-4])
         x = self.lat_fusion3(x, lat[-4])
 

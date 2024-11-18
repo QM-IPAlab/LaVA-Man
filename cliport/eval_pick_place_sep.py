@@ -44,9 +44,9 @@ def main(vcfg):
                                             n_demos=vcfg['n_demos'],
                                             augment=False)
     elif dataset_type == 'real':
-        ds = RealDataset(task_name=eval_task, data_type=mode, augment=True)
+        ds = RealDataset(task_name=eval_task, data_type=mode, augment=False)
     elif dataset_type == 'real_ours':
-        ds = Real207Dataset(task_name=eval_task, data_type=mode, augment=True)
+        ds = Real207Dataset(task_name=eval_task, data_type=mode, augment=False)
     else:
         ds = dataset.RavensDataset(os.path.join(vcfg['data_dir'], f"{eval_task}-{mode}"),
                                    tcfg,

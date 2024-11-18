@@ -34,6 +34,7 @@ class RN50BertLingUNetLat(nn.Module):
 
     def _load_vision_fcn(self):
         resnet50 = models.resnet50(pretrained=True)
+        resnet50.requires_grad_(False)
         modules = list(resnet50.children())[:-2]
 
         self.stem = nn.Sequential(*modules[:4])
@@ -55,6 +56,7 @@ class RN50BertLingUNetLat(nn.Module):
         self.lang_proj1 = nn.Linear(self.proj_input_dim, 1024)
         self.lang_proj2 = nn.Linear(self.proj_input_dim, 512)
         self.lang_proj3 = nn.Linear(self.proj_input_dim, 256)
+        self.text_encoder.requires_grad_(False)
 
     def _build_decoder(self):
         self.conv1 = nn.Sequential(

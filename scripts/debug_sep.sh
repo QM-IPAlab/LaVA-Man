@@ -8,7 +8,7 @@ export TOKENIZERS_PARALLELISM=false
 export HYDRA_FULL_ERROR=1
 
 
-agent_name="mae_sep_seg2_add_clipv"
+agent_name="rn50_bert"
 task_name="multi-language-conditioned"
 
 # "packing-unseen-google-objects-seq"
@@ -99,7 +99,7 @@ python cliport/train.py  train.task=multi-language-conditioned\
                          train.lr=2e-5\
                          train.warmup_epochs=10\
                          train.precision=32\
-                         train.batch_size=16\
+                         train.batch_size=1\
                          train.batchnorm=True\
                          train.load_from_last_ckpt=False\
                          train.log=False\
@@ -107,8 +107,10 @@ python cliport/train.py  train.task=multi-language-conditioned\
                          pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_mix_v2_full/checkpoint-60.pth\
                          cliport_checkpoint=False\
                          dataset.cache=False \
-                         train.sep_mode=place \
                          dataset.type=multi\
+                         train.linear_probe=True\
+                         #train.sep_mode=place \
+                         #dataset.type=multi\
                          #text_model="openai/clip-vit-base-patch16"
 
 # python cliport/train.py  train.task=pack_objects\
