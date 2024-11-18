@@ -111,19 +111,19 @@ hydra:
     task:
     - model_task=pack_objects
     - eval_task=pack_objects
-    - agent=mae_sep_seg2_add
-    - mode=test_seen
+    - agent=clip_lingunet_transporter
+    - mode=test_unseen
     - n_demos=100
     - train_demos=100
-    - exp_folder=exps_real_all_sep_seg2_add
+    - exp_folder=exps_real_cliport
     - checkpoint_type=best
     - update_results=True
     - disp=False
     - record.save_video=False
-    - type=real
+    - type=real_ours
   job:
-    name: eval_pick_place_sep
-    override_dirname: agent=mae_sep_seg2_add,checkpoint_type=best,disp=False,eval_task=pack_objects,exp_folder=exps_real_all_sep_seg2_add,mode=test_seen,model_task=pack_objects,n_demos=100,record.save_video=False,train_demos=100,type=real,update_results=True
+    name: eval_pick_place
+    override_dirname: agent=clip_lingunet_transporter,checkpoint_type=best,disp=False,eval_task=pack_objects,exp_folder=exps_real_cliport,mode=test_unseen,model_task=pack_objects,n_demos=100,record.save_video=False,train_demos=100,type=real_ours,update_results=True
     id: ???
     num: ???
     config_name: eval

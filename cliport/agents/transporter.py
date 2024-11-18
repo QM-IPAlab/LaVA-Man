@@ -393,6 +393,12 @@ class TransporterAgent(LightningModule):
         self.load_state_dict(torch.load(model_path)['state_dict'], strict=False)
         self.to(device=self.device_type)
 
+    def on_test_epoch_start(self) -> None:
+        super().on_test_epoch_start()
+        self.on_test=True
+        self.test_output_list = []
+        self.save_heatmap = []
+
     def test_step(self, batch, batch_idx):
         self.attention.eval()
         self.transport.eval()
@@ -411,10 +417,7 @@ class TransporterAgent(LightningModule):
                 loss1 += l1
         loss0 /= self.val_repeats
         loss1 /= self.val_repeats
-        val_total_loss = loss0 + loss1
-
-        self.trainer.evaluation_loop.trainer.train_loop.running_loss.append(val_total_loss)
-        
+        val_total_loss = loss0 + loss1        
 
         #import pdb; pdb.set_trace()
         img = frame['img'][:,:,:3]
@@ -465,21 +468,23 @@ class TransporterAgent(LightningModule):
         else:
             success = 0
                 
-        return dict(
-            val_loss=val_total_loss,
-            val_loss0=loss0,
-            val_loss1=loss1,
-            val_attn_dist_err=err0['dist'],
-            val_attn_theta_err=err0['theta'],
-            val_trans_dist_err=err1['dist'],
-            val_trans_theta_err=err1['theta'],
-            success=success,
-            success_pick=success_pick,
-            success_place=success_place
+        self.test_output_list.append( 
+                dict(
+                val_loss=val_total_loss,
+                val_loss0=loss0,
+                val_loss1=loss1,
+                val_attn_dist_err=err0['dist'],
+                val_attn_theta_err=err0['theta'],
+                val_trans_dist_err=err1['dist'],
+                val_trans_theta_err=err1['theta'],
+                success=success,
+                success_pick=success_pick,
+                success_place=success_place
+            )
         )
 
-    def test_epoch_end(self, all_outputs):
-
+    def on_test_epoch_end(self):
+        all_outputs = self.test_output_list
         mean_val_total_loss = np.mean([v['val_loss'].item() for v in all_outputs])
         mean_val_loss0 = np.mean([v['val_loss0'].item() for v in all_outputs])
         mean_val_loss1 = np.mean([v['val_loss1'].item() for v in all_outputs])
@@ -506,24 +511,7 @@ class TransporterAgent(LightningModule):
         print('success_place_rate', success_place_rate,file=saved_file)
         saved_file.close()
 
-        return dict(
-            val_loss=mean_val_total_loss,
-            val_loss0=mean_val_loss0,
-            mean_val_loss1=mean_val_loss1,
-            total_attn_dist_err=total_attn_dist_err,
-            total_attn_theta_err=total_attn_theta_err,
-            total_trans_dist_err=total_trans_dist_err,
-            total_trans_theta_err=total_trans_theta_err,
-            success_rate=success_rate,
-            success_pick_rate=success_pick_rate,
-            success_place_rate=success_place_rate
-        )
-
-    def load_sep(self, model_pick, model_place):
-        self.load_state_dict(torch.load(model_pick)['state_dict'], strict=False)
-        self.load_state_dict(torch.load(model_place)['state_dict'], strict=False)
-        self.to(device=self.device_type)
-        
+    
 
 
 class OriginalTransporterAgent(TransporterAgent):

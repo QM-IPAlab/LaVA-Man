@@ -3,6 +3,7 @@
 from math import e, pi
 import os
 
+from kornia import depth
 import numpy as np
 from sympy import false
 from torch.utils.data import Dataset
@@ -17,7 +18,7 @@ import json
 from PIL import Image
 import cv2
 
-class Real207Dataset(Dataset):
+class RealAnnDataset(Dataset):
     """Dataset for loading real images."""
 
     def __init__(self, task_name="pack_objects", data_type = 'train', augment=false):
@@ -26,10 +27,7 @@ class Real207Dataset(Dataset):
         print(f"Loading real 207 dataset...") 
 
         self.augment = augment
-        if data_type == 'train_ann':
-            self.path = "/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/real_annotated"
-        else:
-            self.path = "/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/real_img_eng207" # FIXME: hardcoded path
+        self.path = "/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/real_annotated"
 
         self.annotation_file = os.path.join(self.path, 'annotations.json')
         self.in_shape = (320, 160, 6)
@@ -54,9 +52,11 @@ class Real207Dataset(Dataset):
         for sample_key, annotation in self.annotations.items():
 
             img_path = os.path.join(self.path, f"{sample_key}.png")
+            depth_path = os.path.join(self.path, f"{sample_key}_depth.png")
             
             # Load image
             img = Image.open(img_path)
+            depth = Image.open(depth_path).convert('L')
             pick_coords = (annotation["pick_coordinates"][0], annotation["pick_coordinates"][1])
             place_coords = (annotation["place_coordinates"][0], annotation["place_coordinates"][1])
 
@@ -65,9 +65,12 @@ class Real207Dataset(Dataset):
             place_radius = np.array(annotation["place_radius"])
 
             img = np.array(img)
+            depth = np.array(depth)
+            depth = depth/1000.0
 
 
-            self._cache.append((img, 
+            self._cache.append((img,
+                                depth, 
                                 pick_coords,
                                 place_coords, 
                                 annotation["instruction"],
@@ -81,9 +84,8 @@ class Real207Dataset(Dataset):
     def __getitem__(self, idx):
         # Choose random episode.
         
-        img, p0, p1, lang_goal, pick_radius, place_radius = self._cache[idx]
+        img, depth, p0, p1, lang_goal, pick_radius, place_radius = self._cache[idx]
         img = img[:, :, :3]
-        depth = img[:, :, 0]
         img = np.concatenate((img,
                               depth[Ellipsis, None],
                               depth[Ellipsis, None],

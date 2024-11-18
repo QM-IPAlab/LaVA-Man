@@ -3,7 +3,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --job-name=1demo
 #SBATCH --cpus-per-task=16
-#SBATCH --array=0-9
+#SBATCH --array=0-9%5
 
 module load python/3.8
 source py-mae-cliport/bin/activate
@@ -13,13 +13,13 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 
 # ======== experiments name =======sb== #
 
-exps_name="exps_extra_1demos_cliport"
+exps_name="exps_extra_1demos_others"
 
 
 # ======== agent name ========= #
 
-agent_name="cliport"
-#agent_name="transporter"
+#agent_name="cliport"
+agent_name="transporter"
 #agent_name="cliport"
 #agent_name="rn50_bert"
 #agent_name="clip_lingunet_transporter"
@@ -52,23 +52,23 @@ python -m cliport.train  train.task=${task_name}\
                          train.n_steps=20100 \
                          train.load_from_last_ckpt=True\
                          dataset.cache=True \
-                         train.load_pretrained_ckpt=False\
+                         train.load_pretrained_ckpt=True\
                          train.sep_mode=False\
-                         #cliport_checkpoint=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/exps_cliport_pretrained/multi-language-conditioned-${agent_name}-n1000-train/checkpoints/best.ckpt\
+                         cliport_checkpoint=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/exps_cliport_pretrained/multi-language-conditioned-${agent_name}-n1000-train/checkpoints/best.ckpt\
                          
                          
 
-python -m cliport.eval model_task=${task_name}\
-                       eval_task=${task_name} \
-                       agent=${agent_name} \
-                       mode=val \
-                       n_demos=100 \
-                       train_demos=1 \
-                       exp_folder=${exps_name} \
-                       checkpoint_type=val_missing \
-                       update_results=True \
-                       disp=False\
-                       record.save_video=False
+# python -m cliport.eval model_task=${task_name}\
+#                        eval_task=${task_name} \
+#                        agent=${agent_name} \
+#                        mode=val \
+#                        n_demos=100 \
+#                        train_demos=10 \
+#                        exp_folder=${exps_name} \
+#                        checkpoint_type=val_missing \
+#                        update_results=True \
+#                        disp=False\
+#                        record.save_video=False
 
 
 python -m cliport.eval model_task=${task_name}\

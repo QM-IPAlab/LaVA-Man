@@ -8,8 +8,8 @@ export TOKENIZERS_PARALLELISM=false
 export HYDRA_FULL_ERROR=1
 
 
-agent_name="mae_sep_base"
-task_name="pack_objects"
+agent_name="mae_sep_seg2_add_clipv"
+task_name="multi-language-conditioned"
 
 # "packing-unseen-google-objects-seq"
 # "towers-of-hanoi-seq-unseen-colors"
@@ -89,27 +89,27 @@ task_name="pack_objects"
 #                          train.sep_mode=place\
 #                          #dataset.type=multi\
 
-# python cliport/train.py  train.task=multi-language-conditioned\
-#                          train.agent=${agent_name}\
-#                          train.exp_folder=debug\
-#                          wandb.run_name=debug\
-#                          train.n_demos=1000 \
-#                          train.n_steps=101000 \
-#                          train.lr_scheduler=True\
-#                          train.lr=2e-5\
-#                          train.warmup_epochs=10\
-#                          train.precision=32\
-#                          train.batch_size=16\
-#                          train.batchnorm=True\
-#                          train.load_from_last_ckpt=False\
-#                          train.log=False\
-#                          mae_model=mae_robot_lang \
-#                          pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_mix_v2_full/checkpoint-60.pth\
-#                          cliport_checkpoint=False\
-#                          dataset.cache=False \
-#                          train.sep_mode=place \
-#                          dataset.type=multi\
-#                          #text_model="openai/clip-vit-base-patch16"
+python cliport/train.py  train.task=multi-language-conditioned\
+                         train.agent=${agent_name}\
+                         train.exp_folder=debug\
+                         wandb.run_name=debug\
+                         train.n_demos=1000 \
+                         train.n_steps=101000 \
+                         train.lr_scheduler=True\
+                         train.lr=2e-5\
+                         train.warmup_epochs=10\
+                         train.precision=32\
+                         train.batch_size=16\
+                         train.batchnorm=True\
+                         train.load_from_last_ckpt=False\
+                         train.log=False\
+                         mae_model=mae_robot_lang \
+                         pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_mix_v2_full/checkpoint-60.pth\
+                         cliport_checkpoint=False\
+                         dataset.cache=False \
+                         train.sep_mode=place \
+                         dataset.type=multi\
+                         #text_model="openai/clip-vit-base-patch16"
 
 # python cliport/train.py  train.task=pack_objects\
 #                          train.agent=${agent_name}\
