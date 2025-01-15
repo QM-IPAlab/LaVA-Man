@@ -1,3 +1,5 @@
+from abc import abstractmethod
+import torch.nn as nn
 import os
 import numpy as np
 import math
@@ -56,9 +58,10 @@ class TransporterAgent(LightningModule):
 
         self.automatic_optimization = False
 
+    @abstractmethod
     def _build_model(self):
-        self.attention = None
-        self.transport = None
+        #self.attention: nn.Module = None
+        #self.transport: nn.Module = None
         raise NotImplementedError()
     
     def _set_optimizers(self):
@@ -71,7 +74,7 @@ class TransporterAgent(LightningModule):
         
         opt_attn = torch.optim.AdamW(self.attention.parameters(), lr=self.cfg['train']['lr'], betas=(0.9, 0.95))
         opt_trans = torch.optim.AdamW(self.transport.parameters(), lr=self.cfg['train']['lr'], betas=(0.9, 0.95)) 
-        self.max_epochs = self.trainer.max_epochs
+        self.max_epochs = self.trainer.max_epochs # type: ignore
         if self.sch:
             print('Using cosine annealing learning rate scheduler with warm up !')
         
@@ -320,7 +323,7 @@ class TransporterAgent(LightningModule):
         )
 
     def on_train_epoch_end(self):
-        utils.set_seed(self.trainer.current_epoch+1)
+        utils.set_seed(self.trainer.current_epoch+1) # type: ignore
 
     def on_validation_epoch_end(self):
         all_outputs = self.val_output_list
