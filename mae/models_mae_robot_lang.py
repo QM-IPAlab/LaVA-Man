@@ -35,6 +35,7 @@ class MAERobotLang(MAERobot):
         #                                        requires_grad=False)
         # self.decoder_pos_embed_2 = nn.Parameter(torch.zeros(1, self.patch_embed.num_patches + 1, decoder_embed_dim),
         #                                        requires_grad=False)
+        self.new_size = []
 
     def get_lang_embed(self, processed_lang):
         lang_emb = self.clip_text(**processed_lang, return_dict=False)
@@ -73,6 +74,86 @@ class MAERobotLang(MAERobot):
         out = self.decoder_norm(out1)
         out = out[:, 1:, :]
         return out
+
+    def forward_encoder(self, x, mask_ratio):    
+        # embed patches
+        x = self.patch_embed(x)
+
+        # interpolate if not the same size
+        if (h,w) != self.img_size:
+            pos_embed = self.interpolate_pos_encoding(x, h, w)
+            self.new_size = (h,w)
+        else:
+            pose_embed = self.pos_embed
+
+        # add pos embed w/o cls token
+        x = x + pos_embed[:, 1:, :]
+
+        # masking: length -> length * mask_ratio
+        x, mask, ids_restore = self.random_masking(x, mask_ratio)
+
+        # append cls token
+        cls_token = self.cls_token + pos_embed[:, :1, :]
+        cls_tokens = cls_token.expand(x.shape[0], -1, -1)
+        x = torch.cat((cls_tokens, x), dim=1)
+
+        # apply Transformer blocks
+        for blk in self.blocks:
+            x = blk(x)
+        x = self.norm(x)
+
+        return x, mask, ids_restore
+
+    def forward_ca_decoder(self, latent1, masked_latent2, ids_restore2, lang_emb):
+        """
+        latent1: visible
+        masked_latent2: masked goal image
+        """
+        # encoder to decoder layer
+        fea1 = self.decoder_embed(latent1)
+        fea2 = self.decoder_embed(masked_latent2)
+
+        # append masked tokens to the sequence
+        masked_tokens = self.mask_token.repeat(fea2.shape[0],
+                                               ids_restore2.shape[1] + 1 - fea2.shape[1], 1)
+        fea2_ = torch.cat([fea2[:, 1:, :], masked_tokens], dim=1)  # no cls token
+        fea2_ = torch.gather(fea2_, dim=1,
+                             index=ids_restore2.unsqueeze(-1).repeat(1, 1, fea2.shape[2]))  # unshuffle
+        fea2 = torch.cat([fea2[:, :1, :], fea2_], dim=1)  # append cls token
+
+        # add positional embedding
+        if self.new_size:
+            decoder_pos_embed = self.interpolate_pos_encoding(fea1, self.new_size[0], self.new_size[1])
+            self.new_size=[]
+        else:
+            decoder_pos_embed = self.decoder_pos_embed
+        
+        fea1 = fea1 + decoder_pos_embed
+        fea2 = fea2 + decoder_pos_embed
+
+        out1 = fea1
+        out2 = fea2
+        # apply Transformer blocks
+        for blk in self.decoder_blocks:
+            out1, out2 = blk(out1, out2, lang_emb)
+        out = self.decoder_norm(out1)
+
+        out = self.decoder_pred(out)
+        out = out[:, 1:, :]
+
+        return out
+
+    def unpatchify(self, x, h=None, w=None):
+        p = self.patch_embed.patch_size[0]
+        h = self.img_size[0] // p if h is not None else h
+        w = self.img_size[1] // p if w is not None else w
+        assert h * w == x.shape[1]
+
+        x = x.reshape(shape=(x.shape[0], h, w, p, p, 3))
+        x = torch.einsum('nhwpqc->nchpwq', x)
+        imgs = x.reshape(shape=(x.shape[0], 3, h * p, w * p))
+        return imgs
+
 
 
 class MAERobotLangNoRef(MAERobot):
@@ -595,3 +676,5 @@ class MAERobotLangCF(MAERobot):
     def cliport_forward(self):
         
         latent1, mask1, ids_restore1 = self.forward_encoder(img1, mask_ratio=input_mask_ratio)
+
+

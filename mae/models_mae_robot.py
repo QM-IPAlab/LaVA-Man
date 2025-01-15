@@ -221,6 +221,40 @@ class MAERobotBase(nn.Module):
         loss = self.forward_loss(img2, pred, mask)
         return loss, pred, mask
 
+    def interpolate_pos_encoding(self, embeddings: torch.Tensor, height: int, width: int) -> torch.Tensor:
+        """
+        Adapted from:
+        - https://github.com/facebookresearch/dino/blob/de9ee3df6cf39fac952ab558447af1fa1365362a/vision_transformer.py#L174-L194, and
+        - https://github.com/facebookresearch/dinov2/blob/e1277af2ba9496fbadf7aec6eba56e8d882d1e35/dinov2/models/vision_transformer.py#L179-L211
+        """
+
+        num_patches = embeddings.shape[1] - 1
+        position_embedding = self.position_embedding.weight.unsqueeze(0)
+        num_positions = position_embedding.shape[1] - 1
+
+        class_pos_embed = position_embedding[:, :1]
+        patch_pos_embed = position_embedding[:, 1:]
+
+        dim = embeddings.shape[-1]
+
+        new_height = height // self.patch_size
+        new_width = width // self.patch_size
+
+        sqrt_num_positions = torch_int(num_positions**0.5)
+        patch_pos_embed = patch_pos_embed.reshape(1, sqrt_num_positions, sqrt_num_positions, dim)
+        patch_pos_embed = patch_pos_embed.permute(0, 3, 1, 2)
+
+        patch_pos_embed = nn.functional.interpolate(
+            patch_pos_embed,
+            size=(new_height, new_width),
+            mode="bicubic",
+            align_corners=False,
+        )
+
+        patch_pos_embed = patch_pos_embed.permute(0, 2, 3, 1).view(1, -1, dim)
+
+        return torch.cat((class_pos_embed, patch_pos_embed), dim=1)
+
 
 class MAERobot(MAERobotBase):
     def __init__(self, img_size=(320, 160), patch_size=16, in_chans=3,
