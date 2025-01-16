@@ -18,7 +18,6 @@ from pathlib import Path
 import wandb
 
 import torch
-import torch.backends.cudnn as cudnn
 import torchvision.transforms as transforms
 from torch.utils.data import Subset
 
@@ -152,7 +151,7 @@ def get_fix_transform_standnorm():
 
 def get_aug_transform(input_size):
     transform_train = transforms.Compose([
-        transforms.RandomResizedCrop(args.input_size, scale=(0.2, 1.0), interpolation=3),  # 3 is bicubic
+        transforms.RandomResizedCrop(input_size, scale=(0.2, 1.0), interpolation=3),  # 3 is bicubic # type: ignore
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         transforms.Normalize(mean=MEAN_CLIPORT, std=STD_CLIPORT)])
