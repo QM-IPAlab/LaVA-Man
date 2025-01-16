@@ -19,7 +19,7 @@ class MAERobotBase(nn.Module):
                  decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
                  mlp_ratio=4., norm_layer=nn.LayerNorm, norm_im2_in_dec=True, norm_pix_loss=False):
         super().__init__()
-        self.img_size = img_size
+        self.img_size = img_size # actually this is not useful
         # --------------------------------------------------------------------------
         # MAE encoder specifics
         self.patch_embed = PatchEmbedVarSize(img_size, patch_size, in_chans, embed_dim)

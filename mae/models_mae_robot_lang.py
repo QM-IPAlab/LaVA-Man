@@ -143,10 +143,10 @@ class MAERobotLang(MAERobot):
 
         return out
 
-    def unpatchify(self, x, h=None, w=None):
+    def unpatchify(self, x, h=0, w=0):
         p = self.patch_embed.patch_size[0]
-        h = self.img_size[0] // p if h is not None else h
-        w = self.img_size[1] // p if w is not None else w
+        h = self.img_size[0] // p if h is not 0 else h
+        w = self.img_size[1] // p if w is not 0 else w
         assert h * w == x.shape[1]
 
         x = x.reshape(shape=(x.shape[0], h, w, p, p, 3))

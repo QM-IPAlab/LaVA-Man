@@ -197,8 +197,8 @@ for data in dataset_meta:
     data_s1 = []
     data_s2 = []
     data_language = []
-    f = h5py.File(os.path.join(f'/data/home/acw694/CLIPort_new_loss/scratch/data_hdf5',
-                                    '{args.output_name}.hdf5'), 'a')
+    f = h5py.File(os.path.join('/data/home/acw694/CLIPort_new_loss/scratch/data_hdf5',
+                                    f'{args.output_name}.hdf5'), 'a')
     
     # load the dataset
     ds, ds_info = tfds.load(
