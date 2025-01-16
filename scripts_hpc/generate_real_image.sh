@@ -1,0 +1,15 @@
+#!/bin/bash
+#$ -pe smp 4
+#$ -l h_vmem=8G
+#$ -l h_rt=1:0:0
+#$ -wd /data/home/acw694/CLIPort_new_loss
+#$ -j y
+#$ -N gen_hdf5
+#$ -m bea
+
+set -e
+
+# Replace the following line with a program or command
+module load anaconda3
+conda activate mae-cliport
+python build_real_hdf5_2.py -s train -o bridge_256_train

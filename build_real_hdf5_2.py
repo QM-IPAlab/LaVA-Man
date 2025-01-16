@@ -231,8 +231,8 @@ for data in dataset_meta:
             last_valid = is_valid_language(last_instruction)
             if current_first_instruction  == last_instruction and first_valid and last_valid:
                 #Add them to our lists
-                data_s1.append(resize_and_crop_longest_edge_cv2(current_first_image))
-                data_s2.append(resize_and_crop_longest_edge_cv2(last_image))
+                data_s1.append(current_first_image)
+                data_s2.append(last_image)
                 data_language.append(current_first_instruction)
             else:
                 warnings.warn("Instruction is not the same or not valid, skipping.")
