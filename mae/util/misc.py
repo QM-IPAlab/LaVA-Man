@@ -529,7 +529,7 @@ def interpolate_pos_embed_ours(model, checkpoint_model, ori=False):
         if ori:
             orig_size = (14, 14)
         else:
-            orig_size = (20, 10)
+            orig_size = (16, 16)
         # height (== width) for the new position embedding
         p = model.patch_embed.patch_size[0]
         new_size = (int(model.img_size[0] // p), model.img_size[1] // p)
@@ -554,7 +554,7 @@ def interpolate_pos_embed_ours(model, checkpoint_model, ori=False):
         num_patches = model.patch_embed.num_patches
         num_extra_tokens = model.pos_embed.shape[-2] - num_patches
         # height (== width) for the checkpoint position embedding
-        orig_size = (20, 10)
+        orig_size = (16, 16)
         # height (== width) for the new position embedding
         p = model.patch_embed.patch_size[0]
         new_size = (int(model.img_size[0] // p), model.img_size[1] // p)

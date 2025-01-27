@@ -190,8 +190,8 @@ def main(args):
         transform_train = get_fix_transform()
     
     # replace with voltron transform if model is voltron
-    #if 'voltron' in args.model:
-    #    transform_train = get_voltron_transform()
+    if 'voltron' in args.model:
+       transform_train = get_voltron_transform()
 
     dataset_train = MAEDataset(transform=transform_train, data_path=args.data_path, aug=args.aug, condition_free=args.condition_free)
     dataset_vis = MAEDataset(transform=transform_train, data_path=args.test_path, aug=False)

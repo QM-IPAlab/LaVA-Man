@@ -9,7 +9,7 @@ from models_mae_robot_lang_vision2 import MAERobotLangVisonCLIP, MAERobotLangVis
 from models_mae_robot_lang_relevance import MAERobotLangRel
 from models_mae_robot_cliploss import MAERobotLangCLIPLoss
 from models_mae_robot_lang_jepa import JEPARobotLang, JEPARobotLang2loss
-from voltron_instantiate import voltron_vcond
+from mae.voltron_core.vcond import VCond
 from functools import partial
 import torch.nn as nn
 
@@ -187,7 +187,7 @@ def jepa_vit_base_patch16_rl_2loss(**kwargs):
     return model
 
 def vcond(**kwargs):
-    model = voltron_vcond()
+    model = VCond(**kwargs)
     return model
 
 def mae_vit_base_patch16_rlcf(**kwargs):

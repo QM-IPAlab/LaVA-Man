@@ -57,8 +57,8 @@ class MAERobotBase(nn.Module):
         self.initialize_weights()
 
         # store other parameters:
-        self.embed_dim = embed_dim
-        self.n_heads = num_heads
+        self.embed_dim = decoder_embed_dim
+        self.n_heads = decoder_num_heads
 
     def initialize_weights(self):
         

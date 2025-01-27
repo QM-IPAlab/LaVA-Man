@@ -74,6 +74,35 @@ class MAERobotLang(MAERobot):
         out = out[:, 1:, :]
         return out
 
+    def forward_refer_fm(self, img, processed_lang):
+        # forward with full mask tokens
+        
+        latent1, mask1, ids_restore1 = self.forward_encoder(img, mask_ratio=0.0)
+        latent2, mask2, ids_restore2 = self.forward_encoder(img, mask_ratio=1.0)
+        lang_emb = self.get_lang_embed(processed_lang)
+
+        fea1 = self.decoder_embed(latent1)
+        fea2 = self.decoder_embed(latent2)
+
+        masked_tokens = self.mask_token.repeat(fea2.shape[0],
+                                               ids_restore2.shape[1] + 1 - fea2.shape[1], 1)
+        fea2_ = torch.cat([fea2[:, 1:, :], masked_tokens], dim=1)  # no cls token
+        fea2_ = torch.gather(fea2_, dim=1,
+                             index=ids_restore2.unsqueeze(-1).repeat(1, 1, fea2.shape[2]))  # unshuffle
+        fea2 = torch.cat([fea2[:, :1, :], fea2_], dim=1)  # append cls token
+
+        fea1 = fea1 + self.decoder_pos_embed
+        fea2 = fea2 + self.decoder_pos_embed
+
+        out1 = fea1
+        out2 = fea2
+
+        for blk in self.decoder_blocks:
+            out1, out2 = blk(out1, out2, lang_emb)
+        out = self.decoder_norm(out1)
+        out = out[:, 1:, :]
+        return out
+
 
 class MAERobotLangNoRef(MAERobot):
     """No Siamese encoder. Only one encoder for the o_t image

@@ -9,6 +9,9 @@ output*/
 wandb*/
 *.png
 debug/
+*.json
+*.pth 
+*.hdf5
 
 # Folders
 cliport/data/
