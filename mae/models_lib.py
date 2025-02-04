@@ -9,9 +9,18 @@ from models_mae_robot_lang_vision2 import MAERobotLangVisonCLIP, MAERobotLangVis
 from models_mae_robot_lang_relevance import MAERobotLangRel
 from models_mae_robot_cliploss import MAERobotLangCLIPLoss
 from models_mae_robot_lang_jepa import JEPARobotLang, JEPARobotLang2loss
-from voltron_instantiate import voltron_vcond
+from models_croco import MAERobotLangCroco
+from mae.voltron_core.vcond import VCond
 from functools import partial
 import torch.nn as nn
+
+
+def mae_vit_base_patch16_croco(**kwargs):
+    model = MAERobotLangCroco(
+        patch_size=16, embed_dim=768, depth=12, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
 
 
 def mae_vit_base_patch16_rl_noref(**kwargs):
@@ -187,7 +196,7 @@ def jepa_vit_base_patch16_rl_2loss(**kwargs):
     return model
 
 def vcond(**kwargs):
-    model = voltron_vcond()
+    model = VCond(**kwargs)
     return model
 
 def mae_vit_base_patch16_rlcf(**kwargs):
@@ -223,3 +232,4 @@ mae_robot_lang_cf = mae_vit_base_patch16_rlcf
 mae_clip = vit_base_patch16_mae_clip
 mae_clip_pe = vit_base_patch16_mae_clip_pe
 mae_robot_lang_rev2 = mae_vit_base_patch16_rl_rev2
+mae_croco = mae_vit_base_patch16_croco

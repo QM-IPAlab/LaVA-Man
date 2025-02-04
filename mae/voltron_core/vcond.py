@@ -46,15 +46,15 @@ def get_2D_position_embeddings_ours(embed_dim: int, h: int, w: int, cls_token: b
 class VCond(nn.Module):
     def __init__(
         self,
-        resolution: Tuple[int, int],
-        patch_size: int,
-        encoder_depth: int,
-        encoder_embed_dim: int,
-        encoder_n_heads: int,
-        decoder_depth: int,
-        decoder_embed_dim: int,
-        decoder_n_heads: int,
-        language_dim: int,
+        img_size: Tuple[int, int] = (320,160),
+        patch_size: int = 16,
+        encoder_depth: int = 12,
+        encoder_embed_dim: int = 384,
+        encoder_n_heads: int = 6,
+        decoder_depth: int = 6,
+        decoder_embed_dim: int = 192,
+        decoder_n_heads: int = 6,
+        language_dim: int = 768,
         mask_ratio: float = 0.75,
         mlp_ratio: float = 4.0,
         in_channels: int = 3,
@@ -91,7 +91,7 @@ class VCond(nn.Module):
         :param use_cls_token: Add <CLS> token for continued pretraining (NOTE: not used in MAE pretraining/finetuning!)
         """
         super().__init__()
-        self.resolution, self.patch_size, self.mask_ratio = resolution, patch_size, mask_ratio
+        self.resolution, self.patch_size, self.mask_ratio = img_size, patch_size, mask_ratio
         self.in_channels, self.norm_pixel_loss, self.mlp_ratio = in_channels, norm_pixel_loss, mlp_ratio
         self.use_cls_token = use_cls_token
         self.language_dim = language_dim
@@ -274,9 +274,10 @@ class VCond(nn.Module):
 
         :return: Extracted representations given (img, language) input as sequence.
         """
-        assert img.ndim == 4 and (
-            language is None or isinstance(language, list) or isinstance(language, tuple)
-        ), "Invalid input to `get_representations()`"
+        assert img.ndim == 4 
+        #and (
+        #    language is None or isinstance(language, list) or isinstance(language, tuple)
+        #), "Invalid input to `get_representations()`"
         assert mode in {"multimodal", "visual"}, f"Extraction mode `{mode}` not supported!"
 
         # Tokenize Language --> note max length is 20!
@@ -284,8 +285,8 @@ class VCond(nn.Module):
             lang, lang_mask = [torch.zeros(img.shape[0], 20, dtype=int, device=self.lm.device) for _ in range(2)]
             lang[:, 0], lang_mask[:, 0] = self.tokenizer.cls_token_id, 1
         else:
-            tokens = self.tokenizer(language, return_tensors="pt", max_length=20, padding="max_length", truncation=True)
-            lang, lang_mask = tokens["input_ids"].to(self.lm.device), tokens["attention_mask"].to(self.lm.device)
+            #tokens = self.tokenizer(language, return_tensors="pt", max_length=20, padding="max_length", truncation=True)
+            lang, lang_mask = language["input_ids"].to(self.lm.device), language["attention_mask"].to(self.lm.device)
 
             # Tile Language & Language Mask if mismatch with # images!
             if not len(lang) == len(img):

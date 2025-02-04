@@ -520,16 +520,16 @@ class PatchEmbedVarSize(PatchEmbed):
 
 def interpolate_pos_embed_ours(model, checkpoint_model, ori=False):
     # FIXME: this is a temporary solution for loading models with different positional embedding sizes
-    if 'pos_embed' in checkpoint_model:
-        pos_embed_checkpoint = checkpoint_model['pos_embed']
+    if 'enc_pos_embed' in checkpoint_model:
+        pos_embed_checkpoint = checkpoint_model['enc_pos_embed']
         embedding_size = pos_embed_checkpoint.shape[-1]
         num_patches = model.patch_embed.num_patches
-        num_extra_tokens = model.pos_embed.shape[-2] - num_patches
+        num_extra_tokens = model.enc_pos_embed.shape[-2] - num_patches
         # height (== width) for the checkpoint position embedding
         if ori:
             orig_size = (14, 14)
         else:
-            orig_size = (20, 10)
+            orig_size = (16, 16)
         # height (== width) for the new position embedding
         p = model.patch_embed.patch_size[0]
         new_size = (int(model.img_size[0] // p), model.img_size[1] // p)
@@ -544,17 +544,17 @@ def interpolate_pos_embed_ours(model, checkpoint_model, ori=False):
                 pos_tokens, size=(new_size[0], new_size[1]), mode='bicubic', align_corners=False)
             pos_tokens = pos_tokens.permute(0, 2, 3, 1).flatten(1, 2)
             new_pos_embed = torch.cat((extra_tokens, pos_tokens), dim=1)
-            checkpoint_model['pos_embed'] = new_pos_embed
+            checkpoint_model['enc_pos_embed'] = new_pos_embed
         else:
             print("Size match, no need to interpolate")
 
-    if 'decoder_pos_embed' in checkpoint_model:
-        pos_embed_checkpoint = checkpoint_model['decoder_pos_embed']
+    if 'dec_pos_embed' in checkpoint_model:
+        pos_embed_checkpoint = checkpoint_model['dec_pos_embed']
         embedding_size = pos_embed_checkpoint.shape[-1]
         num_patches = model.patch_embed.num_patches
-        num_extra_tokens = model.pos_embed.shape[-2] - num_patches
+        num_extra_tokens = model.dec_pos_embed.shape[-2] - num_patches
         # height (== width) for the checkpoint position embedding
-        orig_size = (20, 10)
+        orig_size = (16, 16)
         # height (== width) for the new position embedding
         p = model.patch_embed.patch_size[0]
         new_size = (int(model.img_size[0] // p), model.img_size[1] // p)
@@ -569,7 +569,7 @@ def interpolate_pos_embed_ours(model, checkpoint_model, ori=False):
                 pos_tokens, size=(new_size[0], new_size[1]), mode='bicubic', align_corners=False)
             pos_tokens = pos_tokens.permute(0, 2, 3, 1).flatten(1, 2)
             new_pos_embed = torch.cat((extra_tokens, pos_tokens), dim=1)
-            checkpoint_model['decoder_pos_embed'] = new_pos_embed
+            checkpoint_model['dec_pos_embed'] = new_pos_embed
         else:
             print("Size match, no need to interpolate")
 

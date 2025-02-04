@@ -50,7 +50,7 @@ class ReferDetectionHarness:
         run_dir: Path = Path("/home/a/acw694/CLIPort_new_loss/langref"),
         data: Path = Path("/home/a/acw694/datasets/ocid"),
         bsz: int = 512,
-        epochs: int = 10,
+        epochs: int = 50,
         seed: int = 7,
         args: Any = None
     ) -> None:
@@ -148,12 +148,22 @@ class DetectorMLP(LightningModule):
         # Add final projection =>> xywh bbox coordinates
         _layers.append(nn.Linear(self.mlp_features[-1], 4))
         self.mlp = nn.Sequential(*_layers)
+
         self.text_processor = AutoTokenizer.from_pretrained(args.text_model)
+
+        # Update for lightning > v2.0.0
+        self.validation_step_outputs = []
+        self.test_step_outputs = []
+
+        # Handle different max length
+        self.model = args.model
+        self.max_length = 22 if 'voltron' in self.model else 77 
+
 
 
     def forward(self, img: torch.Tensor, lang: Tuple[str]) -> torch.Tensor:
         # Run through Backbone --> [bsz, n_patches, embed_dim]
-        processed_lang = generate_token(self.text_processor, lang, img.device, max_length=77)
+        processed_lang = generate_token(self.text_processor, lang, img.device, max_length=self.max_length)
         with torch.no_grad():
             patches = self.backbone.forward_refer(img, processed_lang)
         
@@ -202,12 +212,14 @@ class DetectorMLP(LightningModule):
         stacked_mask = clutter_split == 2
         stacked_acc25, n_stacked = (iou_at_25 & stacked_mask).float().sum(), stacked_mask.sum()
 
+        self.validation_step_outputs.append([loss, total_acc25, n_total, free_acc25, n_free, touching_acc25, n_touching, stacked_acc25, n_stacked])
+
         return loss, total_acc25, n_total, free_acc25, n_free, touching_acc25, n_touching, stacked_acc25, n_stacked
 
-    def validation_epoch_end(self, step_outputs: List[Tuple[torch.Tensor, ...]]) -> None:
+    def on_validation_epoch_end(self) -> None:
         """Aggregate and log validation metrics."""
         val_loss, total_acc25, n_total, free_acc25, n_free, touching_acc25, n_touching, stacked_acc25, n_stacked = [
-            torch.stack(output) for output in zip(*step_outputs)
+            torch.stack(output) for output in zip(*self.validation_step_outputs)
         ]
 
         # Reduce & Log...
@@ -221,6 +233,8 @@ class DetectorMLP(LightningModule):
             },
             prog_bar=True,
         )
+
+        self.validation_step_outputs.clear()
 
     def test_step(
         self, batch: Tuple[torch.Tensor, str, torch.Tensor, torch.Tensor], batch_idx: int
@@ -252,13 +266,15 @@ class DetectorMLP(LightningModule):
 
         stacked_mask = clutter_split == 2
         stacked_acc25, n_stacked = (iou_at_25 & stacked_mask).float().sum(), stacked_mask.sum()
+        
+        self.test_step_outputs.append([loss, total_acc25, n_total, free_acc25, n_free, touching_acc25, n_touching, stacked_acc25, n_stacked])
 
         return loss, total_acc25, n_total, free_acc25, n_free, touching_acc25, n_touching, stacked_acc25, n_stacked
 
-    def test_epoch_end(self, step_outputs: List[Tuple[torch.Tensor, ...]]) -> None:
+    def on_test_epoch_end(self) -> None:
         """Aggregate and log test metrics."""
         test_loss, total_acc25, n_total, free_acc25, n_free, touching_acc25, n_touching, stacked_acc25, n_stacked = [
-            torch.stack(output) for output in zip(*step_outputs)
+            torch.stack(output) for output in zip(*self.test_step_outputs)
         ]
 
         # Reduce & Log...
@@ -272,6 +288,8 @@ class DetectorMLP(LightningModule):
             },
             prog_bar=True,
         )
+
+        self.test_step_outputs.clear()
 
     def configure_optimizers(self) -> Optimizer:
         return AdamW([p for p in self.parameters() if p.requires_grad])

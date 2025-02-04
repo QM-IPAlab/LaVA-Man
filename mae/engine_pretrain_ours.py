@@ -139,22 +139,20 @@ def validate_vis_img2(model: torch.nn.Module,
                 img2 = img2.detach().cpu()
                 img2 = img2[0]
                 img2 = (img2 - img2.min()) / (img2.max() - img2.min())
-                
-                b,c,h,w = img2.shape
 
                 if mask is not None:
                     # masked image
                     mask = mask.detach().cpu()
                     mask = mask.detach()
                     mask = mask.unsqueeze(-1).repeat(1, 1, model.patch_embed.patch_size[0] ** 2 * 3)  # (N, H*W, p*p*3)
-                    mask = model.unpatchify(mask,h,w)  # 1 is removing, 0 is keeping
+                    mask = model.unpatchify(mask)  # 1 is removing, 0 is keeping
                     mask = torch.einsum('nchw->nhwc', mask).detach().cpu()
                     mask = mask[0]
                     mask = mask.permute(2, 0, 1)
                     im_masked = img2 * (1 - mask)
 
                     # MAE reconstruction
-                    predict = model.unpatchify(predict,h,w)
+                    predict = model.unpatchify(predict)
                     predict = predict.detach().cpu()
                     predict = predict[0]
                     predict = (predict - predict.min()) / (predict.max() - predict.min())
@@ -162,7 +160,7 @@ def validate_vis_img2(model: torch.nn.Module,
 
                     combined_image = torch.cat((img1, img2, im_masked, predict, im_paste), dim=2)                
                 elif predict is not None: # no mask but prediction
-                    predict = model.unpatchify(predict,h,w)
+                    predict = model.unpatchify(predict)
                     predict = predict.detach().cpu()
                     predict = predict[0]
                     combined_image = torch.cat((img1, img2, predict), dim=2)

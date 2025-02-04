@@ -26,9 +26,6 @@ def evaluate_refer(args) -> None:
         misc.dynamic_load_pretrain(model, args.pretrain, interpolate=True)
     backbone = model
 
-    backbone.embed_dim=512
-    backbone.n_heads=16
-
     # Create MAP Extractor Factory (single latent =>> we only predict of a single dense vector representation)
     map_extractor_fn = instantiate_extractor(backbone, n_latents=1)
 

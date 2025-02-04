@@ -43,6 +43,8 @@ TEST_PATH = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/exist_dat
 
 def get_args_parser():
     parser = argparse.ArgumentParser('MAE pre-training', add_help=False)
+    
+    # Training paramters
     parser.add_argument('--batch_size', default=64, type=int,
                         help='Batch size per GPU (effective batch size is batch_size * accum_iter * # gpus')
     parser.add_argument('--epochs', default=400, type=int)
@@ -52,13 +54,10 @@ def get_args_parser():
     # Model parameters
     parser.add_argument('--model', default='None', type=str, metavar='MODEL',
                         help='Name of model to train')
-
-    parser.add_argument('--input_size', default=224, type=int,
-                        help='images input size')
-
+    parser.add_argument('--input_size', default=(224, 224), nargs=2, type=int,
+                    help="Images input size as two integers, e.g., '224 224'")
     parser.add_argument('--mask_ratio', default=0.75, type=float,
                         help='Masking ratio (percentage of removed patches).')
-
     parser.add_argument('--norm_pix_loss', action='store_true',
                         help='Use (per-patch) normalized pixels as targets for computing loss')
     parser.set_defaults(norm_pix_loss=False)
@@ -66,21 +65,20 @@ def get_args_parser():
     # Optimizer parameters
     parser.add_argument('--weight_decay', type=float, default=0.05,
                         help='weight decay (default: 0.05)')
-
     parser.add_argument('--lr', type=float, default=None, metavar='LR',
                         help='learning rate (absolute lr)')
     parser.add_argument('--blr', type=float, default=1e-3, metavar='LR',
                         help='base learning rate: absolute_lr = base_lr * total_batch_size / 256')
     parser.add_argument('--min_lr', type=float, default=0., metavar='LR',
                         help='lower lr bound for cyclic schedulers that hit 0')
-
     parser.add_argument('--warmup_epochs', type=int, default=40, metavar='N',
                         help='epochs to warmup LR')
 
     # Dataset parameters
     parser.add_argument('--data_path', default=PATH, type=str,
                         help='dataset path')
-
+    parser.add_argument('--test_path', default=TEST_PATH, type=str,
+                        help='test dataset path')
     parser.add_argument('--output_dir', default='./debug',
                         help='path where to save, empty for no saving')
     parser.add_argument('--my_log', action='store_true',
@@ -192,11 +190,11 @@ def main(args):
         transform_train = get_fix_transform()
     
     # replace with voltron transform if model is voltron
-    #if 'voltron' in args.model:
-    #    transform_train = get_voltron_transform()
+    if 'voltron' in args.model:
+       transform_train = get_voltron_transform()
 
     dataset_train = MAEDataset(transform=transform_train, data_path=args.data_path, aug=args.aug, condition_free=args.condition_free)
-    dataset_vis = MAEDataset(transform=transform_train, data_path=TEST_PATH, aug=False)
+    dataset_vis = MAEDataset(transform=transform_train, data_path=args.test_path, aug=False)
     #dataset_train = Subset(dataset_train, range(600))
 
     if True:  # args.distributed:
@@ -230,7 +228,8 @@ def main(args):
     )
 
     # define the model
-    model = models_lib.__dict__[args.model](norm_pix_loss=args.norm_pix_loss, text_model=args.text_model)
+    args.input_size = tuple(args.input_size)  # Convert list to tuple
+    model = models_lib.__dict__[args.model](norm_pix_loss=args.norm_pix_loss, text_model=args.text_model, img_size=args.input_size)
     print("Imported model: %s" % args.model)
     model.to(device)
     model_without_ddp = model
