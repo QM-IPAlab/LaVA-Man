@@ -19,11 +19,11 @@ export MASTER_ADDR=$(hostname)
 export MASTER_PORT=$(python -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
 
 torchrun --nproc_per_node 3 mae/main_pretrain_ours.py \
-    --model mae_robot_lang \
+    --model mae_croco \
     --batch_size 96 \
     --input_size 256 256 \
-    --output_dir  exps/output_mae_resize \
-    --pretrain  mae_pretrain_vit_base.pth\
+    --output_dir  exps/output_mae_croco \
+    --pretrain  checkpoints/CroCo_V2_ViTBase_SmallDecoder.pth\
     --mask_ratio 0.95 \
     --data_path bridge_256_train.hdf5 \
     --test_path bridge_256_val.hdf5\
