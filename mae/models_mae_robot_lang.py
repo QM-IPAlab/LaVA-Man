@@ -104,6 +104,71 @@ class MAERobotLang(MAERobot):
         return out
 
 
+class MAERobotLangDiffLoss(MAERobotLang):
+    """Same as MAERobotLang but with loss function related to 
+    the difference of the two images
+    """
+
+    def forward(self, img1, img2, pick=None, place=None, lang=None, mask_ratio=0.75):
+        #self.decoder_pos_embed_2 = self.decoder_pos_embed2
+
+        # encoder of the first observed image (no mask)
+        latent1, mask1, ids_restore1 = self.forward_encoder(img1, mask_ratio=0.0)
+        latent2, mask2, ids_restore2 = self.forward_encoder(img2, mask_ratio)
+
+        dif = img1 - img2
+
+        # encoder of the language goal
+        lang_emb = self.get_lang_embed(lang)
+
+        # decoder
+        pred = self.forward_ca_decoder(latent1, latent2, ids_restore2, lang_emb)
+        loss = self.forward_loss(img2, pred, mask2)
+
+        return loss, pred, mask2 
+    
+    def forward_loss(self, imgs, pred, mask):
+        """
+        imgs: [N, 3, H, W]
+        pred: [N, L, p*p*3]
+        mask: [N, L], 0 is keep, 1 is remove,
+        """
+        import pdb; pdb.set_trace()
+        target = self.patchify(imgs)
+        if self.norm_pix_loss:
+            mean = target.mean(dim=-1, keepdim=True)
+            var = target.var(dim=-1, keepdim=True)
+            target = (target - mean) / (var + 1.e-6) ** .5
+
+        loss = (pred - target) ** 2
+        loss = loss.mean(dim=-1)  # [N, L], mean loss per patch
+
+        foreground_mask, background_mask = self.compute_differce(imgs, pred)
+        foreground_mask = self.patchify(foreground_mask).squeeze(-1)
+        background_mask = self.patchify(background_mask).squeeze(-1)
+
+        weight_map = foreground_mask * 0.7 + background_mask * 0.3
+        masked_loss = loss * mask * weight_map
+        weighted_loss = masked_loss.sum() / (mask.sum() + 1e-6)
+
+        return weighted_loss
+    
+    def compute_differce(self, img1, img2, threshold=0.1):
+        """
+        Compute the difference between two images and return the foreground and background mask
+        """
+        diff_map = torch.abs(img1 - img2).mean(dim=1, keepdim=True)  # [N, 1, H, W]
+        
+        # normalization
+        min_val, max_val = diff_map.amin(dim=[2, 3], keepdim=True), diff_map.amax(dim=[2, 3], keepdim=True)
+        normalized_diff = (diff_map - min_val) / (max_val - min_val + 1e-6)  # 避免除 0
+
+        # get the mask，batch-wise
+        foreground_mask = (normalized_diff > threshold).float()  # [N, 1, H, W]
+        background_mask = 1.0 - foreground_mask  # [N, 1, H, W]
+
+        return foreground_mask, background_mask
+
 class MAERobotLangNoRef(MAERobot):
     """No Siamese encoder. Only one encoder for the o_t image
     and train to predict the o_t+1 
