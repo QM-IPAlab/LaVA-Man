@@ -50,6 +50,13 @@ def append_or_create_hdf5(hdf_file, dataset_name, data, dtype=None):
         # Create or append to the dataset
         if dataset_name in hdf_file:
             dset = hdf_file[dataset_name]
+
+            # Check for shape and dtype consistency
+            if dset.shape[1:] != data.shape[1:]:
+                raise ValueError(f"Shape mismatch: existing {dset.shape[1:]} vs new data {data.shape[1:]}")
+            if dset.dtype != data.dtype:
+                raise TypeError(f"Data type mismatch: existing {dset.dtype} vs new data {data.dtype}")
+
             dset.resize(dset.shape[0] + data.shape[0], axis=0)
             dset[-data.shape[0]:] = data
         else:
@@ -61,7 +68,7 @@ def append_or_create_hdf5(hdf_file, dataset_name, data, dtype=None):
 
     elif isinstance(data, list) and all(isinstance(item, str) for item in data):
         # Handle variable-length string data
-        dt = h5py.special_dtype(vlen=str) if dtype is None else dtype
+        dt = h5py.string_dtype(encoding='ascii') if dtype is None else dtype
 
         if dataset_name in hdf_file:
             dset = hdf_file[dataset_name]
@@ -75,7 +82,7 @@ def append_or_create_hdf5(hdf_file, dataset_name, data, dtype=None):
         return hdf_file[dataset_name].shape[0]
 
     else:
-        raise TypeError("Unsupported data type. Expected numpy array for images or list of strings for text.")
+        raise TypeError(f"Unsupported data type. Expected numpy array for images or list of strings for text, got{type(data)}")
 
 
 
@@ -83,11 +90,10 @@ def append_or_create_hdf5(hdf_file, dataset_name, data, dtype=None):
 default_transform = transforms.Compose([
     transforms.Resize(256),          # 先调整大小，确保最小边大于224
     transforms.CenterCrop(224),      # 中心裁剪到224x224
-    transforms.ToTensor(),           # 转换为Tensor
 ])
 
-processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
-model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base").to('cuda' if torch.cuda.is_available() else 'cpu') # type: ignore
+processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base",cache_dir='cache/hf-cache')
+model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base",cache_dir='cache/hf-cache').to('cuda' if torch.cuda.is_available() else 'cpu') # type: ignore
 
 
 class ImagePairDataset(Dataset):
@@ -105,6 +111,7 @@ class ImagePairDataset(Dataset):
         self.root_dir = root_dir
         self.frame_offset = frame_offset
         self.num_images = num_images
+        self.transform = transform
 
         # 加载JSON文件
         with open(json_file, 'r') as f:
@@ -150,8 +157,11 @@ class ImagePairDataset(Dataset):
         img1_pil = Image.open(img1_path).convert('RGB')
         img2_pil = Image.open(img2_path).convert('RGB')
 
-        img1_np = np.array(img1_pil, dtype=np.uint8)
-        img2_np = np.array(img2_pil, dtype=np.uint8)
+        img1_pil_resized = self.transform(img1_pil)
+        img2_pil_resized = self.transform(img2_pil)
+
+        img1_np = np.array(img1_pil_resized, dtype=np.uint8)
+        img2_np = np.array(img2_pil_resized, dtype=np.uint8)
 
         return img1_np, img2_np
 
@@ -161,6 +171,7 @@ def generate_caption(image):
     with torch.no_grad():
         output = model.generate(**inputs) # type: ignore
     caption = processor.decode(output[0], skip_special_tokens=True)
+    
     return caption
 
 
@@ -179,17 +190,15 @@ if __name__ == "__main__":
         for idx, (img1_np, img2_np) in enumerate(dataset): # type: ignore
             # 生成文字描述
             caption = generate_caption(img1_np)
-            captions.append(caption.encode('ascii'))
+            captions.append(caption)
             
             append_or_create_hdf5(hdf, 'image_s1', img1_np)
             append_or_create_hdf5(hdf, 'image_s2', img2_np)
 
-            if idx % 10 == 0:
+            if idx % 1000 == 0:
                 print(f'Saved {idx + 1} image pairs with captions')
-
-            if idx % 100 == 0: break
         
         # Save all captions at once
         append_or_create_hdf5(hdf, 'language', captions)
 
-    print(f'Saved {len(dataset)} image pairs with captions to image_pairs_with_captions.h5')
+        print(f'Saved {len(dataset)} image pairs with captions to image_pairs_with_captions.h5')
