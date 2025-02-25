@@ -12,6 +12,7 @@ debug/
 *.json
 *.pth 
 *.hdf5
+/data_debug
 
 # Folders
 cliport/data/

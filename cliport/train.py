@@ -26,9 +26,6 @@ from pytorch_lightning.callbacks import LearningRateMonitor
 from cliport.real_dataset_207 import Real207Dataset
 from cliport.real_dataset_ann import RealAnnDataset
 
-WANDB_DIR = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/wandb_cliport'
-TB_DIR = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/tensorboard'
-os.environ["WANDB_SERVICE_WAIT"] = "60"
 
 @hydra.main(config_path="./cfg", config_name='train')
 def main(cfg):
@@ -48,8 +45,6 @@ def main(cfg):
     try:
         wandb_logger = WandbLogger(name=cfg['wandb']['run_name'],
                                 tags=[f"{task}", f"{agent_type}", f"{sep_mode}"],
-                                save_dir=WANDB_DIR,
-                                mode="offline",
                                 project='cliport') if cfg['train']['log'] else None
     except Exception as e :
         print("fail to initialize wandb. Continuing withour wandb")

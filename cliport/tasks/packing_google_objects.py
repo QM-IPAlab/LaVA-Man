@@ -285,6 +285,7 @@ class PackingSeenGoogleObjectsSeq(Task):
 
                 object_name = chosen_objs[i]
                 object_name_with_underscore = object_name.replace(" ", "_")
+                #MARK here to change the obj mesh
                 mesh_file = os.path.join(self.assets_root,
                                          'google',
                                          'meshes_fixed',

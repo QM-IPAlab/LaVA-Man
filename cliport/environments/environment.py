@@ -67,6 +67,7 @@ class Environment(gym.Env):
             'color': gym.spaces.Tuple(color_tuple),
             'depth': gym.spaces.Tuple(depth_tuple),
         })
+        #MARK: action bounds
         self.position_bounds = gym.spaces.Box(
             low=np.array([0.25, -0.5, 0.], dtype=np.float32),
             high=np.array([0.75, 0.5, 0.28], dtype=np.float32),
