@@ -19,7 +19,7 @@ import wandb
 
 import torch
 import torchvision.transforms as transforms
-from torch.utils.data import Subset
+from torch.utils.data import Subset,ConcatDataset
 
 #import timm
 #import timm.optim.optim_factory as optim_factory
@@ -129,6 +129,7 @@ def get_flip_transform():
 def get_fix_transform():
     trasform_fix = transforms.Compose([
         transforms.ToTensor(),
+        transforms.Resize((224,224)),
         transforms.Normalize(mean=MEAN_CLIPORT, std=STD_CLIPORT)])
     return trasform_fix
 
@@ -195,6 +196,11 @@ def main(args):
 
     dataset_train = MAEDataset(transform=transform_train, data_path=args.data_path, aug=args.aug, condition_free=args.condition_free)
     dataset_vis = MAEDataset(transform=transform_train, data_path=args.test_path, aug=False)
+    droid_train = MAEDataset(transform=transform_train, data_path="scratch/mae-data/droid_left.hdf5", aug=args.aug, condition_free=args.condition_free)
+    #co3d_train = MAEDataset(transform=transform_train, data_path="image_pairs_with_captions.hdf5", aug=args.aug, condition_free=args.condition_free)
+    #crossview_train = MAEDataset(transform=transform_train, data_path="bridge_crossview_goal.hdf5", aug=args.aug, condition_free=args.condition_free)		
+    #ego4d_train = MAEDataset(transform=transform_train, data_path="scratch/mae-data/ego4d_interactive.hdf5", aug=args.aug, condition_free=args.condition_free)
+    dataset_train = ConcatDataset([dataset_train,droid_train])
     #dataset_train = Subset(dataset_train, range(600))
 
     if True:  # args.distributed:
@@ -209,7 +215,7 @@ def main(args):
         sampler_train = torch.utils.data.RandomSampler(dataset_train)
 
     if global_rank == 0 and args.my_log:
-        wandb.init(project='MAE', name=args.model, entity='cxz', mode='offline', id=args.wandb_resume)
+        wandb.init(project='MAE', name=args.model, entity='cxz', id=args.wandb_resume)
         log_writer = wandb
     else:
         log_writer = None
@@ -217,7 +223,7 @@ def main(args):
     data_loader_train = torch.utils.data.DataLoader(
         dataset_train, sampler=sampler_train,
         batch_size=args.batch_size,
-        num_workers=2,
+        num_workers=8,
         pin_memory=args.pin_mem,
         drop_last=True
     )

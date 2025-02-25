@@ -22,8 +22,8 @@ source activate mae-cliport
 #     --mask_ratio 0.75  \
 #     --text_model distilbert-base-uncased
 
-# Train mae_robot_lang
+#Train mae_robot_lang
 python mae/eval_refer.py \
     --model mae_robot_lang \
-    --pretrain  /home/a/acw694/CLIPort_new_loss/exps/output_mae_resize/checkpoint-399.pth\
+    --pretrain  /home/a/acw694/CLIPort_new_loss/checkpoints/mae_robot_lang_mix_160.pth\
     --mask_ratio 0.95  \

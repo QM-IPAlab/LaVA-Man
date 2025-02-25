@@ -12,4 +12,4 @@ set -e
 # Replace the following line with a program or command
 module load anaconda3
 conda activate mae-cliport
-python build_real_hdf5_2.py -s train -o bridge_256_train
+python build_real_hdf5_multi_view.py -s train -o bridge_crossview_goal
