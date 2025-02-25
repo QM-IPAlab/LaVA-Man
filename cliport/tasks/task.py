@@ -30,7 +30,7 @@ class Task():
         self.pos_eps = 0.01
         self.rot_eps = np.deg2rad(15)
 
-        # Workspace bounds.
+        #MARK Workspace bounds.
         self.pix_size = 0.003125
         self.bounds = np.array([[0.25, 0.75], [-0.5, 0.5], [0, 0.3]])
         self.zone_bounds = np.copy(self.bounds)
