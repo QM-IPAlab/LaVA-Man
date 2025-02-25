@@ -10,6 +10,7 @@ from models_mae_robot_lang_relevance import MAERobotLangRel
 from models_mae_robot_cliploss import MAERobotLangCLIPLoss
 from models_mae_robot_lang_jepa import JEPARobotLang, JEPARobotLang2loss
 from models_croco import MAERobotLangCroco
+from models_mae_robot_lang_single import MAERobotLangSingle
 from mae.voltron_core.vcond import VCond
 from functools import partial
 import torch.nn as nn
@@ -213,6 +214,13 @@ def mae_vit_base_patch16_rlcf(**kwargs):
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
+def mae_vit_base_patch16_single(**kwargs):
+    model = MAERobotLangSingle(
+        patch_size=16, embed_dim=768, depth=12, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
 # models
 mae_robot_base = mae_vit_base_patch16_robot_base  # original mae model with cliport image
 mae_robot = mae_vit_base_patch16_robot  # two state mae without language
@@ -240,3 +248,4 @@ mae_clip = vit_base_patch16_mae_clip
 mae_clip_pe = vit_base_patch16_mae_clip_pe
 mae_robot_lang_rev2 = mae_vit_base_patch16_rl_rev2
 mae_croco = mae_vit_base_patch16_croco
+mae_single = mae_vit_base_patch16_single

@@ -24,6 +24,8 @@ class MAEDataset(Dataset):
         self.transform = transform
         self.aug = aug
         self.condition_free = condition_free
+        if self.condition_free:
+            print("Condition free training")
 
     def __len__(self):
         return self.length
