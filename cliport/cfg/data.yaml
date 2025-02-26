@@ -10,7 +10,7 @@ hydra:
   run:
     dir: ${root_dir}
 
-data_dir: ${root_dir}/data  # where to store dataset
+data_dir: ${root_dir}/data_debug  # where to store dataset
 assets_root: ${root_dir}/cliport/environments/assets/
 disp: False  # visualize PyBullet
 shared_memory: False

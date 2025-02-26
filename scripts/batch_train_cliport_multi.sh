@@ -47,7 +47,7 @@ declare -a tasks=("assembling-kits-seq-full"\
     "packing-seen-google-objects-group"\
     "packing-unseen-google-objects-group"\
     "packing-seen-google-objects-seq"\
-    "packing-unseen-google-objects-seq"\f
+    "packing-unseen-google-objects-seq"\
 )
 
 python -m cliport.train  train.task=multi-language-conditioned\

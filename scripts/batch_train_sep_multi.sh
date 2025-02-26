@@ -4,9 +4,10 @@
 #SBATCH --job-name=clip_mae
 #SBATCH --cpus-per-task=16
 
-module load python/3.8
-source py-mae-cliport/bin/activate
-module load cuda/12.4
+# module load python/3.8
+# source py-mae-cliport/bin/activate
+# module load cuda/12.4
+export CUDA_VISIBLE_DEVICES=1
 export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
@@ -24,10 +25,10 @@ export TOKENIZERS_PARALLELISM=false
 # 8. check the agent name: sep or not sept, if sep, check train.sep_mode is set to pick or place
 
 
-exps_name="exps_extra_clip_mae_add"
-agent_name="mae_sep_clip"
-pretrain_path="/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_clip_2/checkpoint-160.pth"
-mae_model="mae_clip"
+exps_name="exps_mae_robot_lang_croco"
+agent_name="mae_sep_seg2_add"
+pretrain_path="/home/robot/repositories/MPI/checkpoints/checkpoint-399-croco2.pth"
+mae_model="mae_croco"
 #pretrain_path=False
 
 # tasks for ablation study (mask ratio)
@@ -58,53 +59,52 @@ tasks=("assembling-kits-seq-full"\
     #"packing-shapes"\
 )
 
-python -m cliport.train  train.task=multi-language-conditioned\
-                         train.agent=${agent_name}\
-                         train.exp_folder=${exps_name}\
-                         wandb.run_name=${exps_name}_multi\
-                         train.n_demos=1000 \
-                         train.n_steps=60100 \
-                         train.lr_scheduler=True\
-                         train.lr=2e-5\
-                         train.warmup_epochs=10\
-                         train.precision=32\
-                         train.batch_size=32\
-                         train.batchnorm=True\
-                         train.load_from_last_ckpt=False\
-                         train.log=True\
-                         mae_model=${mae_model} \
-                         pretrain_path=${pretrain_path}\
-                         cliport_checkpoint=False\
-                         dataset.cache=False \
-                         train.sep_mode=pick\
-                         dataset.type=multi\
-                         train.linear_probe=False\
-                         text_model="openai/clip-vit-base-patch16"\
+# python -m cliport.train  train.task=multi-language-conditioned\
+#                          train.agent=${agent_name}\
+#                          train.exp_folder=${exps_name}\
+#                          wandb.run_name=${exps_name}_multi\
+#                          train.n_demos=1000 \
+#                          train.n_steps=60100 \
+#                          train.lr_scheduler=True\
+#                          train.lr=2e-5\
+#                          train.warmup_epochs=10\
+#                          train.precision=32\
+#                          train.batch_size=32\
+#                          train.batchnorm=True\
+#                          train.load_from_last_ckpt=False\
+#                          train.log=True\
+#                          mae_model=${mae_model} \
+#                          pretrain_path=${pretrain_path}\
+#                          cliport_checkpoint=False\
+#                          dataset.cache=False \
+#                          train.sep_mode=pick\
+#                          dataset.type=multi\
+#                          train.linear_probe=False\
 
 
 
-python -m cliport.train  train.task=multi-language-conditioned\
-                         train.agent=${agent_name}\
-                         train.exp_folder=${exps_name}\
-                         wandb.run_name=${exps_name}_multi\
-                         train.n_demos=1000 \
-                         train.n_steps=60100 \
-                         train.lr_scheduler=True\
-                         train.lr=2e-5\
-                         train.warmup_epochs=10\
-                         train.precision=32\
-                         train.batch_size=16\
-                         train.batchnorm=True\
-                         train.load_from_last_ckpt=False\
-                         train.log=True\
-                         mae_model=${mae_model} \
-                         pretrain_path=${pretrain_path}\
-                         cliport_checkpoint=False\
-                         dataset.cache=False \
-                         train.sep_mode=place\
-                         dataset.type=multi\
-                         train.linear_probe=False\
-                         text_model="openai/clip-vit-base-patch16"\
+
+# python -m cliport.train  train.task=multi-language-conditioned\
+#                          train.agent=${agent_name}\
+#                          train.exp_folder=${exps_name}\
+#                          wandb.run_name=${exps_name}_multi\
+#                          train.n_demos=1000 \
+#                          train.n_steps=60100 \
+#                          train.lr_scheduler=True\
+#                          train.lr=2e-5\
+#                          train.warmup_epochs=10\
+#                          train.precision=32\
+#                          train.batch_size=8\
+#                          train.batchnorm=True\
+#                          train.load_from_last_ckpt=False\
+#                          train.log=True\
+#                          mae_model=${mae_model} \
+#                          pretrain_path=${pretrain_path}\
+#                          cliport_checkpoint=False\
+#                          dataset.cache=False \
+#                          train.sep_mode=place\
+#                          dataset.type=multi\
+#                          train.linear_probe=False\
                          
 
 
