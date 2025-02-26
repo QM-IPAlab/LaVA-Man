@@ -240,3 +240,4 @@ mae_clip = vit_base_patch16_mae_clip
 mae_clip_pe = vit_base_patch16_mae_clip_pe
 mae_robot_lang_rev2 = mae_vit_base_patch16_rl_rev2
 mae_croco = mae_vit_base_patch16_croco
+mae_robot_lang_diffloss = mae_vit_base_patch16_rl_diffloss

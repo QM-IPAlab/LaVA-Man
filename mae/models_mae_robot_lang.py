@@ -116,24 +116,22 @@ class MAERobotLangDiffLoss(MAERobotLang):
         latent1, mask1, ids_restore1 = self.forward_encoder(img1, mask_ratio=0.0)
         latent2, mask2, ids_restore2 = self.forward_encoder(img2, mask_ratio)
 
-        dif = img1 - img2
-
         # encoder of the language goal
         lang_emb = self.get_lang_embed(lang)
 
         # decoder
         pred = self.forward_ca_decoder(latent1, latent2, ids_restore2, lang_emb)
-        loss = self.forward_loss(img2, pred, mask2)
+        loss = self.forward_loss(img1, img2, pred, mask2)
 
         return loss, pred, mask2 
     
-    def forward_loss(self, imgs, pred, mask):
+    def forward_loss(self, img1, imgs, pred, mask):
         """
         imgs: [N, 3, H, W]
         pred: [N, L, p*p*3]
         mask: [N, L], 0 is keep, 1 is remove,
         """
-        import pdb; pdb.set_trace()
+        
         target = self.patchify(imgs)
         if self.norm_pix_loss:
             mean = target.mean(dim=-1, keepdim=True)
@@ -142,10 +140,9 @@ class MAERobotLangDiffLoss(MAERobotLang):
 
         loss = (pred - target) ** 2
         loss = loss.mean(dim=-1)  # [N, L], mean loss per patch
-
-        foreground_mask, background_mask = self.compute_differce(imgs, pred)
-        foreground_mask = self.patchify(foreground_mask).squeeze(-1)
-        background_mask = self.patchify(background_mask).squeeze(-1)
+        foreground_mask, background_mask = self.compute_differce(img1, imgs)
+        foreground_mask = self.patchify_mask(foreground_mask).squeeze(-1)
+        background_mask = self.patchify_mask(background_mask).squeeze(-1)
 
         weight_map = foreground_mask * 0.7 + background_mask * 0.3
         masked_loss = loss * mask * weight_map
@@ -168,6 +165,18 @@ class MAERobotLangDiffLoss(MAERobotLang):
         background_mask = 1.0 - foreground_mask  # [N, 1, H, W]
 
         return foreground_mask, background_mask
+
+    def patchify_mask(self, imgs):
+        p = self.patch_embed.patch_size[0]
+        assert imgs.shape[2] % p == 0 and imgs.shape[3] % p == 0
+
+        h = imgs.shape[2] // p
+        w = imgs.shape[3] // p
+        x = imgs.reshape(shape=(imgs.shape[0], 1, h, p, w, p))
+        x = torch.einsum('nchpwq->nhwpqc', x)
+        x = x.reshape(shape=(imgs.shape[0], h * w, p ** 2 * 1))
+        patch_mask = x.mean(dim=-1)
+        return patch_mask
 
 class MAERobotLangNoRef(MAERobot):
     """No Siamese encoder. Only one encoder for the o_t image
