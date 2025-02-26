@@ -129,7 +129,7 @@ def get_flip_transform():
 def get_fix_transform():
     trasform_fix = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Resize((224,224),antialias=False),
+        transforms.Resize((224,224)),
         transforms.Normalize(mean=MEAN_CLIPORT, std=STD_CLIPORT)])
     return trasform_fix
 
@@ -196,7 +196,7 @@ def main(args):
 
     dataset_train = MAEDataset(transform=transform_train, data_path=args.data_path, aug=args.aug, condition_free=args.condition_free)
     dataset_vis = MAEDataset(transform=transform_train, data_path=args.test_path, aug=False)
-    droid_train = MAEDataset(transform=transform_train, data_path="scratch/droid_left.hdf5", aug=args.aug, condition_free=args.condition_free)
+    droid_train = MAEDataset(transform=transform_train, data_path="/media/robot/New Volume/datasets/DROID/droid_left.hdf5", aug=args.aug, condition_free=args.condition_free)
     #co3d_train = MAEDataset(transform=transform_train, data_path="image_pairs_with_captions.hdf5", aug=args.aug, condition_free=args.condition_free)
     #crossview_train = MAEDataset(transform=transform_train, data_path="bridge_crossview_goal.hdf5", aug=args.aug, condition_free=args.condition_free)		
     #ego4d_train = MAEDataset(transform=transform_train, data_path="scratch/mae-data/ego4d_interactive.hdf5", aug=args.aug, condition_free=args.condition_free)
@@ -223,7 +223,7 @@ def main(args):
     data_loader_train = torch.utils.data.DataLoader(
         dataset_train, sampler=sampler_train,
         batch_size=args.batch_size,
-        num_workers=4,
+        num_workers=8,
         pin_memory=args.pin_mem,
         drop_last=True
     )
@@ -288,10 +288,6 @@ def main(args):
     else:
         misc.load_model(args=args, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler)
     
-    # condition free
-    #if args.condition_free:
-    #    print("Enabled condition free training")
-    #    model_without_ddp.copy_mask_tokens()
 
 # ============== Demo mode ==============
     if args.demo:
