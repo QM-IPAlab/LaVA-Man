@@ -7,7 +7,6 @@ from mae.util.misc import PatchEmbedVarSize
 from mae.util.pos_embed import get_2d_varsize_sincos_pos_embed
 from mae.blocks import DecoderCABlock
 
-
 class MAERobotBase(nn.Module):
     """
         Base class for MAE with robot (cliport) images
@@ -59,6 +58,7 @@ class MAERobotBase(nn.Module):
         # store other parameters:
         self.embed_dim = decoder_embed_dim
         self.n_heads = decoder_num_heads
+        self.patch_size = patch_size
 
     def initialize_weights(self):
         
@@ -237,8 +237,33 @@ class MAERobot(MAERobotBase):
                            norm_mem=norm_im2_in_dec)
             for _ in range(decoder_depth)])
 
-        #self.decoder_pos_embed_2 = nn.Parameter(torch.zeros(1, self.patch_embed.num_patches + 1, decoder_embed_dim),
-        #                                        requires_grad=False)
+
+    def forward_encoder(self, x, mask_ratio):
+        # embed patches
+        x = self.patch_embed(x)
+
+        # interpolate position encoding if necessary
+        pos_embed = self.pos_embed
+        if pos_embed.shape[1] != x.shape[1]:
+            #FIXME: hardcoded values for 320 160 images and 16 patch size
+            pos_embed = self.interpolate_pos_encoding(x, pos_embed, 20, 10)
+
+        x = x + pos_embed[:, 1:, :]
+
+        # masking: length -> length * mask_ratio
+        x, mask, ids_restore = self.random_masking(x, mask_ratio)
+
+        # append cls token
+        cls_token = self.cls_token + pos_embed[:, :1, :]
+        cls_tokens = cls_token.expand(x.shape[0], -1, -1)
+        x = torch.cat((cls_tokens, x), dim=1)
+
+        # apply Transformer blocks
+        for blk in self.blocks:
+            x = blk(x)
+        x = self.norm(x)
+
+        return x, mask, ids_restore
 
     def forward_ca_decoder(self, latent1, masked_latent2, ids_restore2, lang_emb):
         """
@@ -257,10 +282,15 @@ class MAERobot(MAERobotBase):
                              index=ids_restore2.unsqueeze(-1).repeat(1, 1, fea2.shape[2]))  # unshuffle
         fea2 = torch.cat([fea2[:, :1, :], fea2_], dim=1)  # append cls token
 
+        # interpolate position encoding if necessary
+        decoder_pos_embed = self.decoder_pos_embed
+        if self.decoder_pos_embed.shape[1] != fea2.shape[1]:
+            decoder_pos_embed = self.interpolate_pos_encoding(fea2, decoder_pos_embed, 20, 10)
+            
         # add positional embedding
         if self.decoder_pos_embed is not None:
-            fea1 = fea1 + self.decoder_pos_embed
-            fea2 = fea2 + self.decoder_pos_embed
+            fea1 = fea1 + decoder_pos_embed
+            fea2 = fea2 + decoder_pos_embed
 
         out1 = fea1
         out2 = fea2
@@ -282,3 +312,59 @@ class MAERobot(MAERobotBase):
         pred = self.forward_ca_decoder(latent1, latent2, ids_restore2, lang)
         loss = self.forward_loss(img2, pred, mask2)
         return loss, pred, mask2
+
+    def interpolate_pos_encoding(self, embeddings: torch.Tensor, position_embeddings, height: int, width: int) -> torch.Tensor:
+        """
+        This method allows to interpolate the pre-trained position encodings, to be able to use the model on higher resolution
+        images. This method is also adapted to support torch.jit tracing.
+
+        Adapted from:
+        - https://github.com/facebookresearch/dino/blob/de9ee3df6cf39fac952ab558447af1fa1365362a/vision_transformer.py#L174-L194, and
+        - https://github.com/facebookresearch/dinov2/blob/e1277af2ba9496fbadf7aec6eba56e8d882d1e35/dinov2/models/vision_transformer.py#L179-L211
+        """
+
+        num_patches = embeddings.shape[1] - 1
+        num_positions = position_embeddings.shape[1] - 1
+
+        # always interpolate when tracing to ensure the exported model works for dynamic input shapes
+        if num_patches == num_positions and height == width:
+            return position_embeddings
+
+        class_pos_embed = position_embeddings[:, :1]
+        patch_pos_embed = position_embeddings[:, 1:]
+
+        dim = embeddings.shape[-1]
+
+        new_height = height // self.patch_size
+        new_width = width // self.patch_size
+
+        sqrt_num_positions = int(num_positions**0.5)
+        patch_pos_embed = patch_pos_embed.reshape(1, sqrt_num_positions, sqrt_num_positions, dim)
+        patch_pos_embed = patch_pos_embed.permute(0, 3, 1, 2)
+
+        patch_pos_embed = nn.functional.interpolate(
+            patch_pos_embed,
+            size=(new_height, new_width),
+            mode="bicubic",
+            align_corners=False,
+        )
+
+        patch_pos_embed = patch_pos_embed.permute(0, 2, 3, 1).view(1, -1, dim)
+
+        return torch.cat((class_pos_embed, patch_pos_embed), dim=1)
+
+
+    def unpatchify(self, x):
+        p = self.patch_embed.patch_size[0]
+        h = self.img_size[0] // p
+        w = self.img_size[1] // p
+
+        #FIXME: hardcoded values for 320 160 images and 16 patch size
+        if not h * w == x.shape[1]:
+            h = 20
+            w = 10
+            
+        x = x.reshape(shape=(x.shape[0], h, w, p, p, 3))
+        x = torch.einsum('nhwpqc->nchpwq', x)
+        imgs = x.reshape(shape=(x.shape[0], 3, h * p, w * p))
+        return imgs

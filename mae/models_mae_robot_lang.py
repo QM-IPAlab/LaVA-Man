@@ -178,6 +178,7 @@ class MAERobotLangDiffLoss(MAERobotLang):
         patch_mask = x.mean(dim=-1)
         return patch_mask
 
+
 class MAERobotLangNoRef(MAERobot):
     """No Siamese encoder. Only one encoder for the o_t image
     and train to predict the o_t+1 
