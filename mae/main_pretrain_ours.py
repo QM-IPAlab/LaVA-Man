@@ -33,6 +33,7 @@ import models_lib
 from transformers import AutoTokenizer
 from cliport.models.core.clip import CLIPResTokenizer
 import sys
+from sampler import SameDatasetBatchSampler, DistributedSameDatasetBatchSampler
 
 
 #assert timm.__version__ == "0.3.2"  # version check
@@ -202,18 +203,25 @@ def main(args):
     #ego4d_train = MAEDataset(transform=transform_train, data_path="scratch/mae-data/ego4d_interactive.hdf5", aug=args.aug, condition_free=args.condition_free)
     dataset_train = ConcatDataset([dataset_train,droid_train])
     #dataset_train = Subset(dataset_train, range(600))
-
+    
+    #TODO: How to use args to set all training datasets?
+    #TODO: How to define the validation dataset?
+    
     if True:  # args.distributed:
         num_tasks = misc.get_world_size()
         global_rank = misc.get_rank()
         print("num tasks and global rank:", num_tasks, global_rank)
-        sampler_train = torch.utils.data.DistributedSampler(
-            dataset_train, num_replicas=num_tasks, rank=global_rank, shuffle=True
-        )
+        DistributedSameDatasetBatchSampler([dataset_train,droid_train],
+            batch_size=args.batch_size,
+            num_replicas=num_tasks,
+            rank=global_rank,
+            drop_last=True)
         print("Sampler_train = %s" % str(sampler_train))
     else:
-        sampler_train = torch.utils.data.RandomSampler(dataset_train)
-
+        sampler_train = SameDatasetBatchSampler([dataset_train,droid_train],
+            batch_size=args.batch_size,
+            drop_last=True)
+        
     if global_rank == 0 and args.my_log:
         wandb.init(project='MAE', name=args.model, entity='cxz', id=args.wandb_resume)
         log_writer = wandb
