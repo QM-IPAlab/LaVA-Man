@@ -241,12 +241,11 @@ class MAERobot(MAERobotBase):
     def forward_encoder(self, x, mask_ratio):
         # embed patches
         x = self.patch_embed(x)
-
         # interpolate position encoding if necessary
         pos_embed = self.pos_embed
-        if pos_embed.shape[1] != x.shape[1]:
+        if pos_embed[:, 1:, :].shape[1] != x.shape[1]:
             #FIXME: hardcoded values for 320 160 images and 16 patch size
-            pos_embed = self.interpolate_pos_encoding(x, pos_embed, 20, 10)
+            pos_embed = self.interpolate_pos_encoding(x, pos_embed, 320, 160)
 
         x = x + pos_embed[:, 1:, :]
 
@@ -285,7 +284,7 @@ class MAERobot(MAERobotBase):
         # interpolate position encoding if necessary
         decoder_pos_embed = self.decoder_pos_embed
         if self.decoder_pos_embed.shape[1] != fea2.shape[1]:
-            decoder_pos_embed = self.interpolate_pos_encoding(fea2, decoder_pos_embed, 20, 10)
+            decoder_pos_embed = self.interpolate_pos_encoding(fea2, decoder_pos_embed, 320, 160)
             
         # add positional embedding
         if self.decoder_pos_embed is not None:
