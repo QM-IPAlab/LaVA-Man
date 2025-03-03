@@ -67,6 +67,8 @@ class DistributedSameDatasetBatchSampler(Sampler):
         self.batch_indices = self._create_batches()
         self.indices = np.concatenate(self.batch_indices).tolist()
 
+        self.epoch = 0
+
         # # 每个 GPU 取自己的 batch 子集
         # self.total_batches = len(self.batch_indices)
         # self.num_batches_per_rank = self.total_batches // self.num_replicas
@@ -100,6 +102,5 @@ class DistributedSameDatasetBatchSampler(Sampler):
     
     def set_epoch(self, epoch):
         """重新 shuffle 数据并重新生成 batch"""
-        np.random.seed(epoch)  # 设置随机种子，以保证不同 epoch 之间的 shuffle 结果不同
         self.batch_indices = self._create_batches()  # 重新生成 batch
-
+        self.epoch = epoch
