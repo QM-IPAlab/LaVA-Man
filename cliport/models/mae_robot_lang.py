@@ -1326,14 +1326,16 @@ class MAESeg2ModelAdd(MAESeg2Model):
         recon = recon[:, 1:, :]  # 1, 200, 768
         recon = self.model.unpatchify(recon)
 
+        # #uncomment this for visulization
         # from torchvision.utils import save_image
         # import os
         # #(C, H, W)
         # recon_save = recon[0]
         # recon_save = (recon_save- recon.min()) / (recon_save.max() - recon_save.min())
-        # folder = "/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/recons_new"
+        # folder = "/data/home/acw694/CLIPort_new_loss/vis_tmp"
         # i = len(os.listdir(folder))
         # save_image(recon_save, f'{folder}/recon{i}.png')
+        # import pdb; pdb.set_trace()
 
 
         out = out[:, 1:, :]  # 1, 400, 512

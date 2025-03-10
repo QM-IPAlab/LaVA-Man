@@ -4,7 +4,7 @@ from torch.utils.data import Sampler, DistributedSampler
 import numpy as np
 from PIL import Image
 import random
-
+import math
 import torchvision.transforms as transforms
 from torch.nn.utils.rnn import pad_sequence
 
@@ -69,18 +69,14 @@ class DistributedSameDatasetBatchSampler(Sampler):
 
         self.epoch = 0
 
-        # # 每个 GPU 取自己的 batch 子集
-        # self.total_batches = len(self.batch_indices)
-        # self.num_batches_per_rank = self.total_batches // self.num_replicas
-        # if not drop_last and self.total_batches % self.num_replicas != 0:
-        #     self.num_batches_per_rank += 1  # 处理 uneven case
-
-        # self.batch_indices = self.batch_indices[self.rank:self.total_batches:self.num_replicas]
-
     def _create_batches(self):
         batch_indices = []
         for dataset_idx, (start, end) in enumerate(zip(self.dataset_ranges[:-1], self.dataset_ranges[1:])):
             indices = np.arange(start, end)
+            num_samples = math.ceil(
+                (len(indices) - self.num_replicas) / self.num_replicas)  # type: ignore[arg-type]
+            total_samples = num_samples * self.num_replicas
+            indices = indices[:total_samples]
             np.random.shuffle(indices)  # 打乱数据
 
             # 生成 batch
@@ -103,4 +99,5 @@ class DistributedSameDatasetBatchSampler(Sampler):
     def set_epoch(self, epoch):
         """重新 shuffle 数据并重新生成 batch"""
         self.batch_indices = self._create_batches()  # 重新生成 batch
+        self.indices = np.concatenate(self.batch_indices).tolist()
         self.epoch = epoch
