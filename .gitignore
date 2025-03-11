@@ -13,7 +13,7 @@ debug/
 *.pth 
 *.hdf5
 /data_debug
-
+exps
 # Folders
 cliport/data/
 cliport/outputs/

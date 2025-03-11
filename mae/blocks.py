@@ -532,3 +532,51 @@ class EncoderCABlockLang(nn.Module):
         
         x = x + self.drop_path(self.mlp(self.norm3(x)))
         return x
+
+
+class DecoderDERTBlockLang(nn.Module):
+
+    def __init__(self, dim, num_heads, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop=0., attn_drop=0.,
+                 drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm, norm_mem=True, rope=None):
+        super().__init__()
+        
+        self.attn = Attention(
+            dim, num_heads=num_heads, qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=drop)
+        self.cross_attn_img1 = CrossAttention(dim, rope=rope, num_heads=num_heads, qkv_bias=qkv_bias, attn_drop=attn_drop,
+                                             proj_drop=drop)
+        self.cross_attn_img2 = CrossAttention(dim, rope=rope, num_heads=num_heads, qkv_bias=qkv_bias, attn_drop=attn_drop,
+                                             proj_drop=drop)
+        self.cross_attn_lang = CrossAttention(dim, rope=rope, num_heads=num_heads, qkv_bias=qkv_bias, attn_drop=attn_drop,
+                                              proj_drop=drop)        
+        self.norm1 = norm_layer(dim)
+        self.norm2 = norm_layer(dim)
+        self.norm3 = norm_layer(dim)
+        self.norm4 = norm_layer(dim)
+        self.norm5 = norm_layer(dim)
+        self.norm_x = norm_layer(dim)
+        self.norm_y = norm_layer(dim)
+
+        mlp_hidden_dim = int(dim * mlp_ratio)
+        self.mlp = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, act_layer=act_layer, drop=drop)
+        
+        self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
+
+    def forward(self, query, x, y, lang):
+        """
+        x: norm -> self_attn -> drop -> norm -> cross_attn -> drop
+        """
+        query = query + self.drop_path(self.attn(self.norm1(query)))
+
+        # cross attention between query （Q） and x (K,V)
+        query = query + self.drop_path(self.cross_attn_img1(self.norm2(query), self.norm_x(x), self.norm_x(x)))
+
+        # cross attention between current (K,V) ang goal image (Q)
+        query = query + self.drop_path(self.cross_attn_img2(self.norm3(query), self.norm_y(y), self.norm_y(y)))
+
+        # cross attention between current (Q) and language (K,V)
+        lang = lang[0] if isinstance(lang, tuple) else lang
+        query = query + self.drop_path(self.cross_attn_lang(self.norm4(query), lang, lang))
+
+        # final output
+        query = query + self.drop_path(self.mlp(self.norm5(query)))
+        return query
