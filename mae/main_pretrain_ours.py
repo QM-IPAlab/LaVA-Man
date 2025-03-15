@@ -108,7 +108,7 @@ def get_args_parser():
                         help='url used to set up distributed training')
 
     # ours parameters and other function
-    parser.add_argument('--pretrain', default=None, type=str)
+    parser.add_argument('--pretrain', default=None, type=parse_pretrain)
     parser.add_argument('--demo', action='store_true')
     parser.add_argument('--save_ca', action='store_true', help='save cross attention maps')
     parser.add_argument('--wandb_resume', default=None, type=str)
@@ -119,6 +119,11 @@ def get_args_parser():
     parser.add_argument('--text_model', default="openai/clip-vit-base-patch32")
     parser.add_argument('--condition_free', action='store_true')
     return parser
+
+def parse_pretrain(value):
+    if value.lower() in ['none', 'false']:
+        return False
+    return value  # 返回路径字符串
 
 def get_flip_transform():
     transform_flip = transforms.Compose([
@@ -198,12 +203,12 @@ def main(args):
 
     bridge_train = MAEDataset(transform=transform_train, data_path=args.data_path, aug=args.aug, condition_free=args.condition_free)
     dataset_vis = MAEDataset(transform=transform_train, data_path=args.test_path, aug=False)
-    #ravens_train = MAEDataset(transform=transform_train, data_path="/data/home/acw694/CLIPort_new_loss/scratch/omniobj_4000.hdf5", aug=args.aug, condition_free=args.condition_free)
+    ravens_train = MAEDataset(transform=transform_train, data_path="/data/home/acw694/CLIPort_new_loss/scratch/top_down_omniobj_white.hdf5", aug=args.aug, condition_free=args.condition_free)
     droid_train = MAEDataset(transform=transform_train, data_path="/data/home/acw694/CLIPort_new_loss/scratch/droid_left.hdf5", aug=args.aug, condition_free=args.condition_free)
     #co3d_train = MAEDataset(transform=transform_train, data_path="image_pairs_with_captions.hdf5", aug=args.aug, condition_free=args.condition_free)
     #crossview_train = MAEDataset(transform=transform_train, data_path="bridge_crossview_goal.hdf5", aug=args.aug, condition_free=args.condition_free)		
     #ego4d_train = MAEDataset(transform=transform_train, data_path="scratch/mae-data/ego4d_interactive.hdf5", aug=args.aug, condition_free=args.condition_free)
-    dataset_train = ConcatDataset([bridge_train,droid_train])
+    dataset_train = ConcatDataset([bridge_train,droid_train,ravens_train])
     #dataset_train = Subset(dataset_train, range(600))
     
     #TODO: How to use args to set all training datasets?
@@ -213,7 +218,7 @@ def main(args):
         num_tasks = misc.get_world_size()
         global_rank = misc.get_rank()
         print("num tasks and global rank:", num_tasks, global_rank)
-        sampler_train = DistributedSameDatasetBatchSampler([bridge_train,droid_train],
+        sampler_train = DistributedSameDatasetBatchSampler([bridge_train,droid_train,ravens_train],
             batch_size=args.batch_size,
             num_replicas=num_tasks,
             rank=global_rank,

@@ -4,6 +4,8 @@
 #$ -pe smp 4       # 4 cores (12 cores per GPU)
 #$ -l h_rt=10:0:0    # 10 hour runtime (required to run on the short queue)
 #$ -l h_vmem=1G   # 7.5 * 12 = 90G total RAM
+#$ -m bea
+#$ -l rocky
 
 module load anaconda3/2023.03
 conda activate py3.10

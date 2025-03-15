@@ -119,6 +119,7 @@ for data in dataset_meta:
 
     data_s1 = []
     data_s2 = []
+    data_cv = [] # cross view
     data_language = []
     
     f = h5py.File(os.path.join('/data/home/acw694/CLIPort_new_loss/scratch/data_hdf5',
@@ -160,17 +161,19 @@ for data in dataset_meta:
                 start_img = get_nested_value(batch_start, img_keys[start_idx])
 
                 # 选取 End 的 index（必须和 Start 的 index 不同）
-                end_idx_choices = [idx for idx in last_indices if idx != start_idx]
-                if not end_idx_choices:
-                    warnings.warn("No valid end index available, skipping.")
+                crossview_idx_choices = [idx for idx in last_indices if idx != start_idx]
+                if not crossview_idx_choices:
+                    warnings.warn("No valid crossview index available, skipping.")
                     continue
 
-                end_idx = random.choice(end_idx_choices)
-                end_img = get_nested_value(batch, img_keys[end_idx])
+                crossview_idx = random.choice(crossview_idx_choices)
+                target_image = get_nested_value(batch, img_keys[start_idx])
+                crossview_image = get_nested_value(batch, img_keys[crossview_idx])
 
                 # 存储数据
                 data_s1.append(start_img)
-                data_s2.append(end_img)
+                data_s2.append(target_image)
+                data_cv.append(crossview_image)
                 data_language.append(current_first_instruction)
 
                 batch_start = None
@@ -186,14 +189,16 @@ for data in dataset_meta:
 
     data_s1 = np.array(data_s1)
     data_s2 = np.array(data_s2)
+    data_cv = np.array(data_cv)
     data_language = np.array(data_language, dtype=h5py.special_dtype(vlen=bytes))
 
     n1 = append_or_create_dataset(f, 'image_s1', data=data_s1)
     n2 = append_or_create_dataset(f, 'image_s2', data=data_s2)
     n3 = append_or_create_dataset(f, 'language', data=data_language, dtype=h5py.special_dtype(vlen=bytes))
+    n4 = append_or_create_dataset(f, 'image_cv', data=data_cv)
     f.close()
 
-    assert n1 == n2 == n3
+    assert n1 == n2 == n3 == n4
 
     print(f'Saved {len(data_s1)} samples to the hdf5 file.')
     print(f'Current number of samples in hdf5 file: {n3}.')

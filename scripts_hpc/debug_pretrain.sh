@@ -12,7 +12,7 @@ torchrun --nproc_per_node 1 mae/main_pretrain_ours.py \
     --batch_size 80 \
     --input_size 224 224 \
     --output_dir  exps/debug \
-    --pretrain checkpoints/mae_pretrain_vit_base.pth\
+    --pretrain False\
     --mask_ratio 0.95 \
     --data_path scratch/bridge_256_train.hdf5 \
     --test_path scratch/bridge_256_val.hdf5\
