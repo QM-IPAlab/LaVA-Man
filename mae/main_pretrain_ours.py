@@ -30,6 +30,7 @@ from util.misc import NativeScalerWithGradNormCount as NativeScaler
 from engine_pretrain_ours import train_one_epoch_ours, validate_vis_img2
 from save_relevance import save_relevance_maps
 from dataset_mae import MAEDataset
+from dataset_crossview import MAEDatasetCV
 import models_lib
 from transformers import AutoTokenizer
 from cliport.models.core.clip import CLIPResTokenizer
@@ -98,6 +99,9 @@ def get_args_parser():
                         help='Pin CPU memory in DataLoader for more efficient (sometimes) transfer to GPU.')
     parser.add_argument('--no_pin_mem', action='store_false', dest='pin_mem')
     parser.set_defaults(pin_mem=False)
+    parser.add_argument('--multiview', action='store_true',
+                        help='Use multi-view training')
+    parser.set_defaults(multiview=False)
 
     # distributed training parameters
     parser.add_argument('--world_size', default=1, type=int,
@@ -201,14 +205,16 @@ def main(args):
     if 'voltron' in args.model:
        transform_train = get_voltron_transform()
 
-    bridge_train = MAEDataset(transform=transform_train, data_path=args.data_path, aug=args.aug, condition_free=args.condition_free)
+    #bridge_train = MAEDataset(transform=transform_train, data_path=args.data_path, aug=args.aug, condition_free=args.condition_free)
     dataset_vis = MAEDataset(transform=transform_train, data_path=args.test_path, aug=False)
-    ravens_train = MAEDataset(transform=transform_train, data_path="/data/home/acw694/CLIPort_new_loss/scratch/top_down_omniobj_white.hdf5", aug=args.aug, condition_free=args.condition_free)
-    droid_train = MAEDataset(transform=transform_train, data_path="/data/home/acw694/CLIPort_new_loss/scratch/droid_left.hdf5", aug=args.aug, condition_free=args.condition_free)
+    #ravens_train = MAEDataset(transform=transform_train, data_path="/data/home/acw694/CLIPort_new_loss/scratch/top_down_omniobj_white.hdf5", aug=args.aug, condition_free=args.condition_free)
+    #droid_train = MAEDataset(transform=transform_train, data_path="/data/home/acw694/CLIPort_new_loss/scratch/droid_left.hdf5", aug=args.aug, condition_free=args.condition_free)
     #co3d_train = MAEDataset(transform=transform_train, data_path="image_pairs_with_captions.hdf5", aug=args.aug, condition_free=args.condition_free)
     #crossview_train = MAEDataset(transform=transform_train, data_path="bridge_crossview_goal.hdf5", aug=args.aug, condition_free=args.condition_free)		
     #ego4d_train = MAEDataset(transform=transform_train, data_path="scratch/mae-data/ego4d_interactive.hdf5", aug=args.aug, condition_free=args.condition_free)
-    dataset_train = ConcatDataset([bridge_train,droid_train,ravens_train])
+    bridge_train = MAEDatasetCV(transform=transform_train, data_path="/data/home/acw694/CLIPort_new_loss/scratch/data_hdf5/bridge_crossview_goal_3imgs.hdf5", aug=args.aug, condition_free=args.condition_free)
+    droid_train = MAEDatasetCV(transform=transform_train, data_path="/data/home/acw694/CLIPort_new_loss/scratch/droid_multiview_3imgs.hdf5", aug=args.aug, condition_free=args.condition_free)
+    dataset_train = ConcatDataset([bridge_train,droid_train])
     #dataset_train = Subset(dataset_train, range(600))
     
     #TODO: How to use args to set all training datasets?
@@ -218,16 +224,22 @@ def main(args):
         num_tasks = misc.get_world_size()
         global_rank = misc.get_rank()
         print("num tasks and global rank:", num_tasks, global_rank)
-        sampler_train = DistributedSameDatasetBatchSampler([bridge_train,droid_train,ravens_train],
-            batch_size=args.batch_size,
-            num_replicas=num_tasks,
-            rank=global_rank,
-            drop_last=True)
+        if args.multiview:
+            print("Assuming data are of different size")
+            sampler_train = DistributedSameDatasetBatchSampler(
+                [bridge_train,droid_train],
+                batch_size=args.batch_size,
+                num_replicas=num_tasks,
+                rank=global_rank,
+                drop_last=True)
+        else:
+            print("Assuming data are of the same size")
+            sampler_train = torch.utils.data.DistributedSampler(
+                dataset_train,
+                num_replicas=num_tasks,
+                rank=global_rank,
+                shuffle=True)
         print("Sampler_train = %s" % str(sampler_train))
-    else:
-        sampler_train = SameDatasetBatchSampler([dataset_train,droid_train],
-            batch_size=args.batch_size,
-            drop_last=True)
         
     if global_rank == 0 and args.my_log:
         wandb.init(project='MAE', name=args.model, entity='cxz', id=args.wandb_resume)
