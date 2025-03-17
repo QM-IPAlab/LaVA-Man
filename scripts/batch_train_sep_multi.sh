@@ -25,10 +25,10 @@ export TOKENIZERS_PARALLELISM=false
 # 8. check the agent name: sep or not sept, if sep, check train.sep_mode is set to pick or place
 
 
-exps_name="exps_mae_robot_lang_croco"
+exps_name="exps/bridge_droid_2"
 agent_name="mae_sep_seg2_add"
-pretrain_path="/home/robot/repositories/MPI/checkpoints/checkpoint-399-croco2.pth"
-mae_model="mae_croco"
+pretrain_path="/home/robot/Repositories_chaoran/MPI/checkpoints/ours/checkpoint-399-droid.pth"
+mae_model="mae_robot_lang"
 #pretrain_path=False
 
 # tasks for ablation study (mask ratio)
@@ -59,52 +59,50 @@ tasks=("assembling-kits-seq-full"\
     #"packing-shapes"\
 )
 
-# python -m cliport.train  train.task=multi-language-conditioned\
-#                          train.agent=${agent_name}\
-#                          train.exp_folder=${exps_name}\
-#                          wandb.run_name=${exps_name}_multi\
-#                          train.n_demos=1000 \
-#                          train.n_steps=60100 \
-#                          train.lr_scheduler=True\
-#                          train.lr=2e-5\
-#                          train.warmup_epochs=10\
-#                          train.precision=32\
-#                          train.batch_size=32\
-#                          train.batchnorm=True\
-#                          train.load_from_last_ckpt=False\
-#                          train.log=True\
-#                          mae_model=${mae_model} \
-#                          pretrain_path=${pretrain_path}\
-#                          cliport_checkpoint=False\
-#                          dataset.cache=False \
-#                          train.sep_mode=pick\
-#                          dataset.type=multi\
-#                          train.linear_probe=False\
+python -m cliport.train  train.task=multi-language-conditioned\
+                         train.agent=${agent_name}\
+                         train.exp_folder=${exps_name}\
+                         wandb.run_name=${exps_name}_multi\
+                         train.n_demos=1000 \
+                         train.n_steps=60100 \
+                         train.lr_scheduler=True\
+                         train.lr=2e-5\
+                         train.warmup_epochs=10\
+                         train.precision=32\
+                         train.batch_size=32\
+                         train.batchnorm=True\
+                         train.load_from_last_ckpt=False\
+                         train.log=True\
+                         mae_model=${mae_model} \
+                         pretrain_path=${pretrain_path}\
+                         cliport_checkpoint=False\
+                         dataset.cache=False \
+                         train.sep_mode=pick\
+                         dataset.type=multi\
+                         train.linear_probe=False\
 
 
-
-
-# python -m cliport.train  train.task=multi-language-conditioned\
-#                          train.agent=${agent_name}\
-#                          train.exp_folder=${exps_name}\
-#                          wandb.run_name=${exps_name}_multi\
-#                          train.n_demos=1000 \
-#                          train.n_steps=60100 \
-#                          train.lr_scheduler=True\
-#                          train.lr=2e-5\
-#                          train.warmup_epochs=10\
-#                          train.precision=32\
-#                          train.batch_size=8\
-#                          train.batchnorm=True\
-#                          train.load_from_last_ckpt=False\
-#                          train.log=True\
-#                          mae_model=${mae_model} \
-#                          pretrain_path=${pretrain_path}\
-#                          cliport_checkpoint=False\
-#                          dataset.cache=False \
-#                          train.sep_mode=place\
-#                          dataset.type=multi\
-#                          train.linear_probe=False\
+python -m cliport.train  train.task=multi-language-conditioned\
+                         train.agent=${agent_name}\
+                         train.exp_folder=${exps_name}\
+                         wandb.run_name=${exps_name}_multi\
+                         train.n_demos=1000 \
+                         train.n_steps=60100 \
+                         train.lr_scheduler=True\
+                         train.lr=2e-5\
+                         train.warmup_epochs=10\
+                         train.precision=32\
+                         train.batch_size=8\
+                         train.batchnorm=True\
+                         train.load_from_last_ckpt=False\
+                         train.log=True\
+                         mae_model=${mae_model} \
+                         pretrain_path=${pretrain_path}\
+                         cliport_checkpoint=False\
+                         dataset.cache=False \
+                         train.sep_mode=place\
+                         dataset.type=multi\
+                         train.linear_probe=False\
                          
 
 
@@ -144,7 +142,7 @@ do
                         n_demos=100 \
                         train_demos=1000 \
                         exp_folder=${exps_name} \
-                        checkpoint_type=best \
+                        checkpoint_type=last \
                         update_results=True \
                         disp=False\
                         record.save_video=False
