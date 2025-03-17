@@ -441,6 +441,7 @@ def dynamic_load_pretrain(model, checkpoint_path, dict_name='model', interpolate
                 print(ck_name, model_dict[ck_name].shape, ck_param.shape)
         else:
             extra_params += 1
+            print(f"extra:{ck_name}")
 
     # 更新模型状态
     model.load_state_dict(model_dict, strict=True)
@@ -529,7 +530,7 @@ def interpolate_pos_embed_ours(model, checkpoint_model, ori=False):
         if ori:
             orig_size = (14, 14)
         else:
-            orig_size = (16, 16)
+            orig_size = (14, 14)
         # height (== width) for the new position embedding
         p = model.patch_embed.patch_size[0]
         new_size = (int(model.img_size[0] // p), model.img_size[1] // p)
@@ -554,7 +555,7 @@ def interpolate_pos_embed_ours(model, checkpoint_model, ori=False):
         num_patches = model.patch_embed.num_patches
         num_extra_tokens = model.decoder_pos_embed.shape[-2] - num_patches
         # height (== width) for the checkpoint position embedding
-        orig_size = (16, 16)
+        orig_size = (14, 14)
         # height (== width) for the new position embedding
         p = model.patch_embed.patch_size[0]
         new_size = (int(model.img_size[0] // p), model.img_size[1] // p)

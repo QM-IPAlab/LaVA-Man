@@ -4,6 +4,7 @@
 #SBATCH --job-name=gen_data
 #SBATCH --cpus-per-task=16
 
+export CUDA_VISIBLE_DEVICES=1S
 export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
@@ -40,7 +41,8 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 #                             disp=False
 # done
 
-python cliport/demos.py n=100 \
-                        task=packing-seen-google-objects-seq \
-                        mode=test \
-                        data_dir=data_debug\f
+python cliport/demos_new.py n=30000 \
+                        task=packing-omni-objects \
+                        mode=train \
+                        data_dir=data_debug\
+                        record.save_video=False \

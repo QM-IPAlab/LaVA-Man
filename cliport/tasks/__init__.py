@@ -41,7 +41,13 @@ from cliport.tasks.towers_of_hanoi_seq import TowersOfHanoiSeqSeenColors
 from cliport.tasks.towers_of_hanoi_seq import TowersOfHanoiSeqUnseenColors
 from cliport.tasks.towers_of_hanoi_seq import TowersOfHanoiSeqFull
 
+from cliport.tasks.packing_omni_objects import PackingOmniObjects
+
 names = {
+
+    # ours extension
+    'packing-omni-objects': PackingOmniObjects,
+
     # demo conditioned
     'align-box-corner': AlignBoxCorner,
     'assembling-kits': AssemblingKits,

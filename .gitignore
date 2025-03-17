@@ -13,6 +13,9 @@ debug/
 *.pth 
 *.hdf5
 /data_debug
+/data*
+.hydra/
+/omni*
 
 # Folders
 cliport/data/

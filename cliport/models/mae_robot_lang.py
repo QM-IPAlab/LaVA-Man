@@ -172,7 +172,7 @@ class MAESeg2Model(nn.Module):
         model_name = 'mae_robot_lang' if model_name is None else model_name
         text_model=cfg['text_model'] if 'text_model' in cfg else 'openai/clip-vit-base-patch32'
         self.model = models_lib.__dict__[model_name](
-            img_size=input_shape[:2],
+            img_size=(224,224), #FIXME hardcoded img size
             norm_pix_loss=False,
             text_model=text_model)
         
@@ -245,6 +245,32 @@ class MAESeg2Model(nn.Module):
         processed_lang = processed_lang.to(device)
         lang_emb = self.model.clip_text(**processed_lang, return_dict=False)
         return lang_emb
+
+    def forward_encoder(self, x, mask_ratio):
+        # encoder， automatically handle the shape problem
+        rgb = x[:, :3]  # select RGB
+        
+        # embed patches
+        x = self.model.patch_embed(x)
+        # interpolate position encoding if necessary
+        pos_embed = self.model.interpolate_pos_encoding(x, self.model.pos_embed, rgb.shape[2], rgb.shape[3])
+        
+        x = x + pos_embed[:, 1:, :]
+
+        # masking: length -> length * mask_ratio
+        x, mask, ids_restore = self.model.random_masking(x, mask_ratio)
+
+        # append cls token
+        cls_token = self.model.cls_token + pos_embed[:, :1, :]
+        cls_tokens = cls_token.expand(x.shape[0], -1, -1)
+        x = torch.cat((cls_tokens, x), dim=1)
+
+        # apply Transformer blocks
+        for blk in self.model.blocks:
+            x = blk(x)
+        x = self.model.norm(x)
+
+        return x, mask, ids_restore
 
     @get_local('predict', 'rgb')
     def forward(self, x, lang):
@@ -1295,8 +1321,8 @@ class MAESeg2ModelAdd(MAESeg2Model):
         in_shape = x.shape
         device = x.device
         rgb = x[:, :3]  # select RGB
-        latent1, mask1, ids_restore1 = self.model.forward_encoder(rgb, mask_ratio=0)
-        latent2, mask2, ids_restore2 = self.model.forward_encoder(rgb, mask_ratio=1.0)
+        latent1, mask1, ids_restore1 = self.forward_encoder(rgb, mask_ratio=0)
+        latent2, mask2, ids_restore2 = self.forward_encoder(rgb, mask_ratio=1.0)
         lang_emb = self.get_lang_embed(lang,device)
 
         fea1 = self.model.decoder_embed(latent1)
@@ -1309,8 +1335,9 @@ class MAESeg2ModelAdd(MAESeg2Model):
                              index=ids_restore2.unsqueeze(-1).repeat(1, 1, fea2.shape[2]))  # unshuffle
         fea2 = torch.cat([fea2[:, :1, :], fea2_], dim=1)  # append cls token
 
-        fea1 = fea1 + self.model.decoder_pos_embed
-        fea2 = fea2 + self.model.decoder_pos_embed
+        decoder_pos_embed = pos_embed = self.model.interpolate_pos_encoding(fea1, self.model.decoder_pos_embed, rgb.shape[2], rgb.shape[3])
+        fea1 = fea1 + decoder_pos_embed
+        fea2 = fea2 + decoder_pos_embed
 
         out1 = fea1
         out2 = fea2
@@ -1321,23 +1348,28 @@ class MAESeg2ModelAdd(MAESeg2Model):
         for blk in self.model.decoder_blocks:
             out1, out2 = blk(out1, out2, lang_emb)
         out = self.model.decoder_norm(out1)
-
         recon = self.model.decoder_pred(out)
         recon = recon[:, 1:, :]  # 1, 200, 768
-        recon = self.model.unpatchify(recon)
-
+        recon = self.unpatchify_img(recon, rgb.shape[2], rgb.shape[3])
+        
         # from torchvision.utils import save_image
         # import os
         # #(C, H, W)
         # recon_save = recon[0]
-        # recon_save = (recon_save- recon.min()) / (recon_save.max() - recon_save.min())
-        # folder = "/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/recons_new"
+        # recon_save = (recon_save- recon_save.min()) / (recon_save.max() - recon_save.min())
+        
+        # rgb_save = rgb[0]
+        # rgb_save = (rgb_save - rgb_save.min()) / (rgb_save.max() - rgb_save.min())
+        
+        # folder = "/home/robot/Repositories_chaoran/CLIPort_new_loss/debug/vis_reconstructions"
         # i = len(os.listdir(folder))
         # save_image(recon_save, f'{folder}/recon{i}.png')
+        # save_image(rgb_save, f'{folder}/rgb{i}.png')
+        # import pdb; pdb.set_trace()
 
 
         out = out[:, 1:, :]  # 1, 400, 512
-        out = self.unpatchify(out)
+        out = self.unpatchify_feature(out, rgb.shape[2], rgb.shape[3])
 
         out = self.layer1(out)
         out = self.cat1(out, rgb, recon)
@@ -1354,6 +1386,23 @@ class MAESeg2ModelAdd(MAESeg2Model):
 
         predict = self.conv(out)
         return predict
+
+    def unpatchify_img(self, x, h=0, w=0):
+        p = self.model.patch_embed.patch_size[0]
+        h = self.model.img_size[0] // p if h == 0 else h // p
+        w = self.model.img_size[1] // p if w == 0 else w // p
+            
+        x = x.reshape(shape=(x.shape[0], h, w, p, p, 3))
+        x = torch.einsum('nhwpqc->nchpwq', x)
+        imgs = x.reshape(shape=(x.shape[0], 3, h * p, w * p))
+        return imgs
+    
+    def unpatchify_feature(self, x, h=0, w=0):
+        p = self.model.patch_embed.patch_size[0]
+        h = h // p
+        w = w // p
+        x = rearrange(x, 'b (nh nw) c -> b c nh nw', nh=h, nw=w)
+        return x
 
 
 class MAESeg2ModelCLIPVision(MAESeg2Model):
