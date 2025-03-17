@@ -66,6 +66,45 @@ class MAEDatasetCV(Dataset):
         return img1,(img2, imgcv), lang, pick, place
 
 
+class MAEDatasetCVGoal(MAEDatasetCV):
+    """Return the crossview image as the goal image"""
+
+    def __getitem__(self, idx):
+
+        if self.file is None:
+            self.file = h5py.File(self.data_path, 'r')
+
+        img1 = self.file['image_s1'][idx]
+        img2 = self.file['image_s2'][idx]
+        imgcv = self.file['image_cv'][idx]
+        lang = self.file['language'][idx]
+        pick = self.file['gt_pick'][idx] if 'gt_pick' in self.file else 0.0
+        place = self.file['gt_place'][idx] if 'gt_pick' in self.file else 0.0
+
+        if self.aug:
+            angle = np.random.choice([0, 15, 30])
+            img1, _, (p0, p1), pert_urb_params = utils.perturb(img1, (pick, place), theta_sigma=angle)
+            pick = p0
+            place = p1
+
+        if self.transform:
+            if img1.max() > 1:
+                img1 = img1 / 255.0
+                img2 = img2 / 255.0
+                imgcv = imgcv / 255.0
+
+            img1 = self.transform(img1)
+            img2 = self.transform(img2)
+            imgcv = self.transform(imgcv)
+
+        if self.condition_free:
+            if random.random() < 0.5:
+                lang = ''.encode('ascii')
+                img2 = img1
+
+        return img1, imgcv, lang, pick, place
+
+
 def get_raw_transform():
     trasform_fix = transforms.Compose([
         transforms.ToTensor()])
