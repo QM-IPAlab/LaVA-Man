@@ -17,6 +17,7 @@ debug/
 .hydra/
 /omni*
 
+exps
 # Folders
 cliport/data/
 cliport/outputs/

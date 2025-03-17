@@ -48,7 +48,10 @@ def train_one_epoch_ours(model: torch.nn.Module,
         # get batch
         img1, img2, lang, pick, place = batch
         img1 = img1.to(device, non_blocking=True).half()
-        img2 = img2.to(device, non_blocking=True).half()
+        if isinstance(img2, list):
+            img2 = list(i.to(device, non_blocking=True).half() for i in img2)
+        else:
+            img2 = img2.to(device, non_blocking=True).half()
         pick = pick.to(device, non_blocking=True).half()
         place = place.to(device, non_blocking=True).half()
 
@@ -119,11 +122,13 @@ def validate_vis_img2(model: torch.nn.Module,
     for data_iter_step, batch in enumerate(data_loader):
         img1, img2, lang, pick, place = batch
         img1 = img1.to(device, non_blocking=True).float()
-        img2 = img2.to(device, non_blocking=True).float()
+        if isinstance(img2, tuple): img2 = img2[0]
+        img2 = img2.to(device, non_blocking=True).half()
         pick = pick.to(device, non_blocking=True).float()
         place = place.to(device, non_blocking=True).float()
 
         with torch.no_grad():
+            
             max_length = 20 if 'voltron' in args.model else 77
             processed_lang = generate_token(text_processor, lang, device, max_length)    
             loss, predict, mask = model(img1, img2, pick, place, processed_lang, mask_ratio=args.mask_ratio)

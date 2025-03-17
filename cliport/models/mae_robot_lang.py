@@ -1356,16 +1356,10 @@ class MAESeg2ModelAdd(MAESeg2Model):
         # import os
         # #(C, H, W)
         # recon_save = recon[0]
-        # recon_save = (recon_save- recon_save.min()) / (recon_save.max() - recon_save.min())
-        
-        # rgb_save = rgb[0]
-        # rgb_save = (rgb_save - rgb_save.min()) / (rgb_save.max() - rgb_save.min())
-        
-        # folder = "/home/robot/Repositories_chaoran/CLIPort_new_loss/debug/vis_reconstructions"
+        # recon_save = (recon_save- recon.min()) / (recon_save.max() - recon_save.min())
+        # folder = "/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/recons_new"
         # i = len(os.listdir(folder))
         # save_image(recon_save, f'{folder}/recon{i}.png')
-        # save_image(rgb_save, f'{folder}/rgb{i}.png')
-        # import pdb; pdb.set_trace()
 
 
         out = out[:, 1:, :]  # 1, 400, 512
