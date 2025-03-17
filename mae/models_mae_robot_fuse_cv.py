@@ -57,6 +57,10 @@ class MAERobotLangFuseCV(MAERobot):
         self.decoder_norm_cv = norm_layer(decoder_embed_dim)
         self.decoder_pred_cv = nn.Linear(decoder_embed_dim, patch_size ** 2 * in_chans, bias=True)  # decoder to patch
 
+        # initialization
+        self.decoder_pos_embed_cv.data.copy_(self.decoder_pos_embed)
+        torch.nn.init.normal_(self.mask_token_cv, std=.02)
+        self.apply(self._init_weights)
 
     def get_lang_embed(self, processed_lang):
         lang_emb = self.clip_text(**processed_lang, return_dict=False)
@@ -88,7 +92,10 @@ class MAERobotLangFuseCV(MAERobot):
         loss_complete = self.forward_loss(imgcv, complete, maskcv)
 
         loss = 0.7*loss_pred + 0.3*loss_complete
-        import pdb; pdb.set_trace()
+        
+        if torch.isnan(loss).any():
+            print("At least one loss is NaN")
+            import pdb; pdb.set_trace()
 
         return loss, pred, mask2   
     
@@ -136,11 +143,9 @@ class MAERobotLangFuseCV(MAERobot):
         fea2 = self.decoder_embed_cv(masked_latent2)
 
         # append masked tokens to the sequence
-        masked_tokens = self.mask_token_cv.repeat(fea2.shape[0],
-                                               ids_restore2.shape[1] + 1 - fea2.shape[1], 1)
+        masked_tokens = self.mask_token_cv.repeat(fea2.shape[0], ids_restore2.shape[1] + 1 - fea2.shape[1], 1)
         fea2_ = torch.cat([fea2[:, 1:, :], masked_tokens], dim=1)  # no cls token
-        fea2_ = torch.gather(fea2_, dim=1,
-                             index=ids_restore2.unsqueeze(-1).repeat(1, 1, fea2.shape[2]))  # unshuffle
+        fea2_ = torch.gather(fea2_, dim=1, index=ids_restore2.unsqueeze(-1).repeat(1, 1, fea2.shape[2]))  # unshuffle
         fea2 = torch.cat([fea2[:, :1, :], fea2_], dim=1)  # append cls token
 
         # interpolate position encoding if necessary
@@ -156,8 +161,7 @@ class MAERobotLangFuseCV(MAERobot):
         out1 = fea1
         out2 = fea2
         # apply Transformer blocks
-        for blk in self.decoder_blocks_cv:
-            out1, out2 = blk(out1, out2, None)
+        for blk in self.decoder_blocks_cv: out1, out2 = blk(out1, out2, None)
         out = self.decoder_norm_cv(out1)
 
         out = self.decoder_pred_cv(out)

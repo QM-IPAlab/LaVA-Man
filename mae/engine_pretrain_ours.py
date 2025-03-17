@@ -122,8 +122,7 @@ def validate_vis_img2(model: torch.nn.Module,
     for data_iter_step, batch in enumerate(data_loader):
         img1, img2, lang, pick, place = batch
         img1 = img1.to(device, non_blocking=True).float()
-        if isinstance(img2, tuple): img2 = img2[0]
-        img2 = img2.to(device, non_blocking=True).half()
+        img2 = img2.to(device, non_blocking=True).float()
         pick = pick.to(device, non_blocking=True).float()
         place = place.to(device, non_blocking=True).float()
 
@@ -131,7 +130,9 @@ def validate_vis_img2(model: torch.nn.Module,
             
             max_length = 20 if 'voltron' in args.model else 77
             processed_lang = generate_token(text_processor, lang, device, max_length)    
-            loss, predict, mask = model(img1, img2, pick, place, processed_lang, mask_ratio=args.mask_ratio)
+            if 'cv' in args.model: img2_input = list([img2,img2])
+            else: img2_input = img2
+            loss, predict, mask = model(img1, img2_input, pick, place, processed_lang, mask_ratio=args.mask_ratio)
             loss += loss.item()
 
             if data_iter_step in TESTSET_IDX or data_iter_step-1 in TESTSET_IDX:

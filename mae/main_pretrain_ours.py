@@ -212,8 +212,8 @@ def main(args):
     #co3d_train = MAEDataset(transform=transform_train, data_path="image_pairs_with_captions.hdf5", aug=args.aug, condition_free=args.condition_free)
     #crossview_train = MAEDataset(transform=transform_train, data_path="bridge_crossview_goal.hdf5", aug=args.aug, condition_free=args.condition_free)		
     #ego4d_train = MAEDataset(transform=transform_train, data_path="scratch/mae-data/ego4d_interactive.hdf5", aug=args.aug, condition_free=args.condition_free)
-    bridge_train = MAEDatasetCV(transform=transform_train, data_path="/data/home/acw694/CLIPort_new_loss/scratch/data_hdf5/bridge_crossview_goal_3imgs.hdf5", aug=args.aug, condition_free=args.condition_free)
-    droid_train = MAEDatasetCV(transform=transform_train, data_path="/data/home/acw694/CLIPort_new_loss/scratch/droid_multiview_3imgs.hdf5", aug=args.aug, condition_free=args.condition_free)
+    bridge_train = MAEDatasetCV(transform=transform_train, data_path="/home/a/acw694/CLIPort_new_loss/scratch/bridge_crossview_goal_3imgs.hdf5", aug=args.aug, condition_free=args.condition_free)
+    droid_train = MAEDatasetCV(transform=transform_train, data_path="/home/a/acw694/CLIPort_new_loss/scratch/droid_multiview_3imgs.hdf5", aug=args.aug, condition_free=args.condition_free)
     dataset_train = ConcatDataset([bridge_train,droid_train])
     #dataset_train = Subset(dataset_train, range(600))
     
