@@ -91,7 +91,17 @@ class MAERobotLangFuseCV(MAERobot):
         loss_pred = self.forward_loss(img2, pred, mask2)
         loss_complete = self.forward_loss(imgcv, complete, maskcv)
 
-        loss = 0.7*loss_pred + 0.3*loss_complete
+        # 计算 loss 的 scale（detach 保持梯度不变）
+        scale_pred = loss_pred.detach()
+        scale_complete = loss_complete.detach()
+
+        # 计算权重，防止 scale 过小或过大
+        epsilon = 1e-8
+        weight_pred = scale_complete / (scale_complete + scale_pred + epsilon)
+        weight_complete = scale_pred / (scale_complete + scale_pred + epsilon)
+
+        # 计算最终 loss
+        loss = weight_pred * loss_pred + weight_complete * loss_complete
         
         if torch.isnan(loss).any():
             print("At least one loss is NaN")
