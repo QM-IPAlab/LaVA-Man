@@ -205,16 +205,16 @@ def main(args):
     if 'voltron' in args.model:
        transform_train = get_voltron_transform()
 
-    bridge_train = MAEDataset(transform=transform_train, data_path=args.data_path, aug=args.aug, condition_free=args.condition_free)
+    #bridge_train = MAEDataset(transform=transform_train, data_path=args.data_path, aug=args.aug, condition_free=args.condition_free)
     dataset_vis = MAEDataset(transform=transform_train, data_path=args.test_path, aug=False)
     #ravens_train = MAEDataset(transform=transform_train, data_path="/data/home/acw694/CLIPort_new_loss/scratch/top_down_omniobj_white.hdf5", aug=args.aug, condition_free=args.condition_free)
-    droid_train = MAEDataset(transform=transform_train, data_path="/data/home/acw694/CLIPort_new_loss/scratch/droid_left.hdf5", aug=args.aug, condition_free=args.condition_free)
+    #droid_train = MAEDataset(transform=transform_train, data_path="/data/home/acw694/CLIPort_new_loss/scratch/droid_left.hdf5", aug=args.aug, condition_free=args.condition_free)
     #co3d_train = MAEDataset(transform=transform_train, data_path="image_pairs_with_captions.hdf5", aug=args.aug, condition_free=args.condition_free)
     #crossview_train = MAEDataset(transform=transform_train, data_path="bridge_crossview_goal.hdf5", aug=args.aug, condition_free=args.condition_free)		
     #ego4d_train = MAEDataset(transform=transform_train, data_path="scratch/mae-data/ego4d_interactive.hdf5", aug=args.aug, condition_free=args.condition_free)
-    bridge_train2 = MAEDatasetCVGoal(transform=transform_train, data_path="/data/home/acw694/CLIPort_new_loss/scratch/droid_multiview_3imgs.hdf5", aug=args.aug, condition_free=args.condition_free)
-    droid_train2 = MAEDatasetCVGoal(transform=transform_train, data_path="/data/home/acw694/CLIPort_new_loss/scratch/data_hdf5/bridge_crossview_goal_3imgs.hdf5", aug=args.aug, condition_free=args.condition_free)
-    dataset_train = ConcatDataset([bridge_train,droid_train,bridge_train2,droid_train2])
+    bridge_train2 = MAEDatasetCV(transform=transform_train, data_path="/home/a/acw694/CLIPort_new_loss/scratch/droid_multiview_3imgs.hdf5", aug=args.aug, condition_free=args.condition_free)
+    droid_train2 = MAEDatasetCV(transform=transform_train, data_path="/home/a/acw694/CLIPort_new_loss/scratch/bridge_crossview_goal_3imgs.hdf5", aug=args.aug, condition_free=args.condition_free)
+    dataset_train = ConcatDataset([bridge_train2,droid_train2])
     #dataset_train = Subset(dataset_train, range(600))
     
     #TODO: How to use args to set all training datasets?
