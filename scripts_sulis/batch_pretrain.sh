@@ -26,7 +26,7 @@ torchrun --nproc_per_node 3 mae/main_pretrain_ours.py \
     --model mae_cv \
     --batch_size 96 \
     --input_size 224 224  \
-    --output_dir  exps/fuse_crossview \
+    --output_dir  exps/fuse_crossview_loss2 \
     --mask_ratio 0.95 \
     --data_path bridge_256_train.hdf5 \
     --test_path bridge_256_val.hdf5\
