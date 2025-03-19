@@ -31,6 +31,7 @@ from engine_pretrain_ours import train_one_epoch_ours, validate_vis_img2
 from save_relevance import save_relevance_maps
 from dataset_mae import MAEDataset
 from dataset_crossview import MAEDatasetCV,MAEDatasetCVGoal
+from dataset_diffmask import MAEDatasetCVDf
 import models_lib
 from transformers import AutoTokenizer
 from cliport.models.core.clip import CLIPResTokenizer
@@ -212,10 +213,10 @@ def main(args):
     #co3d_train = MAEDataset(transform=transform_train, data_path="image_pairs_with_captions.hdf5", aug=args.aug, condition_free=args.condition_free)
     #crossview_train = MAEDataset(transform=transform_train, data_path="bridge_crossview_goal.hdf5", aug=args.aug, condition_free=args.condition_free)		
     #ego4d_train = MAEDataset(transform=transform_train, data_path="scratch/mae-data/ego4d_interactive.hdf5", aug=args.aug, condition_free=args.condition_free)
-    bridge_train2 = MAEDatasetCV(transform=transform_train, data_path="/home/a/acw694/CLIPort_new_loss/scratch/droid_multiview_3imgs.hdf5", aug=args.aug, condition_free=args.condition_free)
-    droid_train2 = MAEDatasetCV(transform=transform_train, data_path="/home/a/acw694/CLIPort_new_loss/scratch/bridge_crossview_goal_3imgs.hdf5", aug=args.aug, condition_free=args.condition_free)
+    bridge_train2 = MAEDatasetCVDf(transform=transform_train, data_path="/data/home/acw694/CLIPort_new_loss/scratch/data_hdf5/bridge_crossview_goal_3imgs_mask.hdf5", aug=args.aug, condition_free=args.condition_free)
+    droid_train2 = MAEDatasetCVDf(transform=transform_train, data_path="/data/home/acw694/CLIPort_new_loss/scratch/droid_multiview_3imgs_maskd2.hdf5", aug=args.aug, condition_free=args.condition_free)
     dataset_train = ConcatDataset([bridge_train2,droid_train2])
-    #dataset_train = Subset(dataset_train, range(600))
+    #sdataset_train = Subset(dataset_train, range(600))
     
     #TODO: How to use args to set all training datasets?
     #TODO: How to define the validation dataset?
