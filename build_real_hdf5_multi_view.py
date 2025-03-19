@@ -112,6 +112,12 @@ def get_non_zero_images_with_indices(data, img_keys):
     
     return images, indices
 
+def compute_mask(img1, img2):
+    diff = cv2.absdiff(img1, img2)
+    gray = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
+    _, mask = cv2.threshold(gray, 30, 255, cv2.THRESH_BINARY)
+    return mask
+
 for data in dataset_meta:
     dataset_name = data['name']
     lang_key = data['lang_key']
@@ -120,6 +126,8 @@ for data in dataset_meta:
     data_s1 = []
     data_s2 = []
     data_cv = [] # cross view
+    data_mask_s1 = [] # mask between s1 and s2
+    data_mask_cv = [] # mask between cv2 and cv2
     data_language = []
     
     f = h5py.File(os.path.join('/data/home/acw694/CLIPort_new_loss/scratch/data_hdf5',
@@ -169,11 +177,18 @@ for data in dataset_meta:
                 crossview_idx = random.choice(crossview_idx_choices)
                 target_image = get_nested_value(batch, img_keys[start_idx])
                 crossview_image = get_nested_value(batch, img_keys[crossview_idx])
+                crossview_start_image = get_nested_value(batch_start, img_keys[crossview_idx])
+
+                # masks
+                mask_s1 = compute_mask(start_img, target_image)
+                mask_cv = compute_mask(crossview_start_image, crossview_image)
 
                 # 存储数据
                 data_s1.append(start_img)
                 data_s2.append(target_image)
                 data_cv.append(crossview_image)
+                data_mask_s1.append(mask_s1[:,:,None])
+                data_mask_cv.append(mask_cv[:,:,None])
                 data_language.append(current_first_instruction)
 
                 batch_start = None
@@ -190,15 +205,19 @@ for data in dataset_meta:
     data_s1 = np.array(data_s1)
     data_s2 = np.array(data_s2)
     data_cv = np.array(data_cv)
+    data_mask_s1 = np.array(data_mask_s1)
+    data_mask_cv = np.array(data_mask_cv)
     data_language = np.array(data_language, dtype=h5py.special_dtype(vlen=bytes))
 
     n1 = append_or_create_dataset(f, 'image_s1', data=data_s1)
     n2 = append_or_create_dataset(f, 'image_s2', data=data_s2)
     n3 = append_or_create_dataset(f, 'language', data=data_language, dtype=h5py.special_dtype(vlen=bytes))
     n4 = append_or_create_dataset(f, 'image_cv', data=data_cv)
+    n5 = append_or_create_dataset(f, 'mask_s1', data=data_mask_s1)
+    n6 = append_or_create_dataset(f, 'mask_cv', data=data_mask_cv)
     f.close()
 
-    assert n1 == n2 == n3 == n4
+    assert n1 == n2 == n3 == n4 == n5 == n6
 
     print(f'Saved {len(data_s1)} samples to the hdf5 file.')
     print(f'Current number of samples in hdf5 file: {n3}.')

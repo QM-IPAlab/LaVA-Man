@@ -168,3 +168,97 @@ class MAERobotLangFuseCV(MAERobot):
         out = out[:, 1:, :]
 
         return out 
+
+
+
+class MAERobotLangFuseCVDiffLoss(MAERobotLangFuseCV):
+        
+    def forward(self, img1, img2, pick=None, place=None, lang=None, mask_ratio=0.75):
+
+        if len(img1) == 2:
+            img1, diff1 = img1
+            img2, imgcv, diffcv = img2           
+           
+            # encoder of the first observed image (no mask)
+            latent1, mask1, ids_restore1 = self.forward_encoder(img1, mask_ratio=0.0)
+            latent2, mask2, ids_restore2 = self.forward_encoder(img2, mask_ratio)
+            latentcv, maskcv, ids_restorecv = self.forward_encoder(imgcv, mask_ratio)
+
+            # encoder of the language goal
+            lang_emb = self.get_lang_embed(lang)
+
+            # fuse the two modalities
+            lang_emb = lang_emb[0]
+            for fuse_block in self.fuse_blocks:
+                latent1, lang_emb = fuse_block(latent1, lang_emb, attention_mask_v=None, attention_mask_l=None)
+            
+            pred = self.forward_pred(latent1, latent2, ids_restore2)
+            complete = self.forward_complete(latent1, latentcv, ids_restorecv)
+
+            weightmap_img1 = self.patchify_mask(diff1)
+            weightmap_cv = self.patchify_mask(diffcv)
+            
+            loss_pred = self.forward_loss(img2, pred, mask2, weightmap_img1)
+            loss_complete = self.forward_loss(imgcv, complete, maskcv, weightmap_cv)
+
+            loss = 0.7*loss_pred + 0.3*loss_complete
+
+            return loss, pred, mask2  
+        
+        else:        
+           
+            # encoder of the first observed image (no mask)
+            img2 = img2[0]
+            latent1, mask1, ids_restore1 = self.forward_encoder(img1, mask_ratio=0.0)
+            latent2, mask2, ids_restore2 = self.forward_encoder(img2, mask_ratio)
+
+            # encoder of the language goal
+            lang_emb = self.get_lang_embed(lang)
+
+            # fuse the two modalities
+            lang_emb = lang_emb[0]
+            for fuse_block in self.fuse_blocks:
+                latent1, lang_emb = fuse_block(latent1, lang_emb, attention_mask_v=None, attention_mask_l=None)
+            
+            pred = self.forward_pred(latent1, latent2, ids_restore2)
+            
+            loss_pred = self.forward_loss(img2, pred, mask2)
+
+            loss =loss_pred
+
+            return loss, pred, mask2 
+    
+    def patchify_mask(self, imgs):
+        p = self.patch_embed.patch_size[0]
+        assert imgs.shape[2] % p == 0 and imgs.shape[3] % p == 0
+
+        h = imgs.shape[2] // p
+        w = imgs.shape[3] // p
+        x = imgs.reshape(shape=(imgs.shape[0], 1, h, p, w, p))
+        x = torch.einsum('nchpwq->nhwpqc', x)
+        x = x.reshape(shape=(imgs.shape[0], h * w, p ** 2 * 1))
+        patch_mask = x.mean(dim=-1)
+        return patch_mask
+    
+    def forward_loss(self, imgs, pred, mask, weightmap=None, weight_factor=10):
+        """
+        imgs: [N, 3, H, W]
+        pred: [N, L, p*p*3]
+        mask: [N, L], 0 is keep, 1 is remove,
+        weightmap: [N, L] (optional), 0 or 1, higher weight increases loss in some areas
+        """
+        target = self.patchify(imgs)
+        if self.norm_pix_loss:
+            mean = target.mean(dim=-1, keepdim=True)
+            var = target.var(dim=-1, keepdim=True)
+            target = (target - mean) / (var + 1.e-6) ** .5
+
+        loss = (pred - target) ** 2
+        loss = loss.mean(dim=-1)  # [N, L], mean loss per patch
+
+        if weightmap is not None:
+            weightmap = 1 + weightmap * weight_factor # 将 0/1 变为 1/weight_factor
+            loss = loss * weightmap  # 重点区域 loss 放大
+
+        loss = (loss * mask).sum() / mask.sum()  # mean loss on removed patches
+        return loss

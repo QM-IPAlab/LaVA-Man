@@ -47,7 +47,10 @@ def train_one_epoch_ours(model: torch.nn.Module,
 
         # get batch
         img1, img2, lang, pick, place = batch
-        img1 = img1.to(device, non_blocking=True).half()
+        if isinstance(img1, list):
+            img1 = list(i.to(device, non_blocking=True).half() for i in img1)
+        else:
+            img1 = img1.to(device, non_blocking=True).half()
         if isinstance(img2, list):
             img2 = list(i.to(device, non_blocking=True).half() for i in img2)
         else:
