@@ -298,19 +298,22 @@ class MAERobotLangFuse(MAERobot):
 
         return loss, pred, mask2
     
-    def forward_ca_decoder(self, latent1, masked_latent2, ids_restore2, lang_emb):
+    def forward_ca_decoder(self, latent1, latent2, ids_restore2, lang_emb):
         """
         Dert style deocder
         """
 
         # fuse the two modalities
         lang_emb = lang_emb[0]
+        lang_emb2 = lang_emb
         for fuse_block in self.fuse_blocks:
             latent1, lang_emb = fuse_block(latent1, lang_emb, attention_mask_v=None, attention_mask_l=None)
+            latent2, lang_emb2 = fuse_block(latent2, lang_emb2, attention_mask_v=None, attention_mask_l=None)
+            
 
         # encoder to decoder layer
         fea1 = self.decoder_embed(latent1)
-        fea2 = self.decoder_embed(masked_latent2)
+        fea2 = self.decoder_embed(latent2)
 
         # append masked tokens to the sequence
         masked_tokens = self.mask_token.repeat(fea2.shape[0],
