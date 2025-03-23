@@ -224,7 +224,7 @@ def main(args):
     
     dataset_train = ConcatDataset([bridge_train_cv,droid_train_cv])
     dataset_vis = MAEDataset(transform=transform_train, data_path=args.test_path, aug=False)
-    dataset_train = Subset(dataset_train, range(600))
+    #dataset_train = Subset(dataset_train, range(600))
     
     #TODO: How to use args to set all training datasets?
     #TODO: How to define the validation dataset?

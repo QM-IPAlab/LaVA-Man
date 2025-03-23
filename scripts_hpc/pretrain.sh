@@ -3,12 +3,12 @@
 #$ -j y
 #$ -l h_rt=24:0:0
 #$ -l h_vmem=7.5G
-#$ -l gpu=1
+#$ -l gpu=2
 #$ -l gpu_type=ampere
 #$ -N pretrain
 #$ -m bea
 #$ -l rocky
-#$ -pe smp 8     
+#$ -pe smp 16     
 set -e
 
 export CLIPORT_ROOT=$(pwd)
@@ -21,7 +21,7 @@ mamba activate mae-cliport
 export MASTER_ADDR=$(hostname)
 export MASTER_PORT=$(python -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
 
-torchrun --nproc_per_node 1 mae/main_pretrain_ours.py \
+torchrun --nproc_per_node 2 mae/main_pretrain_ours.py \
     --model mae_fuse_tt \
     --batch_size 64 \
     --input_size 224 224 \
