@@ -1,6 +1,7 @@
 """
 Cross view completion, extended from MAERobot fuse
 """
+from calendar import c
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -70,7 +71,11 @@ class MAERobotLangFuseCV(MAERobot):
         """
         image 2 contais  two part: img2 and imgcv
         """
-        img2, imgcv = img2
+        if isinstance(img2, list):
+            img2, imgcv = img2
+        else: 
+            img2 = img2
+            imgcv = img2
 
         # encoder of the first observed image (no mask)
         latent1, mask1, ids_restore1 = self.forward_encoder(img1, mask_ratio=0.0)
@@ -102,11 +107,35 @@ class MAERobotLangFuseCV(MAERobot):
 
         # # 计算最终 loss
         # import pdb; pdb.set_trace()
-        loss = loss_pred +  0.1 * loss_complete
+        loss = loss_pred +  0.01 * loss_complete
+
+        # # save image
+        # def save_image(img, path='saved_img.png'):
+        #     from torchvision.utils import save_image
+        #     #(C, H, W)
+        #     img = (img- img.min()) / (img.max() - img.min())
+        #     save_image(img, path)
         
-        if torch.isnan(loss).any():
-            print("At least one loss is NaN")
-            import pdb; pdb.set_trace()
+        # save_image(img1[1], 'img1.png')
+        # save_image(img2[1], 'img2.png')
+        # save_image(imgcv[1], 'imgcv.png')
+        # save_image(self.unpatchify(pred)[1], 'img_pred.png')
+        # save_image(self.unpatchify(complete)[1], 'img_complete.png')
+
+        # noise_fuse = torch.randn_like(latent1).to(latent1.device)
+        # pred_noise_fuse = self.forward_pred(noise_fuse, latent2, ids_restore2)
+        # comp_noise_fuse = self.forward_complete(noise_fuse, latentcv, ids_restorecv)
+        # save_image(self.unpatchify(pred_noise_fuse)[1], 'pred_noise_fuse.png')
+        # save_image(self.unpatchify(comp_noise_fuse)[1], 'comp_noise_fuse.png')
+
+        # noise_target = torch.randn_like(latent2).to(latent2.device)
+        # noise_cv = torch.randn_like(latentcv).to(latentcv.device)
+        # pred_noise_target = self.forward_pred(latent1, noise_target, ids_restore2)
+        # comp_noise_target = self.forward_complete(latent1, noise_cv, ids_restorecv)
+        # save_image(self.unpatchify(pred_noise_target)[1], 'pred_noise_target.png')
+        # save_image(self.unpatchify(comp_noise_target)[1], 'comp_noise_target.png')
+        # import pdb; pdb.set_trace()
+
 
         return loss, pred, mask2   
     

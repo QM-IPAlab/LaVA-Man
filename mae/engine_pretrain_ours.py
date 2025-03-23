@@ -3,6 +3,7 @@ import sys
 from typing import Iterable
 from unittest.util import _MAX_LENGTH
 
+from numpy import isin
 import torch
 
 import util.misc as misc
@@ -31,6 +32,9 @@ def train_one_epoch_ours(model: torch.nn.Module,
     model.train(True)
     metric_logger = misc.MetricLogger(delimiter="  ")
     metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
+    if 'tt' in args.model:
+        metric_logger.add_meter('loss_pred', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
+        metric_logger.add_meter('loss_complete', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     header = 'Epoch: [{}]'.format(epoch)
     print_freq = 20
 
@@ -67,6 +71,9 @@ def train_one_epoch_ours(model: torch.nn.Module,
         with torch.cuda.amp.autocast():
             loss, _, _ = model(img1, img2, pick, place, processed_lang, mask_ratio=args.mask_ratio)
 
+        if isinstance(loss, tuple):
+            loss_pred, loss_complete = loss
+            loss = loss_pred + 0.1 * loss_complete
         loss_value = loss.item()
 
         if not math.isfinite(loss_value):
@@ -94,6 +101,8 @@ def train_one_epoch_ours(model: torch.nn.Module,
         torch.cuda.synchronize()
 
         metric_logger.update(loss=loss_value)
+        metric_logger.update(loss_pred=loss_pred.item())
+        metric_logger.update(loss_complete=loss_complete.item())
 
         lr = optimizer.param_groups[0]["lr"]
         metric_logger.update(lr=lr)
