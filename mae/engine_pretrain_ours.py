@@ -32,9 +32,6 @@ def train_one_epoch_ours(model: torch.nn.Module,
     model.train(True)
     metric_logger = misc.MetricLogger(delimiter="  ")
     metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
-    if 'tt' in args.model:
-        metric_logger.add_meter('loss_pred', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
-        metric_logger.add_meter('loss_complete', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     header = 'Epoch: [{}]'.format(epoch)
     print_freq = 20
 
@@ -101,18 +98,20 @@ def train_one_epoch_ours(model: torch.nn.Module,
         torch.cuda.synchronize()
 
         metric_logger.update(loss=loss_value)
-        metric_logger.update(loss_pred=loss_pred.item())
-        metric_logger.update(loss_complete=loss_complete.item())
 
         lr = optimizer.param_groups[0]["lr"]
         metric_logger.update(lr=lr)
 
         loss_value_reduce = misc.all_reduce_mean(loss_value)
+        loss_pred_value_reduce = misc.all_reduce_mean(loss_pred.item())
+        loss_complete_value_reduce = misc.all_reduce_mean(loss_complete.item())
         if log_writer is not None and (data_iter_step + 1) % accum_iter == 0:
             epoch_1000x = int((data_iter_step / len(data_loader) + epoch) * 1000)
             log_writer.log({
                 'train_loss': loss_value_reduce,
                 'lr': lr,
+                'train_loss_pred': loss_pred_value_reduce,
+                'train_loss_complete': loss_complete_value_reduce
                 }, step=epoch_1000x)
 
     # gather the stats from all processes
