@@ -17,3 +17,4 @@ python mae/main_pretrain_ours.py \
     --test_path scratch/bridge_256_val.hdf5\
     --mask_ratio 0.95 \
     --epochs 100 \
+    --my_log
