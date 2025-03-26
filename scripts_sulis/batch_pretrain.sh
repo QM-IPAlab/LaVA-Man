@@ -26,10 +26,9 @@ torchrun --nproc_per_node 3 mae/main_pretrain_ours.py \
     --model mae_fuse_tt \
     --batch_size 96 \
     --input_size 224 224  \
-    --output_dir  exps/tasktoken_new \
+    --output_dir  exps/tasktoken_predict_bert2 \
     --mask_ratio 0.95 \
-    --data_path bridge_256_train.hdf5 \
-    --test_path bridge_256_val.hdf5\
     --pretrain checkpoints/mae_pretrain_vit_base.pth \
     --epochs 400 \
+    --text_model bert \
     --my_log \

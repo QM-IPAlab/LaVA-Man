@@ -71,6 +71,8 @@ def train_one_epoch_ours(model: torch.nn.Module,
         if isinstance(loss, tuple):
             loss_pred, loss_complete = loss
             loss = loss_pred + 0.1 * loss_complete
+        else:
+            loss_pred, loss_complete = 0, 0
         loss_value = loss.item()
 
         if not math.isfinite(loss_value):
@@ -103,15 +105,19 @@ def train_one_epoch_ours(model: torch.nn.Module,
         metric_logger.update(lr=lr)
 
         loss_value_reduce = misc.all_reduce_mean(loss_value)
-        loss_pred_value_reduce = misc.all_reduce_mean(loss_pred.item())
-        loss_complete_value_reduce = misc.all_reduce_mean(loss_complete.item())
         if log_writer is not None and (data_iter_step + 1) % accum_iter == 0:
             epoch_1000x = int((data_iter_step / len(data_loader) + epoch) * 1000)
             log_writer.log({
                 'train_loss': loss_value_reduce,
-                'lr': lr,
-                'train_loss_pred': loss_pred_value_reduce,
-                'train_loss_complete': loss_complete_value_reduce
+                'lr': lr
+            }, step=epoch_1000x)
+            
+            if loss_pred :
+                loss_pred_value_reduce = misc.all_reduce_mean(loss_pred.item())
+                loss_complete_value_reduce = misc.all_reduce_mean(loss_complete.item())
+                log_writer.log({
+                    'train_loss_pred': loss_pred_value_reduce,
+                    'train_loss_complete': loss_complete_value_reduce
                 }, step=epoch_1000x)
 
     # gather the stats from all processes

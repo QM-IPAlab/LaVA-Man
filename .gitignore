@@ -16,7 +16,7 @@ debug/
 /data*
 .hydra/
 /omni*
-
+/hf_cache
 exps
 # Folders
 cliport/data/

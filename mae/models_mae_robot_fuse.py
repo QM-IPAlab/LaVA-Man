@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import random
-
+import transformers
 from transformers import CLIPTextModel
 from blocks import DecoderCABlockLang
 from models_mae_robot import MAERobot
@@ -271,6 +271,7 @@ class MAERobotLangFuse(MAERobot):
         self.clip_text = CLIPTextModel.from_pretrained(text_model)
         self.clip_text.requires_grad_(False)
         print(f"Loaded CLIP text model: {text_model}")
+        
 
         self.fuse_blocks = nn.ModuleList([
             BiAttentionBlock(embed_dim, decoder_embed_dim, embed_dim, num_heads)
@@ -388,6 +389,10 @@ class MAERobotLangFuseTaskToken(MAERobot):
                  decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
                  mlp_ratio=4., norm_layer=nn.LayerNorm, norm_im2_in_dec=True, norm_pix_loss=False,
                  text_model="openai/clip-vit-base-patch32"):
+
+        if 'bert' in text_model:
+            decoder_embed_dim = 768
+
         super().__init__(img_size, patch_size, in_chans, embed_dim, depth, num_heads,
                          decoder_embed_dim, decoder_depth, decoder_num_heads,
                          mlp_ratio, norm_layer, norm_im2_in_dec, norm_pix_loss)
@@ -402,8 +407,11 @@ class MAERobotLangFuseTaskToken(MAERobot):
             for _ in range(depth)
         ])
 
-        # The CLIP model
-        self.clip_text = CLIPTextModel.from_pretrained(text_model)
+        # The CLIP/BERT model
+        if 'bert' in text_model:
+            self.clip_text = transformers.AutoModel.from_pretrained('distilbert/distilbert-base-uncased', cache_dir="hf_cache")
+        else:
+            self.clip_text = CLIPTextModel.from_pretrained(text_model)
         self.clip_text.requires_grad_(False)
         print(f"Loaded CLIP text model: {text_model}")
 
