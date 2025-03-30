@@ -1,11 +1,19 @@
+from re import X
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
 from transformers import CLIPTextModel
 from blocks import DecoderCABlockLang
 from models_mae_robot import MAERobot
 from mae.blocks import DropPath
+from mae.models_mae_robot_fuse import BiAttentionBlock
 
 
+class MAERobotLangFuseSingle(MAERobot):
+    """ Use fusion module but no siamese encoder, just one encoder
+    """
 
-class MAERobotLangFuse(MAERobot):
     def __init__(self, img_size=(320, 160), patch_size=16, in_chans=3,
                  embed_dim=768, depth=12, num_heads=12,
                  decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
@@ -24,16 +32,12 @@ class MAERobotLangFuse(MAERobot):
         self.clip_text = CLIPTextModel.from_pretrained(text_model)
         self.clip_text.requires_grad_(False)
         print(f"Loaded CLIP text model: {text_model}")
-
+        
         self.fuse_blocks = nn.ModuleList([
             BiAttentionBlock(embed_dim, decoder_embed_dim, embed_dim, num_heads)
             for _ in range(depth)
         ])
 
-        self.task_token1 = nn.Parameter(torch.randn(1, decoder_embed_dim))
-        self.task_token2 = nn.Parameter(torch.randn(1, decoder_embed_dim))
-        torch.nn.init.normal_(self.task_token1, std=.02)
-        torch.nn.init.normal_(self.task_token2, std=.02)
 
     def get_lang_embed(self, processed_lang):
         lang_emb = self.clip_text(**processed_lang, return_dict=False)
@@ -43,77 +47,43 @@ class MAERobotLangFuse(MAERobot):
         #self.decoder_pos_embed_2 = self.decoder_pos_embed2
 
         # encoder of the first observed image (no mask)
-        latent1, mask1, ids_restore1 = self.forward_encoder(img1, mask_ratio=0.0)
-        latent2, mask2, ids_restore2 = self.forward_encoder(img2, mask_ratio)
-
+        latent, mask, ids_restore = self.forward_encoder(img1, mask_ratio)
+    
         # encoder of the language goal
         lang_emb = self.get_lang_embed(lang)
 
         # decoder
-        pred = self.forward_ca_decoder(latent1, latent2, ids_restore2, lang_emb)
-        loss = self.forward_loss(img2, pred, mask2)
+        pred = self.forward_ca_decoder(latent, ids_restore, lang_emb)
+        loss = self.forward_loss(img2, pred, mask)
 
-        # save image
-        # def save_image(img, path='saved_img.png'):
-        #     from torchvision.utils import save_image
-        #     #(C, H, W)
-        #     img = (img- img.min()) / (img.max() - img.min())
-        #     save_image(img, path)
-
-        # save_image(img1[1], 'img1.png')
-        # save_image(img2[1], 'img2.png')
-        # save_image(self.unpatchify(pred)[1], 'pred.png')
-
-        # noise_latent2 = torch.randn_like(latent2).to(latent2.device)
-        # pred_noise_latent2 = self.forward_ca_decoder(latent1, noise_latent2, ids_restore2,lang_emb)
-        # save_image(self.unpatchify(pred_noise_latent2)[1], 'pred_noise_latent2.png')
-        # import pdb; pdb.set_trace()
-
-        return loss, pred, mask2
+        return loss, pred, mask
     
-    def forward_ca_decoder(self, latent1, latent2, ids_restore2, lang_emb):
+    def forward_ca_decoder(self, x, ids_restore, lang_emb):
         """
         Dert style deocder
         """
-
         # fuse the two modalities
         lang_emb = lang_emb[0]
-        lang_emb2 = lang_emb
         for fuse_block in self.fuse_blocks:
-            latent1, lang_emb = fuse_block(latent1, lang_emb, attention_mask_v=None, attention_mask_l=None)
-            latent2, lang_emb2 = fuse_block(latent2, lang_emb2, attention_mask_v=None, attention_mask_l=None)
-            
+            x, lang_emb = fuse_block(x, lang_emb, attention_mask_v=None, attention_mask_l=None)
 
         # encoder to decoder layer
-        fea1 = self.decoder_embed(latent1)
-        fea2 = self.decoder_embed(latent2)
+        x = self.decoder_embed(x)
 
-        # append masked tokens to the sequence
-        masked_tokens = self.mask_token.repeat(fea2.shape[0],
-                                               ids_restore2.shape[1] + 1 - fea2.shape[1], 1)
-        fea2_ = torch.cat([fea2[:, 1:, :], masked_tokens], dim=1)  # no cls token
-        fea2_ = torch.gather(fea2_, dim=1,
-                             index=ids_restore2.unsqueeze(-1).repeat(1, 1, fea2.shape[2]))  # unshuffle
-        fea2 = torch.cat([fea2[:, :1, :], fea2_], dim=1)  # append cls token
+        # append mask tokens to sequence
+        mask_tokens = self.mask_token.repeat(x.shape[0], ids_restore.shape[1] + 1 - x.shape[1], 1)
+        x_ = torch.cat([x[:, 1:, :], mask_tokens], dim=1)  # no cls token
+        x_ = torch.gather(x_, dim=1, index=ids_restore.unsqueeze(-1).repeat(1, 1, x.shape[2]))  # unshuffle
+        x = torch.cat([x[:, :1, :], x_], dim=1)  # append cls token
 
         # interpolate position encoding if necessary
         decoder_pos_embed = self.decoder_pos_embed
-        if self.decoder_pos_embed.shape[1] != fea2.shape[1]:
-            decoder_pos_embed = self.interpolate_pos_encoding(fea2, decoder_pos_embed, 320, 160)
-                   
-        # add positional embedding
-        if self.decoder_pos_embed is not None:
-            fea1 = fea1 + decoder_pos_embed
-            fea2 = fea2 + decoder_pos_embed
+        if self.decoder_pos_embed.shape[1] != x.shape[1]:
+            decoder_pos_embed = self.interpolate_pos_encoding(x, decoder_pos_embed, 320, 160)
+        x = x + self.decoder_pos_embed
 
-        task_token1 = self.task_token1.expand(fea1.shape[0], -1)
-        task_token2 = self.task_token2.expand(fea2.shape[0], -1)
-        # add to the cls token
-        fea1[:, 0] = fea1[:, 0] + task_token1
-        fea2[:, 0] = fea2[:, 0] + task_token2
-
-        out1 = fea1
-        out2 = fea2
+        out1 = x
+        out2 = None
         # apply Transformer blocks
         for blk in self.decoder_blocks:
             out1, out2 = blk(out1, out2, None)
@@ -123,3 +93,20 @@ class MAERobotLangFuse(MAERobot):
         out = out[:, 1:, :]
 
         return out
+
+    def forward_loss(self, imgs, pred, mask):
+        """
+        imgs: [N, 3, H, W]
+        pred: [N, L, p*p*3]
+        mask: [N, L], 0 is keep, 1 is remove,
+        """
+        target = self.patchify(imgs)
+        if self.norm_pix_loss:
+            mean = target.mean(dim=-1, keepdim=True)
+            var = target.var(dim=-1, keepdim=True)
+            target = (target - mean) / (var + 1.e-6) ** .5
+
+        loss = (pred - target) ** 2
+        loss = loss.mean()  # [N, L], mean loss per patch
+
+        return loss

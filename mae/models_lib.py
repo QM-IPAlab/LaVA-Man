@@ -15,6 +15,7 @@ from mae.voltron_core.vcond import VCond
 from mae.models_mae_robot_lang_dert import MAERobotLangDertDecode
 from mae.models_mae_robot_fuse import MAERobotLangFuse, MAERobotLangFuseTaskToken
 from mae.models_mae_robot_fuse_cv import MAERobotLangFuseCV, MAERobotLangFuseCVDiffLoss
+from mae.models_mae_robot_fuse_single import MAERobotLangFuseSingle
 from functools import partial
 import torch.nn as nn
 
@@ -258,12 +259,21 @@ def mae_vit_base_patch16_fuse_task_token(**kwargs):
         decoder_embed_dim=512, decoder_depth=4, decoder_num_heads=8,
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
+
+def mae_vit_base_patch16_fuse_single(**kwargs):
+    model = MAERobotLangFuseSingle(
+        patch_size=16, embed_dim=768, depth=6, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=4, decoder_num_heads=8,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
 # new models
 mae_dert = mae_vit_base_patch16_dert
 mae_fuse = mae_vit_base_patch16_fuse
 mae_cv = mae_vit_base_patch16_fuse_cv
 mae_cv_df = mae_vit_base_patch16_fuse_cv_df
 mae_fuse_tt= mae_vit_base_patch16_fuse_task_token
+mae_fuse_single = mae_vit_base_patch16_fuse_single
 
 # models
 mae_robot_base = mae_vit_base_patch16_robot_base  # original mae model with cliport image
