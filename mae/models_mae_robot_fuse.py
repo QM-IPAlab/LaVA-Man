@@ -277,10 +277,6 @@ class MAERobotLangFuse(MAERobot):
             for _ in range(depth)
         ])
 
-        self.task_token1 = nn.Parameter(torch.randn(1, decoder_embed_dim))
-        self.task_token2 = nn.Parameter(torch.randn(1, decoder_embed_dim))
-        torch.nn.init.normal_(self.task_token1, std=.02)
-        torch.nn.init.normal_(self.task_token2, std=.02)
 
     def get_lang_embed(self, processed_lang):
         lang_emb = self.clip_text(**processed_lang, return_dict=False)
@@ -318,46 +314,37 @@ class MAERobotLangFuse(MAERobot):
 
         return loss, pred, mask2
     
-    def forward_ca_decoder(self, latent1, latent2, ids_restore2, lang_emb):
+    def forward_ca_decoder(self, latent1, masked_latent2, ids_restore2, lang_emb):
         """
         Dert style deocder
         """
 
         # fuse the two modalities
         lang_emb = lang_emb[0]
-        lang_emb2 = lang_emb
         for fuse_block in self.fuse_blocks:
             latent1, lang_emb = fuse_block(latent1, lang_emb, attention_mask_v=None, attention_mask_l=None)
-            latent2, lang_emb2 = fuse_block(latent2, lang_emb2, attention_mask_v=None, attention_mask_l=None)
-            
 
         # encoder to decoder layer
         fea1 = self.decoder_embed(latent1)
-        fea2 = self.decoder_embed(latent2)
+        fea2 = self.decoder_embed(masked_latent2)
 
         # append masked tokens to the sequence
         masked_tokens = self.mask_token.repeat(fea2.shape[0],
-                                               ids_restore2.shape[1] + 1 - fea2.shape[1], 1)
+                                            ids_restore2.shape[1] + 1 - fea2.shape[1], 1)
         fea2_ = torch.cat([fea2[:, 1:, :], masked_tokens], dim=1)  # no cls token
         fea2_ = torch.gather(fea2_, dim=1,
-                             index=ids_restore2.unsqueeze(-1).repeat(1, 1, fea2.shape[2]))  # unshuffle
+                            index=ids_restore2.unsqueeze(-1).repeat(1, 1, fea2.shape[2]))  # unshuffle
         fea2 = torch.cat([fea2[:, :1, :], fea2_], dim=1)  # append cls token
 
         # interpolate position encoding if necessary
         decoder_pos_embed = self.decoder_pos_embed
         if self.decoder_pos_embed.shape[1] != fea2.shape[1]:
             decoder_pos_embed = self.interpolate_pos_encoding(fea2, decoder_pos_embed, 320, 160)
-                   
+                
         # add positional embedding
         if self.decoder_pos_embed is not None:
             fea1 = fea1 + decoder_pos_embed
             fea2 = fea2 + decoder_pos_embed
-
-        task_token1 = self.task_token1.expand(fea1.shape[0], -1)
-        task_token2 = self.task_token2.expand(fea2.shape[0], -1)
-        # add to the cls token
-        fea1[:, 0] = fea1[:, 0] + task_token1
-        fea2[:, 0] = fea2[:, 0] + task_token2
 
         out1 = fea1
         out2 = fea2
