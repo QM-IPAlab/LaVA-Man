@@ -12,6 +12,7 @@ from models_mae_robot import MAERobot
 from mae.blocks import DropPath
 from mae.models_mae_robot_fuse import BiAttentionBlock
 from transformers import AutoImageProcessor, AutoModel
+from mae.util.pos_embed import get_2d_varsize_sincos_pos_embed
 
 
 class MAERobotLangFuseDino(nn.Module):
@@ -122,3 +123,56 @@ class MAERobotLangFuseDino(nn.Module):
         x = torch.einsum('nhwpqc->nchpwq', x)
         imgs = x.reshape(shape=(x.shape[0], 3, h * p, w * p))
         return imgs
+    
+
+
+class MAERobotLangFuseDinoDecoder(MAERobotLangFuseDino):
+    def __init__(self, img_size=(320, 160), patch_size=14, in_chans=3,
+                 embed_dim=768, depth=12, num_heads=12,
+                 decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
+                 mlp_ratio=4., norm_layer=nn.LayerNorm, norm_im2_in_dec=True, norm_pix_loss=False,
+                 text_model="openai/clip-vit-base-patch32"):
+        super().__init__(img_size=img_size, patch_size=patch_size, in_chans=in_chans,
+                         embed_dim=embed_dim, depth=depth, num_heads=num_heads,
+                         decoder_embed_dim=decoder_embed_dim, decoder_depth=decoder_depth, decoder_num_heads=decoder_num_heads,
+                         mlp_ratio=mlp_ratio, norm_layer=norm_layer, norm_im2_in_dec=norm_im2_in_dec, norm_pix_loss=norm_pix_loss,
+                         text_model=text_model)
+        self.img_size = img_size
+        self.decoder_embed = nn.Linear(embed_dim, decoder_embed_dim, bias=True)
+        self.decoder_pos_embed = nn.Parameter(torch.zeros(1, 256 + 1, decoder_embed_dim),
+                                              requires_grad=False)  # fixed sin-cos embedding
+        self.decoder_blocks = nn.ModuleList([
+            DecoderCABlockLang(decoder_embed_dim, decoder_num_heads, mlp_ratio, qkv_bias=True, norm_layer=norm_layer,
+                               norm_mem=norm_im2_in_dec)
+            for _ in range(decoder_depth)])
+        self.decoder_norm = norm_layer(decoder_embed_dim)
+        self.decoder_pred = nn.Linear(decoder_embed_dim, patch_size ** 2 * in_chans, bias=True)
+
+        # Positional encoding
+        decoder_pos_embed = get_2d_varsize_sincos_pos_embed(self.decoder_pos_embed.shape[-1],
+                                                            int(self.img_size[0] // patch_size), int(self.img_size[1] // patch_size),
+                                                            cls_token=True)
+        self.decoder_pos_embed.data.copy_(torch.from_numpy(decoder_pos_embed).float().unsqueeze(0))
+
+    def decoder(self, x, lang_emb):
+        """
+        fusion decoder + predictor
+        """
+        # fuse the two modalities
+        for fuse_block in self.fuse_blocks:
+            x, lang_emb = fuse_block(x, lang_emb, attention_mask_v=None, attention_mask_l=None)
+        
+        x = self.decoder_embed(x)
+        x = x + self.decoder_pos_embed
+
+        out1 = x
+        out2 = None
+
+        for blk in self.decoder_blocks:
+            out1, out2 = blk(out1, out2, None)
+        out = self.decoder_norm(out1)
+
+        out = self.decoder_pred(out)
+        out = out[:, 1:, :]
+
+        return out
