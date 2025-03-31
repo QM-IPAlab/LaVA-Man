@@ -203,7 +203,8 @@ def main(args):
         transform_train = get_fix_transform()
     
     # replace with voltron transform if model is voltron
-    if 'voltron' in args.model:
+    if 'voltron' in args.model or 'dino' in args.model:
+        print('User Voltron image transform')
         transform_train = get_voltron_transform()
     if 'bert' in args.text_model:
         print('User BERT transform')
