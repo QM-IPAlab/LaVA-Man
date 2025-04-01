@@ -347,8 +347,8 @@ class MAERobotLangFuse(MAERobot):
             fea1 = fea1 + decoder_pos_embed
             fea2 = fea2 + decoder_pos_embed
 
-        out1 = fea1
-        out2 = fea2
+        out1 = fea2
+        out2 = fea1
         # apply Transformer blocks
         for blk in self.decoder_blocks:
             out1, out2 = blk(out1, out2, None)
