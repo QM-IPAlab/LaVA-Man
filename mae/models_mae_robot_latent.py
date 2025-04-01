@@ -27,6 +27,7 @@ class MAERobotLangFuseDino(nn.Module):
         super().__init__()
 
         # parameters
+        self.img_size = img_size
         self.embed_dim = embed_dim
         self.n_heads = num_heads
         self.patch_size = patch_size
@@ -137,7 +138,7 @@ class MAERobotLangFuseDinoDecoder(MAERobotLangFuseDino):
                          decoder_embed_dim=decoder_embed_dim, decoder_depth=decoder_depth, decoder_num_heads=decoder_num_heads,
                          mlp_ratio=mlp_ratio, norm_layer=norm_layer, norm_im2_in_dec=norm_im2_in_dec, norm_pix_loss=norm_pix_loss,
                          text_model=text_model)
-        self.img_size = img_size
+
         self.decoder_embed = nn.Linear(embed_dim, decoder_embed_dim, bias=True)
         self.decoder_pos_embed = nn.Parameter(torch.zeros(1, 256 + 1, decoder_embed_dim),
                                               requires_grad=False)  # fixed sin-cos embedding
