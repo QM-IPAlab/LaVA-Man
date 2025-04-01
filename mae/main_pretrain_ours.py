@@ -206,9 +206,11 @@ def main(args):
     if 'voltron' in args.model or 'dino' in args.model:
         print('User Voltron image transform')
         transform_train = get_voltron_transform()
-    if 'bert' in args.text_model:
+    elif 'bert' in args.text_model:
         print('User BERT transform')
         transform_train = get_voltron_transform()
+    else: 
+        print('User default transform')
     
     # other dataset
     #ravens_train = MAEDataset(transform=transform_train, data_path="/data/home/acw694/CLIPort_new_loss/scratch/top_down_omniobj_white.hdf5", aug=args.aug, condition_free=args.condition_free)
