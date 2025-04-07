@@ -16,10 +16,14 @@ class MAEDataset(Dataset):
         super().__init__()
         self.data_path = data_path
         self.file = None
+        self.reverse_aug = False
         # get the length
         with h5py.File(self.data_path, 'r') as f:
             self.length = len(f['image_s1'])
             print("Length of the dataset: ", self.length)
+            if 'reverse_language' in f :
+                print("Use reverse language for augmentation")
+                self.reverse_aug = True
 
         self.transform = transform
         self.aug = aug
@@ -59,6 +63,12 @@ class MAEDataset(Dataset):
             if random.random() < 0.5:
                 lang = ''.encode('ascii')
                 img2 = img1
+        
+        if self.reverse_aug:
+                lang = self.file['reverse_language'][idx]
+                tmp = img2
+                img2 = img1
+                img1 = tmp
 
         return img1, img2, lang, pick, place
 

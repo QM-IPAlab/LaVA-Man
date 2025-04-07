@@ -316,10 +316,6 @@ class MAERobotLangFuse(MAERobot):
         return loss, pred, mask2
     
     def forward_ca_decoder(self, latent1, masked_latent2, ids_restore2, lang_emb):
-        """
-        Dert style deocder
-        """
-
         # fuse the two modalities
         lang_emb = lang_emb[0]
         for fuse_block in self.fuse_blocks:
@@ -347,8 +343,8 @@ class MAERobotLangFuse(MAERobot):
             fea1 = fea1 + decoder_pos_embed
             fea2 = fea2 + decoder_pos_embed
 
-        out1 = fea2
-        out2 = fea1
+        out1 = fea1
+        out2 = fea2
         # apply Transformer blocks
         for blk in self.decoder_blocks:
             out1, out2 = blk(out1, out2, None)

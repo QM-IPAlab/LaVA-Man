@@ -218,9 +218,10 @@ def main(args):
     #co3d_train = MAEDataset(transform=transform_train, data_path="image_pairs_with_captions.hdf5", aug=args.aug, condition_free=args.condition_free)
 
     # original dataset
-    droid_train = MAEDataset(transform=transform_train, data_path="scratch/droid_left.hdf5", aug=args.aug, condition_free=args.condition_free)
-    bridge_train = MAEDataset(transform=transform_train, data_path="scratch/bridge_256_train.hdf5", aug=args.aug, condition_free=args.condition_free)
-    
+    droid_train = MAEDataset(transform=transform_train, data_path="scratch/droid_left_reverse.hdf5", aug=args.aug, condition_free=args.condition_free)
+    bridge_train = MAEDataset(transform=transform_train, data_path="scratch/bridge_256_train_reverse.hdf5", aug=args.aug, condition_free=args.condition_free)
+    droid_train2 = MAEDataset(transform=transform_train, data_path="scratch/droid_left.hdf5", aug=args.aug, condition_free=args.condition_free)
+    bridge_train2 = MAEDataset(transform=transform_train, data_path="scratch/bridge_256_train.hdf5", aug=args.aug, condition_free=args.condition_free)
     # cv goal datasets (2 image but crossview)
     #bridge_train = MAEDatasetCVGoal(transform=transform_train, data_path="scratch/bridge_crossview_goal_3imgs.hdf5", aug=args.aug, condition_free=args.condition_free)
     #droid_train = MAEDatasetCVGoal(transform=transform_train, data_path="scratch/droid_multiview_3imgs.hdf5", aug=args.aug, condition_free=args.condition_free)
@@ -229,7 +230,7 @@ def main(args):
     #bridge_train = MAEDatasetCV(transform=transform_train, data_path="scratch/bridge_crossview_goal_3imgs.hdf5", aug=args.aug, condition_free=args.condition_free)
     #droid_train = MAEDatasetCV(transform=transform_train, data_path="scratch/droid_multiview_3imgs.hdf5", aug=args.aug, condition_free=args.condition_free)
     
-    dataset_train = ConcatDataset([droid_train,bridge_train])
+    dataset_train = ConcatDataset([droid_train,bridge_train,droid_train,bridge_train])
     dataset_vis = MAEDataset(transform=transform_train, data_path="scratch/bridge_256_val.hdf5", aug=False)
     #dataset_train = Subset(dataset_train, range(600))
     
