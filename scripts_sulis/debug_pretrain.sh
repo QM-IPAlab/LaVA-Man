@@ -11,7 +11,7 @@ python mae/main_pretrain_ours.py \
     --model mae_fuse \
     --batch_size 96 \
     --input_size 224 224  \
-    --output_dir  exps/fuse_reverse_lang \
+    --output_dir  exps/debug \
     --mask_ratio 0.95 \
     --epochs 400 \
     --pretrain checkpoints/mae_pretrain_vit_base.pth

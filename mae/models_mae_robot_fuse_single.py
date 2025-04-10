@@ -54,7 +54,7 @@ class MAERobotLangFuseSingle(MAERobot):
 
         # decoder
         pred = self.forward_ca_decoder(latent, ids_restore, lang_emb)
-        loss = self.forward_loss(img2, pred, mask)
+        loss = self.forward_loss2(img2, pred, mask)
 
         return loss, pred, mask
     
@@ -94,7 +94,7 @@ class MAERobotLangFuseSingle(MAERobot):
 
         return out
 
-    def forward_loss(self, imgs, pred, mask):
+    def forward_loss2(self, imgs, pred, mask):
         """
         imgs: [N, 3, H, W]
         pred: [N, L, p*p*3]
@@ -110,3 +110,148 @@ class MAERobotLangFuseSingle(MAERobot):
         loss = loss.mean()  # [N, L], mean loss per patch
 
         return loss
+
+
+class MAERobotLangFuseSingleSiamese(MAERobotLangFuseSingle):
+    """ Single for prediciton,
+        Add one Siamese encoder for crossview reference only
+    """
+    def forward(self, img1, img2, pick=None, place=None, lang=None, mask_ratio=0.75):
+        """
+        For Single Siamese model, the input should be 
+        image1 + crossviw1, image2 + crossview2
+        """
+        if self.training:
+            img1, cv1 = img1
+            img2, cv2 = img2
+        else: 
+            cv2 = img2
+
+        # encode the current observed image with masking
+        latent_img1, mask_img1, ids_restore_img1 = self.forward_encoder(img1, mask_ratio)
+
+        # encode the target crossview image (without masking, just for reference)
+        latent_cv2, mask_cv2, ids_restore_img2 = self.forward_encoder(cv2, mask_ratio=0.0)
+
+        # encoder of the language goal
+        lang_emb = self.get_lang_embed(lang)[0]
+
+        # fusion of each part
+        for fuse_block in self.fuse_blocks:
+            latent_img1, lang_emb = fuse_block(latent_img1, lang_emb, attention_mask_v=None, attention_mask_l=None)
+    
+        # decoder
+        pred = self.forward_ca_decoder(latent_img1, latent_cv2, ids_restore_img1)
+        loss = self.forward_loss(img2, pred, mask_img1)
+
+        return loss, pred, mask_img1
+    
+    def forward_ca_decoder(self, latent1, latent2, ids_restore):
+
+        # encoder to decoder layer
+        fea1 = self.decoder_embed(latent1)
+        fea2 = self.decoder_embed(latent2)
+
+        # append masked tokens to the sequence
+        masked_tokens = self.mask_token.repeat(fea1.shape[0],
+                                            ids_restore.shape[1] + 1 - fea1.shape[1], 1)
+        fea1_ = torch.cat([fea1[:, 1:, :], masked_tokens], dim=1)  # no cls token
+        fea1_ = torch.gather(fea1_, dim=1,
+                            index=ids_restore.unsqueeze(-1).repeat(1, 1, fea1.shape[2]))  # unshuffle
+        fea1 = torch.cat([fea1[:, :1, :], fea1_], dim=1)  # append cls token
+
+        # interpolate position encoding if necessary
+        decoder_pos_embed = self.decoder_pos_embed
+        if self.decoder_pos_embed.shape[1] != fea2.shape[1]:
+            decoder_pos_embed = self.interpolate_pos_encoding(fea2, decoder_pos_embed, 320, 160)
+                
+        # add positional embedding
+        if self.decoder_pos_embed is not None:
+            fea1 = fea1 + decoder_pos_embed
+            fea2 = fea2 + decoder_pos_embed
+
+        out1 = fea1
+        out2 = fea2
+        # apply Transformer blocks
+        for blk in self.decoder_blocks:
+            out1, out2 = blk(out1, out2, None)
+        out = self.decoder_norm(out1)
+
+        out = self.decoder_pred(out)
+        out = out[:, 1:, :]
+
+        return out
+
+
+class MAERobotLangFuseSingleSiamese2(MAERobotLangFuseSingle):
+    """ Single for prediciton,
+        Add one Siamese encoder for crossview reference only
+    """
+
+    def forward(self, img1, img2, pick=None, place=None, lang=None, mask_ratio=0.75):
+        """
+        For Single Siamese model, the input should be 
+        image1 + crossviw1, image2 + crossview2
+        """
+        if self.training:
+            img1, cv1 = img1
+            img2, cv2 = img2
+        else: 
+            cv2 = img2
+
+        # encode the current observed image with masking
+        latent_img1, mask_img1, ids_restore_img1 = self.forward_encoder(img1, mask_ratio)
+
+        # encode the target crossview image (without masking, just for reference)
+        latent_cv2, mask_cv2, ids_restore_img2 = self.forward_encoder(cv2, mask_ratio=0.0)
+
+        # encoder of the language goal
+        lang_emb = self.get_lang_embed(lang)[0]
+        lang_emb_cv = lang_emb
+
+        # fusion of each part
+        for fuse_block in self.fuse_blocks:
+            latent_img1, lang_emb = fuse_block(latent_img1, lang_emb, attention_mask_v=None, attention_mask_l=None)
+            latent_cv2, lang_emb_cv = fuse_block(latent_cv2, lang_emb_cv, attention_mask_v=None, attention_mask_l=None)
+
+        # decoder
+        pred = self.forward_ca_decoder(latent_img1, latent_cv2, ids_restore_img1)
+        loss = self.forward_loss(img2, pred, mask_img1)
+
+        return loss, pred, mask_img1
+    
+    def forward_ca_decoder(self, latent1, latent2, ids_restore):
+
+        # encoder to decoder layer
+        fea1 = self.decoder_embed(latent1)
+        fea2 = self.decoder_embed(latent2)
+
+        # append masked tokens to the sequence
+        masked_tokens = self.mask_token.repeat(fea1.shape[0],
+                                            ids_restore.shape[1] + 1 - fea1.shape[1], 1)
+        fea1_ = torch.cat([fea1[:, 1:, :], masked_tokens], dim=1)  # no cls token
+        fea1_ = torch.gather(fea1_, dim=1,
+                            index=ids_restore.unsqueeze(-1).repeat(1, 1, fea1.shape[2]))  # unshuffle
+        fea1 = torch.cat([fea1[:, :1, :], fea1_], dim=1)  # append cls token
+
+        # interpolate position encoding if necessary
+        decoder_pos_embed = self.decoder_pos_embed
+        if self.decoder_pos_embed.shape[1] != fea2.shape[1]:
+            decoder_pos_embed = self.interpolate_pos_encoding(fea2, decoder_pos_embed, 320, 160)
+                
+        # add positional embedding
+        if self.decoder_pos_embed is not None:
+            fea1 = fea1 + decoder_pos_embed
+            fea2 = fea2 + decoder_pos_embed
+
+        out1 = fea1
+        out2 = fea2
+        # apply Transformer blocks
+        for blk in self.decoder_blocks:
+            out1, out2 = blk(out1, out2, None)
+        out = self.decoder_norm(out1)
+
+        out = self.decoder_pred(out)
+        out = out[:, 1:, :]
+
+        return out

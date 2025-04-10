@@ -105,6 +105,47 @@ class MAEDatasetCVGoal(MAEDatasetCV):
         return img1, imgcv, lang, pick, place
 
 
+class MAEDatasetCV2(MAEDatasetCV):
+    """Return (img1, imgcv1), (img2, imgcv2)"""
+
+    def __getitem__(self, idx):
+
+        if self.file is None:
+            self.file = h5py.File(self.data_path, 'r')
+
+        img1 = self.file['image_s1'][idx]
+        img2 = self.file['image_s2'][idx]
+        imgcv1 = self.file['image_cv1'][idx]
+        imgcv2 = self.file['image_cv2'][idx]
+        lang = self.file['language'][idx]
+        pick = self.file['gt_pick'][idx] if 'gt_pick' in self.file else 0.0
+        place = self.file['gt_place'][idx] if 'gt_pick' in self.file else 0.0
+
+        if self.aug:
+            angle = np.random.choice([0, 15, 30])
+            img1, _, (p0, p1), pert_urb_params = utils.perturb(img1, (pick, place), theta_sigma=angle)
+            pick = p0
+            place = p1
+
+        if self.transform:
+            if img1.max() > 1:
+                img1 = img1 / 255.0
+                img2 = img2 / 255.0
+                imgcv1 = imgcv1 / 255.0
+                imgcv2 = imgcv2 / 255.0
+
+            img1 = self.transform(img1)
+            img2 = self.transform(img2)
+            imgcv1 = self.transform(imgcv1)
+            imgcv2 = self.transform(imgcv2)
+
+        if self.condition_free:
+            if random.random() < 0.5:
+                lang = ''.encode('ascii')
+                img2 = img1
+
+        return (img1, imgcv1), (img2, imgcv2), lang, pick, place
+
 def get_raw_transform():
     trasform_fix = transforms.Compose([
         transforms.ToTensor()])

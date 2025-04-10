@@ -47,11 +47,7 @@ class SameDatasetBatchSampler(Sampler):
 
 
 class DistributedSameDatasetBatchSampler(Sampler):
-    def __init__(self, datasets, batch_size, num_replicas=None, rank=None, drop_last=False):
-        if num_replicas is None:
-            num_replicas = dist.get_world_size() if dist.is_available() else 1
-        if rank is None:
-            rank = dist.get_rank() if dist.is_available() else 0
+    def __init__(self, datasets, batch_size, num_replicas, rank, drop_last=False, shuffle=False):
 
         self.batch_size = batch_size
         self.num_replicas = num_replicas
@@ -59,25 +55,28 @@ class DistributedSameDatasetBatchSampler(Sampler):
         self.drop_last = drop_last
         self.datasets = datasets
         self.lens = [len(d) for d in datasets]
+        self.shuffle = shuffle
 
         # 计算数据集的索引范围
         self.dataset_ranges = np.cumsum([0] + self.lens)
 
         # 计算 batch 索引
-        self.batch_indices = self._create_batches()
-        self.indices = np.concatenate(self.batch_indices).tolist()
+        self._create_batches()
 
         self.epoch = 0
 
     def _create_batches(self):
+        rng = np.random.default_rng(self.epoch)
         batch_indices = []
+
         for dataset_idx, (start, end) in enumerate(zip(self.dataset_ranges[:-1], self.dataset_ranges[1:])):
             indices = np.arange(start, end)
             num_samples = math.ceil(
                 (len(indices) - self.num_replicas) / self.num_replicas)  # type: ignore[arg-type]
             total_samples = num_samples * self.num_replicas
             indices = indices[:total_samples]
-            np.random.shuffle(indices)  # 打乱数据
+            
+            if self.shuffle: rng.shuffle(indices)  # 打乱数据
 
             # 生成 batch
             for i in range(0, len(indices), self.batch_size):
@@ -86,18 +85,18 @@ class DistributedSameDatasetBatchSampler(Sampler):
                     continue  # 丢弃最后一个 batch
                 batch_indices.append(batch)
 
-        np.random.shuffle(batch_indices)  # 打乱 batch 顺序
-        return batch_indices
+        if self.shuffle: rng.shuffle(batch_indices)  # 打乱 batch 顺序
+
+        self.batch_indices = batch_indices[self.rank::self.num_replicas]
 
     def __iter__(self):
-        indices = self.indices[self.rank::self.num_replicas]
-        return iter(indices)
+        return iter(self.batch_indices)
 
     def __len__(self):
-        return len(self.indices)
+        return len(self.batch_indices)
     
     def set_epoch(self, epoch):
         """重新 shuffle 数据并重新生成 batch"""
-        self.batch_indices = self._create_batches()  # 重新生成 batch
-        self.indices = np.concatenate(self.batch_indices).tolist()
         self.epoch = epoch
+        self._create_batches()  # 重新生成 batch
+

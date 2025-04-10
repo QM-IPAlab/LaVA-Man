@@ -100,7 +100,7 @@ def get_args_parser():
                         help='Pin CPU memory in DataLoader for more efficient (sometimes) transfer to GPU.')
     parser.add_argument('--no_pin_mem', action='store_false', dest='pin_mem')
     parser.set_defaults(pin_mem=False)
-    parser.add_argument('--multisize', action='store_true',
+    parser.add_argument('--multiview', action='store_true',
                         help='Use multi-view training')
     parser.set_defaults(multiview=False)
 
@@ -213,8 +213,8 @@ def main(args):
         print('User default transform')
     
     # other dataset
-    ravens_train = MAEDataset(transform=transform_train, data_path="/data/home/acw694/CLIPort_new_loss/scratch/top_down_omniobj_white.hdf5", aug=args.aug, condition_free=args.condition_free)
-    #ego4d_train = MAEDataset(transform=transform_train, data_path="scratch/mae-data/ego4d_interactive.hdf5", aug=args.aug, condition_free=args.condition_free)
+    #ravens_train = MAEDataset(transform=transform_train, data_path="/data/home/acw694/CLIPort_new_loss/scratch/top_down_omniobj_white.hdf5", aug=args.aug, condition_free=args.condition_free)
+    ego4d_train = MAEDataset(transform=transform_train, data_path="scratch/mae-data/ego4d_interactive.hdf5", aug=args.aug, condition_free=args.condition_free)
     #co3d_train = MAEDataset(transform=transform_train, data_path="image_pairs_with_captions.hdf5", aug=args.aug, condition_free=args.condition_free)
 
     # original dataset
@@ -230,7 +230,7 @@ def main(args):
     #bridge_train = MAEDatasetCV(transform=transform_train, data_path="scratch/bridge_crossview_goal_3imgs.hdf5", aug=args.aug, condition_free=args.condition_free)
     #droid_train = MAEDatasetCV(transform=transform_train, data_path="scratch/droid_multiview_3imgs.hdf5", aug=args.aug, condition_free=args.condition_free)
     
-    dataset_train = ConcatDataset([droid_train,bridge_train,ravens_train])
+    dataset_train = ConcatDataset([droid_train,bridge_train, ego4d_train])
     dataset_vis = MAEDataset(transform=transform_train, data_path="scratch/bridge_256_val.hdf5", aug=False)
     #dataset_train = Subset(dataset_train, range(600))
     
@@ -241,23 +241,14 @@ def main(args):
         num_tasks = misc.get_world_size()
         global_rank = misc.get_rank()
         print("num  and global rank:", num_tasks, global_rank)
-        if args.multisize:
+        if args.multiview:
             print("Assuming data are of different size")
             sampler_train = DistributedSameDatasetBatchSampler(
-                [droid_train, bridge_train, ravens_train],
+                [bridge_train,droid_train],
                 batch_size=args.batch_size,
                 num_replicas=num_tasks,
                 rank=global_rank,
-                drop_last=True,
-                shuffle=True)
-            
-            data_loader_train = torch.utils.data.DataLoader(
-                dataset_train, 
-                batch_sampler=sampler_train,
-                num_workers=4,
-                pin_memory=args.pin_mem,
-            )
-
+                drop_last=True)
         else:
             print("Assuming data are of the same size")
             sampler_train = torch.utils.data.DistributedSampler(
@@ -265,23 +256,22 @@ def main(args):
                 num_replicas=num_tasks,
                 rank=global_rank,
                 shuffle=True)
-            
-            data_loader_train = torch.utils.data.DataLoader(
-                dataset_train, 
-                sampler=sampler_train,
-                batch_size=args.batch_size,
-                num_workers=4,
-                pin_memory=args.pin_mem,
-                drop_last=True,
-                shuffle=False
-            )
-
+        print("Sampler_train = %s" % str(sampler_train))
         
     if global_rank == 0 and args.my_log:
         wandb.init(project='MAE', name=args.model, entity='cxz', id=args.wandb_resume)
         log_writer = wandb
     else:
         log_writer = None
+
+    data_loader_train = torch.utils.data.DataLoader(
+        dataset_train, sampler=sampler_train,
+        batch_size=args.batch_size,
+        num_workers=4,
+        pin_memory=args.pin_mem,
+        drop_last=True,
+        shuffle=False
+    )
 
     data_loader_vis = torch.utils.data.DataLoader(
         dataset_vis, batch_size=1, shuffle=False,

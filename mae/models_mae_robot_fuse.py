@@ -417,25 +417,24 @@ class MAERobotLangFuseTaskToken(MAERobot):
         lang_emb = self.clip_text(**processed_lang, return_dict=False)
         return lang_emb
 
-    def forward(self, img1, img2_ori, pick=None, place=None, lang=None, mask_ratio=0.75):
+    def forward(self, img1, img2, pick=None, place=None, lang=None, mask_ratio=0.75):
         """
         Forward pass. Receives 3 imges at one time.
         img1, (img2, imgcv)
         """
-        img1 = img1 
-        if isinstance(img2_ori, (tuple,list)): 
-            img2, imgcv = img2_ori
-        else: 
-            img2, imgcv = img2_ori, None
+        if isinstance(img2, (tuple,list)):
+            img1, img_cv1 = img1
+            img2, img_cv2 = img2
+        else:
+            img_cv1, img_cv2 = None, None
 
         # encoder of the first observed image (no mask)
         latent1, mask1, ids_restore1 = self.forward_encoder(img1, mask_ratio=0.0)
-        latent2, mask2, ids_restore2 = self.forward_encoder(img2, mask_ratio)
-        if imgcv is not None: 
-            latent_cv, mask_cv, ids_restore_cv = self.forward_encoder(imgcv, mask_ratio)
+        latent2, mask2, ids_restore2 = self.forward_encoder(img2, mask_ratio)     
 
         # fuse the two modalities
         lang_emb = self.get_lang_embed(lang)[0]
+        lang_emb_ori = lang_emb
         for fuse_block in self.fuse_blocks:
             latent1, lang_emb = fuse_block(latent1, lang_emb, attention_mask_v=None, attention_mask_l=None)
         
@@ -444,11 +443,12 @@ class MAERobotLangFuseTaskToken(MAERobot):
         loss_pred = self.forward_loss(img2, pred, mask2)
         
         # decoder for cross view
-        if imgcv is None: 
+        if img_cv2 is None: 
             return loss_pred, pred, mask2
         else: 
-            complete = self.forward_ca_decoder_task(latent1, latent_cv, ids_restore_cv, lang_emb, self.task_token_cross)
-            loss_complete = self.forward_loss(imgcv, complete, mask_cv)
+            latent_cv, mask_cv, ids_restore_cv = self.forward_encoder(img_cv2, mask_ratio)
+            complete = self.forward_ca_decoder_task(latent1, latent_cv, ids_restore_cv, lang_emb_ori, self.task_token_cross)
+            loss_complete = self.forward_loss(img_cv2, complete, mask_cv)
             return (loss_pred, loss_complete), pred, mask2
         
     def forward_ca_decoder_task(self, latent1, latent2, ids_restore2, lang_emb, task_token):

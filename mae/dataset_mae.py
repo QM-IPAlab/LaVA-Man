@@ -73,6 +73,68 @@ class MAEDataset(Dataset):
         return img1, img2, lang, pick, place
 
 
+class MAEDatasetReverse(Dataset):
+    def __init__(self, data_path=PATH, transform=None, aug=False, condition_free=False):
+        super().__init__()
+        self.data_path = data_path
+        self.file = None
+        self.reverse_aug = False
+        # get the length
+        with h5py.File(self.data_path, 'r') as f:
+            self.length = len(f['image_s1'])
+            print("Length of the dataset: ", self.length)
+            if 'reverse_language' in f :
+                print("Use reverse language for augmentation")
+                self.reverse_aug = True
+
+        self.transform = transform
+        self.aug = aug
+        self.condition_free = condition_free
+        if self.condition_free:
+            print("Condition free training")
+
+    def __len__(self):
+        return self.length
+
+    def __getitem__(self, idx):
+
+        if self.file is None:
+            self.file = h5py.File(self.data_path, 'r')
+
+        img1 = self.file['image_s1'][idx]
+        img2 = self.file['image_s2'][idx]
+        lang = self.file['language'][idx]
+        pick = self.file['gt_pick'][idx] if 'gt_pick' in self.file else 0.0
+        place = self.file['gt_place'][idx] if 'gt_pick' in self.file else 0.0
+
+        if self.aug:
+            angle = np.random.choice([0, 15, 30])
+            img1, _, (p0, p1), pert_urb_params = utils.perturb(img1, (pick, place), theta_sigma=angle)
+            pick = p0
+            place = p1
+
+        if self.transform:
+            if img1.max() > 1:
+                img1 = img1 / 255.0
+                img2 = img2 / 255.0
+
+            img1 = self.transform(img1)
+            img2 = self.transform(img2)
+
+        if self.condition_free:
+            if random.random() < 0.5:
+                lang = ''.encode('ascii')
+                img2 = img1
+        
+        if self.reverse_aug:
+                lang = self.file['reverse_language'][idx]
+                tmp = img2
+                img2 = img1
+                img1 = tmp
+
+        return img1, img2, lang, pick, place
+
+
 def get_raw_transform():
     trasform_fix = transforms.Compose([
         transforms.ToTensor()])
