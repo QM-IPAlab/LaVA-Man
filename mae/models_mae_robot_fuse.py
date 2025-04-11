@@ -16,6 +16,7 @@ from blocks import DecoderCABlockLang
 from models_mae_robot import MAERobot
 from mae.blocks import DropPath
 from mae.util.pos_embed import get_2d_varsize_sincos_pos_embed_varied_tokens
+import numpy as np
 
 class FeatureResizer(nn.Module):
     """
@@ -488,3 +489,65 @@ class MAERobotLangFuseTaskToken(MAERobot):
         out = out[:, 2:, :]
 
         return out
+    
+
+
+class MAERobotLangFuseMix(MAERobotLangFuse):
+   
+    def forward(self, img1, img2, pick=None, place=None, lang=None, mask_ratio=0.75):
+        #self.decoder_pos_embed_2 = self.decoder_pos_embed2
+
+        if np.random.rand() < 0.8 and self.training:
+        
+            # encoder of the first observed image (no mask)
+            latent1, mask1, ids_restore1 = self.forward_encoder(img1, mask_ratio=0.0)
+            latent2, mask2, ids_restore2 = self.forward_encoder(img2, mask_ratio)
+
+            # encoder of the language goal
+            lang_emb = self.get_lang_embed(lang)
+
+            # decoder
+            pred = self.forward_ca_decoder(latent1, latent2, ids_restore2, lang_emb)
+            loss = self.forward_loss(img2, pred, mask2)
+
+            return loss, pred, mask2
+        
+        else: 
+            # original mae
+            latent1, mask1, ids_restore1 = self.forward_encoder(img1, mask_ratio=0.75)
+            pred = self.forward_decoder(latent1, ids_restore1)
+            loss = self.forward_loss(img1, pred, mask1)
+            
+            return loss, pred, mask1
+    
+    def forward_decoder(self, x, ids_restore):
+        # embed tokens
+        x = self.decoder_embed(x)
+
+        # append mask tokens to sequence
+        mask_tokens = self.mask_token.repeat(x.shape[0], ids_restore.shape[1] + 1 - x.shape[1], 1)
+        x_ = torch.cat([x[:, 1:, :], mask_tokens], dim=1)  # no cls token
+        x_ = torch.gather(x_, dim=1, index=ids_restore.unsqueeze(-1).repeat(1, 1, x.shape[2]))  # unshuffle
+        x = torch.cat([x[:, :1, :], x_], dim=1)  # append cls token
+
+        # add pos embed
+        # interpolate position encoding if necessary
+        decoder_pos_embed = self.decoder_pos_embed
+        if self.decoder_pos_embed.shape[1] != x.shape[1]:
+            decoder_pos_embed = self.interpolate_pos_encoding(x, decoder_pos_embed, 320, 160)
+        x = x + self.decoder_pos_embed
+
+        # apply Transformer blocks
+        out1 = x
+        out2 = None
+        for blk in self.decoder_blocks:
+            out1, out2 = blk(out1, out2, None)
+        x = self.decoder_norm(x)
+
+        # predictor projection
+        x = self.decoder_pred(x)
+
+        # remove cls token
+        x = x[:, 1:, :]
+
+        return x
