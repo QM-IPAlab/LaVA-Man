@@ -213,7 +213,7 @@ def main(args):
         print('User default transform')
     
     # other dataset
-    ravens_train = MAEDataset(transform=transform_train, data_path="/data/home/acw694/CLIPort_new_loss/scratch/top_down_omniobj_white.hdf5", aug=args.aug, condition_free=args.condition_free)
+    ravens_train = MAEDataset(transform=transform_train, data_path="scratch/top_down_omniobj_white.hdf5", aug=args.aug, condition_free=args.condition_free)
     #ego4d_train = MAEDataset(transform=transform_train, data_path="scratch/mae-data/ego4d_interactive.hdf5", aug=args.aug, condition_free=args.condition_free)
     #co3d_train = MAEDataset(transform=transform_train, data_path="image_pairs_with_captions.hdf5", aug=args.aug, condition_free=args.condition_free)
 
