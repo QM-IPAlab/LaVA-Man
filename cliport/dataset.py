@@ -412,8 +412,8 @@ class RavensMultiTaskDataset(RavensDataset):
             ],
         },
 
-        # goal-conditioned tasks
-        'multi-language-conditioned': {
+        # goal-conditioned (train and test on full) tasks
+        'multi-language-conditioned-full': {
             'train': [
                 'align-rope',
                 'assembling-kits-seq-full', # unseen here refers to training only seen splits to be consitent with single-task setting
@@ -468,6 +468,60 @@ class RavensMultiTaskDataset(RavensDataset):
             ],
         },
 
+        'multi-language-conditioned': {
+            'train': [
+                'align-rope',
+                'assembling-kits-seq-unseen-colors', # unseen here refers to training only seen splits to be consitent with single-task setting
+                'packing-boxes-pairs-unseen-colors',
+                'packing-shapes',
+                'packing-unseen-google-objects-seq',
+                'packing-unseen-google-objects-group',
+                'put-block-in-bowl-unseen-colors',
+                'stack-block-pyramid-seq-unseen-colors',
+                'separating-piles-unseen-colors',
+                'towers-of-hanoi-seq-unseen-colors',
+            ],
+            'val': [
+                'align-rope',
+                'assembling-kits-seq-seen-colors',
+                'assembling-kits-seq-unseen-colors',
+                'packing-boxes-pairs-seen-colors',
+                'packing-boxes-pairs-unseen-colors',
+                'packing-shapes',
+                'packing-seen-google-objects-seq',
+                'packing-unseen-google-objects-seq',
+                'packing-seen-google-objects-group',
+                'packing-unseen-google-objects-group',
+                'put-block-in-bowl-seen-colors',
+                'put-block-in-bowl-unseen-colors',
+                'stack-block-pyramid-seq-seen-colors',
+                'stack-block-pyramid-seq-unseen-colors',
+                'separating-piles-seen-colors',
+                'separating-piles-unseen-colors',
+                'towers-of-hanoi-seq-seen-colors',
+                'towers-of-hanoi-seq-unseen-colors',
+            ],
+            'test': [
+                'align-rope',
+                'assembling-kits-seq-seen-colors',
+                'assembling-kits-seq-unseen-colors',
+                'packing-boxes-pairs-seen-colors',
+                'packing-boxes-pairs-unseen-colors',
+                'packing-shapes',
+                'packing-seen-google-objects-seq',
+                'packing-unseen-google-objects-seq',
+                'packing-seen-google-objects-group',
+                'packing-unseen-google-objects-group',
+                'put-block-in-bowl-seen-colors',
+                'put-block-in-bowl-unseen-colors',
+                'stack-block-pyramid-seq-seen-colors',
+                'stack-block-pyramid-seq-unseen-colors',
+                'separating-piles-seen-colors',
+                'separating-piles-unseen-colors',
+                'towers-of-hanoi-seq-seen-colors',
+                'towers-of-hanoi-seq-unseen-colors',
+            ],
+        },
 
         ##### multi-attr tasks
         'multi-attr-align-rope': {
@@ -736,7 +790,7 @@ class RavensMultiTaskDataset(RavensDataset):
 
         self._path = None
         self._task = None
-        np.random.seed(42)
+        #np.random.seed(42)
 
     def __len__(self):
         # Average number of episodes across all tasks
