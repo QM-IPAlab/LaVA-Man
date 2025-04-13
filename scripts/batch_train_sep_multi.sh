@@ -1,13 +1,19 @@
 #!/bin/bash
-#SBATCH --partition=small
-#SBATCH --gres=gpu:1
-#SBATCH --job-name=clip_mae
-#SBATCH --cpus-per-task=16
+#SBATCH --job-name=fuse
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=42
+#SBATCH --mem-per-cpu=3850
+#SBATCH --gres=gpu:ampere_a100:1
+#SBATCH --partition=gpu
+#SBATCH --time=24:00:00
+#SBATCH --account=su008-acw694
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=chaoran.zhu@qmul.ac.uk
 
-# module load python/3.8
-# source py-mae-cliport/bin/activate
-# module load cuda/12.4
-export CUDA_VISIBLE_DEVICES=1
+module load Miniconda3/4.12.0
+source activate mae-cliport
+
 export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
@@ -25,49 +31,49 @@ export TOKENIZERS_PARALLELISM=false
 # 8. check the agent name: sep or not sept, if sep, check train.sep_mode is set to pick or place
 
 
-exps_name="exps/multisize_new_split2"
-agent_name="mae_sep_seg2_add"
-pretrain_path="/home/robot/Repositories_chaoran/CLIPort_new_loss/exps/checkpoint-100-multisize.pth"
-mae_model="mae_robot_lang"
+exps_name="exps_cliport/0413_multisize-ck399-full"
+agent_name="mae_fuse"
+pretrain_path="/home/a/acw694/CLIPort_new_loss/exps/0411_fuse_multisize/fuse_multisize_checkpoint-120.pth"
+mae_model="mae_fuse"
 #pretrain_path=False
 
 #tasks for ablation study (mask ratio)
-tasks=("assembling-kits-seq-seen-colors"
-  "assembling-kits-seq-unseen-colors"
-  "towers-of-hanoi-seq-seen-colors"
-  "towers-of-hanoi-seq-unseen-colors"
-  "stack-block-pyramid-seq-seen-colors"
-  "stack-block-pyramid-seq-unseen-colors"
-  "separating-piles-seen-colors"
-  "separating-piles-unseen-colors"
-  "put-block-in-bowl-seen-colors"
-  "put-block-in-bowl-unseen-colors"
-  "packing-boxes-pairs-seen-colors"
-  "packing-boxes-pairs-unseen-colors"
-  "packing-seen-google-objects-group"
-  "packing-seen-google-objects-seq"
-  "packing-unseen-google-objects-group"
-  "packing-unseen-google-objects-seq"
-  "align-rope"
-  "packing-shapes"
-)
-
-#tasks for testing
-# tasks=("assembling-kits-seq-full"\
-#     "packing-boxes-pairs-full"\
-#     "stack-block-pyramid-seq-full"\
-#     "towers-of-hanoi-seq-full"\
-#     "put-block-in-bowl-full"\
-#     "packing-seen-google-objects-group"\
-#     "packing-unseen-google-objects-group"\
-#     "packing-seen-google-objects-seq"\
-#     "packing-unseen-google-objects-seq"\
-#     "separating-piles-full"\
-#     "align-rope"\
-#     "packing-shapes"\
+# tasks=("assembling-kits-seq-seen-colors"
+#   "assembling-kits-seq-unseen-colors"
+#   "towers-of-hanoi-seq-seen-colors"
+#   "towers-of-hanoi-seq-unseen-colors"
+#   "stack-block-pyramid-seq-seen-colors"
+#   "stack-block-pyramid-seq-unseen-colors"
+#   "separating-piles-seen-colors"
+#   "separating-piles-unseen-colors"
+#   "put-block-in-bowl-seen-colors"
+#   "put-block-in-bowl-unseen-colors"
+#   "packing-boxes-pairs-seen-colors"
+#   "packing-boxes-pairs-unseen-colors"
+#   "packing-seen-google-objects-group"
+#   "packing-seen-google-objects-seq"
+#   "packing-unseen-google-objects-group"
+#   "packing-unseen-google-objects-seq"
+#   "align-rope"
+#   "packing-shapes"
 # )
 
-python -m cliport.train  train.task=multi-language-conditioned\
+#tasks for testing
+tasks=("assembling-kits-seq-full"\
+    "packing-boxes-pairs-full"\
+    "stack-block-pyramid-seq-full"\
+    "towers-of-hanoi-seq-full"\
+    "put-block-in-bowl-full"\
+    "packing-seen-google-objects-group"\
+    "packing-unseen-google-objects-group"\
+    "packing-seen-google-objects-seq"\
+    "packing-unseen-google-objects-seq"\
+    "separating-piles-full"\
+    "align-rope"\
+    "packing-shapes"\
+)
+
+python -m cliport.train  train.task=multi-language-conditioned-full\
                          train.agent=${agent_name}\
                          train.exp_folder=${exps_name}\
                          wandb.run_name=${exps_name}_multi\
@@ -75,7 +81,7 @@ python -m cliport.train  train.task=multi-language-conditioned\
                          train.n_steps=60100 \
                          train.lr_scheduler=True\
                          train.lr=2e-5\
-                         train.warmup_epochs=20\
+                         train.warmup_epochs=10\
                          train.precision=32\
                          train.batch_size=32\
                          train.batchnorm=True\
@@ -90,7 +96,7 @@ python -m cliport.train  train.task=multi-language-conditioned\
                          train.linear_probe=False\
 
 
-python -m cliport.train  train.task=multi-language-conditioned\
+python -m cliport.train  train.task=multi-language-conditioned-full\
                          train.agent=${agent_name}\
                          train.exp_folder=${exps_name}\
                          wandb.run_name=${exps_name}_multi\
@@ -98,7 +104,7 @@ python -m cliport.train  train.task=multi-language-conditioned\
                          train.n_steps=60100 \
                          train.lr_scheduler=True\
                          train.lr=2e-5\
-                         train.warmup_epochs=20\
+                         train.warmup_epochs=10\
                          train.precision=32\
                          train.batch_size=8\
                          train.batchnorm=True\

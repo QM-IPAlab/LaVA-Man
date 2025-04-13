@@ -279,6 +279,9 @@ class MAERobotLangFuse(MAERobot):
             for _ in range(depth)
         ])
 
+        if self.norm_pix_loss:
+            print('Use norm pix loss')
+
 
     def get_lang_embed(self, processed_lang):
         lang_emb = self.clip_text(**processed_lang, return_dict=False)
@@ -497,7 +500,7 @@ class MAERobotLangFuseMix(MAERobotLangFuse):
     def forward(self, img1, img2, pick=None, place=None, lang=None, mask_ratio=0.75):
         #self.decoder_pos_embed_2 = self.decoder_pos_embed2
 
-        if np.random.rand() < 0.8 and self.training:
+        if np.random.rand() < 0.2:
         
             # encoder of the first observed image (no mask)
             latent1, mask1, ids_restore1 = self.forward_encoder(img1, mask_ratio=0.0)

@@ -1,9 +1,9 @@
 root_dir: ${env:CLIPORT_ROOT}
 tag: default
 debug: false
-mode: test_unseen
-agent: clip_lingunet_transporter
-n_demos: 100
+mode: test
+agent: mae_fuse
+n_demos: 50
 train_demos: 100
 n_repeats: 1
 gpu:
@@ -14,11 +14,11 @@ checkpoint_type: best
 val_on_heldout: true
 disp: false
 shared_memory: false
-eval_task: pack_objects
-model_task: pack_objects
-type: real_ours
+eval_task: packing-shapes
+model_task: multi-language-conditioned
+type: single
 model_dir: ${root_dir}
-exp_folder: exps_real_cliport
+exp_folder: exps_cliport/0412_multisize
 data_dir: ${root_dir}/data
 assets_root: ${root_dir}/cliport/environments/assets/
 model_path: ${model_dir}/${exp_folder}/${model_task}-${agent}-n${train_demos}-train/checkpoints/
