@@ -46,7 +46,7 @@ def get_2D_position_embeddings_ours(embed_dim: int, h: int, w: int, cls_token: b
 class VCond(nn.Module):
     def __init__(
         self,
-        img_size: Tuple[int, int] = (320,160),
+        img_size: Tuple[int, int] = (224,224),
         patch_size: int = 16,
         encoder_depth: int = 12,
         encoder_embed_dim: int = 384,
@@ -311,6 +311,10 @@ class VCond(nn.Module):
             patches = torch.cat([cls_tokens, patches], dim=1)
 
         # Position Encoding
+        encoder_pe = self.encoder_pe
+        if encoder_pe.shape[1] != patches.shape[1]:
+            # Dynamic Position Embedding
+           encoder_pe = self.interpolate_pos_encoding(patches, encoder_pe, 320, 160)
         patches_pe = patches + self.encoder_pe
 
         # Add "modality" embeddings to patches & language
@@ -337,7 +341,12 @@ class VCond(nn.Module):
 
         # Patchify + Position Embedding (without <CLS> Token!)
         patches = self.patch2embed(img)
-        patches_pe = patches + (self.encoder_pe if not self.use_cls_token else self.encoder_pe[:, 1:, :])
+        # Dynamic Position Embedding
+        encoder_pe = self.encoder_pe
+        if encoder_pe.shape[1] != patches.shape[1]:
+            # Dynamic Position Embedding
+            encoder_pe = self.interpolate_pos_encoding(patches, encoder_pe, 320, 160)
+        patches_pe = patches + (encoder_pe if not self.use_cls_token else encoder_pe[:, 1:, :])
 
         # Create mask (and go ahead and mask out patches at the same time)
         visible_patches, mask, restore_idxs = self.mask(patches_pe, mask_ratio)
@@ -517,6 +526,46 @@ class VCond(nn.Module):
         # Run final projection & return --> note <CLS> token handling!
         decoder_prediction = self.decoder_prediction(decoder_patches)
         return decoder_prediction
+    
+    def interpolate_pos_encoding(self, embeddings: torch.Tensor, position_embeddings, height: int, width: int) -> torch.Tensor:
+        """
+        This method allows to interpolate the pre-trained position encodings, to be able to use the model on higher resolution
+        images. This method is also adapted to support torch.jit tracing.
+
+        Adapted from:
+        - https://github.com/facebookresearch/dino/blob/de9ee3df6cf39fac952ab558447af1fa1365362a/vision_transformer.py#L174-L194, and
+        - https://github.com/facebookresearch/dinov2/blob/e1277af2ba9496fbadf7aec6eba56e8d882d1e35/dinov2/models/vision_transformer.py#L179-L211
+        """
+
+        num_patches = embeddings.shape[1] - 1
+        num_positions = position_embeddings.shape[1] - 1
+
+        # always interpolate when tracing to ensure the exported model works for dynamic input shapes
+        if num_patches == num_positions and height == width:
+            return position_embeddings
+
+        class_pos_embed = position_embeddings[:, :1]
+        patch_pos_embed = position_embeddings[:, 1:]
+
+        dim = embeddings.shape[-1]
+
+        new_height = height // self.patch_size
+        new_width = width // self.patch_size
+
+        sqrt_num_positions = int(num_positions**0.5)
+        patch_pos_embed = patch_pos_embed.reshape(1, sqrt_num_positions, sqrt_num_positions, dim)
+        patch_pos_embed = patch_pos_embed.permute(0, 3, 1, 2)
+
+        patch_pos_embed = nn.functional.interpolate(
+            patch_pos_embed,
+            size=(new_height, new_width),
+            mode="bicubic",
+            align_corners=False,
+        )
+
+        patch_pos_embed = patch_pos_embed.permute(0, 2, 3, 1).view(1, -1, dim)
+
+        return torch.cat((class_pos_embed, patch_pos_embed), dim=1)
     
 
     # def configure_optimizer(self) -> Tuple[torch.optim.Optimizer, Callable[[int, float], float]]:
