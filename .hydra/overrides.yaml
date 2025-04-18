@@ -4,8 +4,8 @@
 - mode=test
 - n_demos=50
 - train_demos=100
-- exp_folder=exps_cliport/0412_multisize
-- checkpoint_type=best
+- exp_folder=exps_cliport/0412_multisize-ck220
+- checkpoint_type=last
 - update_results=True
 - disp=False
 - record.save_video=False

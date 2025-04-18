@@ -494,7 +494,6 @@ class MAERobotLangFuseTaskToken(MAERobot):
         return out
     
 
-
 class MAERobotLangFuseMix(MAERobotLangFuse):
    
     def forward(self, img1, img2, pick=None, place=None, lang=None, mask_ratio=0.75):
@@ -554,3 +553,131 @@ class MAERobotLangFuseMix(MAERobotLangFuse):
         x = x[:, 1:, :]
 
         return x
+    
+
+class MAERobotLangFuseDual(MAERobotLangFuse):
+    
+    def forward(self, img1, img2, pick=None, place=None, lang=None, mask_ratio=0.75):
+        #self.decoder_pos_embed_2 = self.decoder_pos_embed2
+
+        # encoder of the first observed image (no mask)
+        latent1, mask1, ids_restore1 = self.forward_encoder(img1, mask_ratio=0.75)
+        latent2, mask2, ids_restore2 = self.forward_encoder(img2, mask_ratio=mask_ratio, base_mask=mask1)
+
+        # encoder of the language goal
+        lang_emb = self.get_lang_embed(lang)
+
+        # decoder
+        pred = self.forward_ca_decoder(latent1, latent2, ids_restore1, ids_restore2, lang_emb)
+        loss = self.forward_loss(img2, pred, mask2)
+
+        return loss, pred, mask2
+    
+    def forward_encoder(self, x, mask_ratio, base_mask=None):
+        # embed patches
+        x = self.patch_embed(x)
+        # interpolate position encoding if necessary
+        pos_embed = self.pos_embed
+        if pos_embed[:, 1:, :].shape[1] != x.shape[1]:
+            #FIXME: hardcoded values for 320 160 images and 16 patch size
+            pos_embed = self.interpolate_pos_encoding(x, pos_embed, 320, 160)
+
+        x = x + pos_embed[:, 1:, :]
+
+        # masking: length -> length * mask_ratio
+        x, mask, ids_restore = self.random_masking(x, mask_ratio, base_mask)
+
+        # append cls token
+        cls_token = self.cls_token + pos_embed[:, :1, :]
+        cls_tokens = cls_token.expand(x.shape[0], -1, -1)
+        x = torch.cat((cls_tokens, x), dim=1)
+
+        # apply Transformer blocks
+        for blk in self.blocks:
+            x = blk(x)
+        x = self.norm(x)
+
+        return x, mask, ids_restore
+    
+    def random_masking(self, x, mask_ratio, base_mask=None):
+        """
+        Perform per-sample random masking by per-sample shuffling.
+        Per-sample shuffling is done by argsort random noise.
+        x: [N, L, D], sequence
+        """
+        if base_mask is not None:
+            N, L, D = x.shape  # batch, length, dim 
+            noise = torch.rand(N, L, device=x.device)  # noise in [0, 1]
+            
+            total_keep = int(L * (1-mask_ratio))
+            visible_mask = (base_mask==0)
+            noise_visible = noise.masked_fill(~visible_mask, float('inf'))
+
+            topk = torch.topk(noise_visible, total_keep, dim=1, largest=False)
+            ids_keep = topk.indices  # [N, total_keep]
+
+            # 构造最终 mask：默认全部为 1（masked），然后将保留的置 0
+            mask = torch.ones((N, L), device=x.device)
+            mask.scatter_(1, ids_keep, 0)
+
+            # 构造 masked x
+            ids_keep_expand = ids_keep.unsqueeze(-1).expand(-1, -1, D)  # [N, total_keep, D]
+            x_masked = torch.gather(x, dim=1, index=ids_keep_expand)
+
+            ids_restore = torch.argsort(noise, dim=1)  # 正确 restore 索引
+
+            return x_masked, mask, ids_restore
+             
+        else: 
+            x_masked, mask, ids_restore = super().random_masking(x, mask_ratio)
+      
+        return  x_masked, mask, ids_restore
+    
+    def forward_ca_decoder(self, latent1, masked_latent2, ids_restore1, ids_restore2, lang_emb):
+        # fuse the two modalities
+        lang_emb = lang_emb[0]
+        for fuse_block in self.fuse_blocks:
+            latent1, lang_emb = fuse_block(latent1, lang_emb, attention_mask_v=None, attention_mask_l=None)
+
+        # encoder to decoder layer
+        fea1 = self.decoder_embed(latent1)
+        fea2 = self.decoder_embed(masked_latent2)
+
+        # append masked tokens to the sequence
+        masked_tokens = self.mask_token.repeat(fea1.shape[0],
+                                            ids_restore1.shape[1] + 1 - fea1.shape[1], 1)
+        fea1_ = torch.cat([fea1[:, 1:, :], masked_tokens], dim=1)  # no cls token
+        fea1_ = torch.gather(fea1_, dim=1,
+                            index=ids_restore1.unsqueeze(-1).repeat(1, 1, fea1.shape[2]))  # unshuffle
+        fea1 = torch.cat([fea1[:, :1, :], fea1_], dim=1)  # append cls token
+
+        # append masked tokens to the sequence
+        masked_tokens = self.mask_token.repeat(fea2.shape[0],
+                                            ids_restore2.shape[1] + 1 - fea2.shape[1], 1)
+        fea2_ = torch.cat([fea2[:, 1:, :], masked_tokens], dim=1)  # no cls token
+        fea2_ = torch.gather(fea2_, dim=1,
+                            index=ids_restore2.unsqueeze(-1).repeat(1, 1, fea2.shape[2]))  # unshuffle
+        fea2 = torch.cat([fea2[:, :1, :], fea2_], dim=1)  # append cls token
+
+        # interpolate position encoding if necessary
+        decoder_pos_embed = self.decoder_pos_embed
+        if self.decoder_pos_embed.shape[1] != fea2.shape[1]:
+            decoder_pos_embed = self.interpolate_pos_encoding(fea2, decoder_pos_embed, 320, 160)
+                
+        # add positional embedding
+        if self.decoder_pos_embed is not None:
+            fea1 = fea1 + decoder_pos_embed
+            fea2 = fea2 + decoder_pos_embed
+
+        out1 = fea1
+        out2 = fea2
+        # apply Transformer blocks
+        for blk in self.decoder_blocks:
+            out1, out2 = blk(out1, out2, None)
+        out = self.decoder_norm(out1)
+
+        out = self.decoder_pred(out)
+        out = out[:, 1:, :]
+
+        return out
+

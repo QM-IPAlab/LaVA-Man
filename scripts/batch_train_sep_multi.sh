@@ -31,92 +31,92 @@ export TOKENIZERS_PARALLELISM=false
 # 8. check the agent name: sep or not sept, if sep, check train.sep_mode is set to pick or place
 
 
-exps_name="exps_cliport/0413_multisize-ck399-full"
+exps_name="exps_cliport/0412_multisize-ck220"
 agent_name="mae_fuse"
-pretrain_path="/home/a/acw694/CLIPort_new_loss/exps/0411_fuse_multisize/fuse_multisize_checkpoint-120.pth"
+pretrain_path="/home/a/acw694/CLIPort_new_loss/exps/0411_fuse_multisize/fuse_multisize_checkpoint-220.pth"
 mae_model="mae_fuse"
 #pretrain_path=False
 
 #tasks for ablation study (mask ratio)
-# tasks=("assembling-kits-seq-seen-colors"
-#   "assembling-kits-seq-unseen-colors"
-#   "towers-of-hanoi-seq-seen-colors"
-#   "towers-of-hanoi-seq-unseen-colors"
-#   "stack-block-pyramid-seq-seen-colors"
-#   "stack-block-pyramid-seq-unseen-colors"
-#   "separating-piles-seen-colors"
-#   "separating-piles-unseen-colors"
-#   "put-block-in-bowl-seen-colors"
-#   "put-block-in-bowl-unseen-colors"
-#   "packing-boxes-pairs-seen-colors"
-#   "packing-boxes-pairs-unseen-colors"
-#   "packing-seen-google-objects-group"
-#   "packing-seen-google-objects-seq"
-#   "packing-unseen-google-objects-group"
-#   "packing-unseen-google-objects-seq"
-#   "align-rope"
-#   "packing-shapes"
-# )
-
-#tasks for testing
-tasks=("assembling-kits-seq-full"\
-    "packing-boxes-pairs-full"\
-    "stack-block-pyramid-seq-full"\
-    "towers-of-hanoi-seq-full"\
-    "put-block-in-bowl-full"\
-    "packing-seen-google-objects-group"\
-    "packing-unseen-google-objects-group"\
-    "packing-seen-google-objects-seq"\
-    "packing-unseen-google-objects-seq"\
-    "separating-piles-full"\
-    "align-rope"\
-    "packing-shapes"\
+tasks=("assembling-kits-seq-seen-colors"
+  "assembling-kits-seq-unseen-colors"
+  "towers-of-hanoi-seq-seen-colors"
+  "towers-of-hanoi-seq-unseen-colors"
+  "stack-block-pyramid-seq-seen-colors"
+  "stack-block-pyramid-seq-unseen-colors"
+  "separating-piles-seen-colors"
+  "separating-piles-unseen-colors"
+  "put-block-in-bowl-seen-colors"
+  "put-block-in-bowl-unseen-colors"
+  "packing-boxes-pairs-seen-colors"
+  "packing-boxes-pairs-unseen-colors"
+  "packing-seen-google-objects-group"
+  "packing-seen-google-objects-seq"
+  "packing-unseen-google-objects-group"
+  "packing-unseen-google-objects-seq"
+  "align-rope"
+  "packing-shapes"
 )
 
-python -m cliport.train  train.task=multi-language-conditioned-full\
-                         train.agent=${agent_name}\
-                         train.exp_folder=${exps_name}\
-                         wandb.run_name=${exps_name}_multi\
-                         train.n_demos=100 \
-                         train.n_steps=60100 \
-                         train.lr_scheduler=True\
-                         train.lr=2e-5\
-                         train.warmup_epochs=10\
-                         train.precision=32\
-                         train.batch_size=32\
-                         train.batchnorm=True\
-                         train.load_from_last_ckpt=False\
-                         train.log=False\
-                         mae_model=${mae_model} \
-                         pretrain_path=${pretrain_path}\
-                         cliport_checkpoint=False\
-                         dataset.cache=False \
-                         train.sep_mode=pick\
-                         dataset.type=multi\
-                         train.linear_probe=False\
+# #tasks for testing
+# tasks=("assembling-kits-seq-full"\
+#     "packing-boxes-pairs-full"\
+#     "stack-block-pyramid-seq-full"\
+#     "towers-of-hanoi-seq-full"\
+#     "put-block-in-bowl-full"\
+#     "packing-seen-google-objects-group"\
+#     "packing-unseen-google-objects-group"\
+#     "packing-seen-google-objects-seq"\
+#     "packing-unseen-google-objects-seq"\
+#     "separating-piles-full"\
+#     "align-rope"\
+#     "packing-shapes"\
+# )
+
+# python -m cliport.train  train.task=multi-language-conditioned-full\
+#                          train.agent=${agent_name}\
+#                          train.exp_folder=${exps_name}\
+#                          wandb.run_name=${exps_name}_multi\
+#                          train.n_demos=100 \
+#                          train.n_steps=60100 \
+#                          train.lr_scheduler=True\
+#                          train.lr=2e-5\
+#                          train.warmup_epochs=10\
+#                          train.precision=32\
+#                          train.batch_size=32\
+#                          train.batchnorm=True\
+#                          train.load_from_last_ckpt=False\
+#                          train.log=False\
+#                          mae_model=${mae_model} \
+#                          pretrain_path=${pretrain_path}\
+#                          cliport_checkpoint=False\
+#                          dataset.cache=False \
+#                          train.sep_mode=pick\
+#                          dataset.type=multi\
+#                          train.linear_probe=False\
 
 
-python -m cliport.train  train.task=multi-language-conditioned-full\
-                         train.agent=${agent_name}\
-                         train.exp_folder=${exps_name}\
-                         wandb.run_name=${exps_name}_multi\
-                         train.n_demos=100 \
-                         train.n_steps=60100 \
-                         train.lr_scheduler=True\
-                         train.lr=2e-5\
-                         train.warmup_epochs=10\
-                         train.precision=32\
-                         train.batch_size=8\
-                         train.batchnorm=True\
-                         train.load_from_last_ckpt=False\
-                         train.log=False\
-                         mae_model=${mae_model} \
-                         pretrain_path=${pretrain_path}\
-                         cliport_checkpoint=False\
-                         dataset.cache=False \
-                         train.sep_mode=place\
-                         dataset.type=multi\
-                         train.linear_probe=False\
+# python -m cliport.train  train.task=multi-language-conditioned-full\
+#                          train.agent=${agent_name}\
+#                          train.exp_folder=${exps_name}\
+#                          wandb.run_name=${exps_name}_multi\
+#                          train.n_demos=100 \
+#                          train.n_steps=60100 \
+#                          train.lr_scheduler=True\
+#                          train.lr=2e-5\
+#                          train.warmup_epochs=10\
+#                          train.precision=32\
+#                          train.batch_size=8\
+#                          train.batchnorm=True\
+#                          train.load_from_last_ckpt=False\
+#                          train.log=False\
+#                          mae_model=${mae_model} \
+#                          pretrain_path=${pretrain_path}\
+#                          cliport_checkpoint=False\
+#                          dataset.cache=False \
+#                          train.sep_mode=place\
+#                          dataset.type=multi\
+#                          train.linear_probe=False\
                          
 
 
@@ -156,7 +156,7 @@ do
                         n_demos=50 \
                         train_demos=100 \
                         exp_folder=${exps_name} \
-                        checkpoint_type=best \
+                        checkpoint_type=last \
                         update_results=True \
                         disp=False\
                         record.save_video=False
