@@ -168,3 +168,4 @@ dmypy.json
 .pyre/
 
 ros_requirements.txt
+.hydra/
