@@ -39,40 +39,40 @@ mae_model="mae_fuse"
 #pretrain_path=False
 
 #tasks for ablation study (mask ratio)
-# tasks=("assembling-kits-seq-seen-colors"
-#   "assembling-kits-seq-unseen-colors"
-#   "towers-of-hanoi-seq-seen-colors"
-#   "towers-of-hanoi-seq-unseen-colors"
-#   "stack-block-pyramid-seq-seen-colors"
-#   "stack-block-pyramid-seq-unseen-colors"
-#   "separating-piles-seen-colors"
-#   "separating-piles-unseen-colors"
-#   "put-block-in-bowl-seen-colors"
-#   "put-block-in-bowl-unseen-colors"
-#   "packing-boxes-pairs-seen-colors"
-#   "packing-boxes-pairs-unseen-colors"
-#   "packing-seen-google-objects-group"
-#   "packing-seen-google-objects-seq"
-#   "packing-unseen-google-objects-group"
-#   "packing-unseen-google-objects-seq"
-#   "align-rope"
-#   "packing-shapes"
-# )
-
-#tasks for testing
-tasks=("assembling-kits-seq-full"\
-    "packing-boxes-pairs-full"\
-    "stack-block-pyramid-seq-full"\
-    "towers-of-hanoi-seq-full"\
-    "put-block-in-bowl-full"\
-    "packing-seen-google-objects-group"\
-    "packing-unseen-google-objects-group"\
-    "packing-seen-google-objects-seq"\
-    "packing-unseen-google-objects-seq"\
-    "separating-piles-full"\
-    "align-rope"\
-    "packing-shapes"\
+tasks=("assembling-kits-seq-seen-colors"
+  "assembling-kits-seq-unseen-colors"
+  "towers-of-hanoi-seq-seen-colors"
+  "towers-of-hanoi-seq-unseen-colors"
+  "stack-block-pyramid-seq-seen-colors"
+  "stack-block-pyramid-seq-unseen-colors"
+  "separating-piles-seen-colors"
+  "separating-piles-unseen-colors"
+  "put-block-in-bowl-seen-colors"
+  "put-block-in-bowl-unseen-colors"
+  "packing-boxes-pairs-seen-colors"
+  "packing-boxes-pairs-unseen-colors"
+  "packing-seen-google-objects-group"
+  "packing-seen-google-objects-seq"
+  "packing-unseen-google-objects-group"
+  "packing-unseen-google-objects-seq"
+  "align-rope"
+  "packing-shapes"
 )
+
+# #tasks for testing
+# tasks=("assembling-kits-seq-full"\
+#     "packing-boxes-pairs-full"\
+#     "stack-block-pyramid-seq-full"\
+#     "towers-of-hanoi-seq-full"\
+#     "put-block-in-bowl-full"\
+#     "packing-seen-google-objects-group"\
+#     "packing-unseen-google-objects-group"\
+#     "packing-seen-google-objects-seq"\
+#     "packing-unseen-google-objects-seq"\
+#     "separating-piles-full"\
+#     "align-rope"\
+#     "packing-shapes"\
+# )
 
 # python -m cliport.train  train.task=multi-language-conditioned-full\
 #                          train.agent=${agent_name}\
@@ -157,6 +157,7 @@ do
                         n_demos=100 \
                         train_demos=1000 \
                         exp_folder=${exps_name} \
+                        checkpoint_type=last \
                         checkpoint_type=last \
                         update_results=True \
                         disp=False\
