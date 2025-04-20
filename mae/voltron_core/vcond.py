@@ -25,8 +25,8 @@ from mae.util.pos_embed import get_2d_varsize_sincos_pos_embed
 
 # Suppress Transformers Logging
 transformers.logging.set_verbosity_error()
-
-CACHE_PATH = "/home/a/acw694/CLIPort_new_loss/cache"
+#CACHE_PATH = "/home/a/acw694/CLIPort_new_loss/cache"
+CACHE_PATH = "/home/robot/Repositories_chaoran/CLIPort_new_loss"
 
 def get_2D_position_embeddings_ours(embed_dim: int, h: int, w: int, cls_token: bool = False):
     # Create 2D Position embeddings by taking cross product of height and width and splicing 1D embeddings...
@@ -60,6 +60,7 @@ class VCond(nn.Module):
         in_channels: int = 3,
         norm_pixel_loss: bool = True,
         use_cls_token: bool = False,
+        **kwargs
     ) -> None:
         """
         Initialize a VCond model with the requisite architecture parameters.

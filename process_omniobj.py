@@ -38,7 +38,7 @@ for n_zip_files, file in enumerate(tar_files):
             if len(member.name.split("/")) == 2:
                 folders.append(member.name.split("/")[1])
         folders = sorted(set(folders))
-        selected_folders = folders[:10] 
+        selected_folders = folders[10:30] 
 
         members_to_extract = [m for m in tar.getmembers() if any(m.name.startswith(f'./{folder}') for folder in selected_folders)]
         tar.extractall(extract_dir, members=members_to_extract)

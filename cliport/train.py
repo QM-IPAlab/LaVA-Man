@@ -94,7 +94,8 @@ def main(cfg):
         max_epochs=max_epochs,
         check_val_every_n_epoch=max_epochs // 20,
         accumulate_grad_batches=acc,
-        precision=cfg['train']['precision']
+        precision=cfg['train']['precision'],
+        devices = 1
     )
 
     # Resume epoch and global_steps

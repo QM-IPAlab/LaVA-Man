@@ -49,7 +49,7 @@ class EnvironmentWhite(Environment):
         self.pix_size = 0.003125
         self.obj_ids = {'fixed': [], 'rigid': [], 'deformable': []}
         self.homej = np.array([-1, -0.5, 0.5, -0.5, -0.5, 0]) * np.pi
-        self.agent_cams = cameras.Oracle310.CONFIG
+        self.agent_cams = cameras.RealSenseD415.CONFIG
         self.record_cfg = record_cfg
         self.save_video = False
         self.step_counter = 0
@@ -63,7 +63,7 @@ class EnvironmentWhite(Environment):
         depth_tuple = [
             gym.spaces.Box(0.0, 20.0, config['image_size'], dtype=np.float32)
             for config in self.agent_cams
-        ]  
+        ]    
         self.observation_space = gym.spaces.Dict({
             'color': gym.spaces.Tuple(color_tuple),
             'depth': gym.spaces.Tuple(depth_tuple),

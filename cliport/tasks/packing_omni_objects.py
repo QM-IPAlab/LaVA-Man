@@ -9,7 +9,10 @@ from cliport.utils import utils
 import pandas as pd
 
 import pybullet as p
-
+TRAINING_DIR = '/home/robot/Repositories_chaoran/CLIPort_new_loss/omni_objs_processed'
+INTER_CLASS_DIR = '/home/robot/Repositories_chaoran/CLIPort_new_loss/omni_objs_processed_inter_class'
+INTRA_CLASS_CATEGORY = ['ball','book','bottle','boxed_beverage','bucket_noodle', 'cup', 'doll', 'donut', 'egg', 'garlic', 'hamburger', 'hat' ,
+                        'mango', 'pear', 'pitaya', 'pizza', 'remote_control', 'rubik_cube', 'shoe', 'steamed_bun']
 
 class PackingOmniObjects(Task):
     """Packing Seen Google Objects Group base class and task."""
@@ -19,24 +22,29 @@ class PackingOmniObjects(Task):
         self.max_steps = 6
         self.lang_template = "pack {obj} in the brown box"
         self.task_completed_desc = "done packing objects."
+        self.obj_path = TRAINING_DIR
         self.meta_data = self.get_object_metadata()
-        self.obj_path = "/home/robot/Repositories_chaoran/CLIPort_new_loss/omni_objs_processed"
+        
 
     def get_object_metadata(self):
-        DIR_NAME = "/media/robot/New Volume/datasets/OmniObjects_text"
+        TEXT_DIR = "/media/robot/New Volume/datasets/OmniObjects_text"
         metadata = []
         
-        classes = sorted(os.listdir(DIR_NAME))
+        classes = sorted(os.listdir(self.obj_path))
         for category in classes:
-            category_path = os.path.join(DIR_NAME, category)
+            category_path = os.path.join(self.obj_path, category)
             
-            instances = sorted(os.listdir(os.path.join(DIR_NAME, category)))
-            instances = instances[:10] # only use the first 10 instances
+            instances = sorted(os.listdir(os.path.join(self.obj_path, category)))
+            if category in INTRA_CLASS_CATEGORY:
+                instances = instances[5:] # keep the first 5 instances for intra-class testing
+            
+            instances = instances[:5]
             for instance in instances:
-                if instance.endswith(".txt"): # type: ignore
-                    instances_name = os.path.splitext(instance)[0]
-                    file_path = os.path.join(category_path, instance)
-                    metadata.append([category, instances_name, file_path])
+                text_dir = os.path.join(TEXT_DIR, category, f"{instance}.txt")
+                if not os.path.exists(text_dir):
+                    print(f"Text directory does not exist: {text_dir}")
+                    continue
+                metadata.append([category, instance, text_dir])
 
         df_metadata = pd.DataFrame(metadata, columns=["class_name", "instance_name", "file_path"])
         return df_metadata
@@ -78,7 +86,6 @@ class PackingOmniObjects(Task):
         bboxes = []
 
         # Construct K-D Tree to roughly estimate how many objects can fit inside the box.
-        # TODO(Mohit): avoid building K-D Trees
         class TreeNode:
 
             def __init__(self, parent, children, bbox):
@@ -219,6 +226,36 @@ class PackingOmniObjects(Task):
             selected_objects.append((object_row["class_name"], object_row["instance_name"], object_row["file_path"]))
     
         return selected_objects
+
+
+    def choose_objects_same_class(self, class_name, k):
+        """
+        从同一个类别中随机选择 k 个不同的对象。
+
+        参数:
+            class_name (str): 类别名称
+            k (int): 需要选择的对象数量
+
+        返回:
+            list of tuples: 选中的 (class_name, instance_name, file_path)
+        """
+        # 获取该类别下的所有对象
+        class_objects = self.meta_data[self.meta_data["class_name"] == class_name]
+
+        if len(class_objects) < k:
+            raise ValueError(f"类别 '{class_name}' 中只有 {len(class_objects)} 个对象，无法选择 {k} 个")
+
+        # 随机选择 k 个对象
+        selected_rows = class_objects.sample(k)
+        
+        selected_objects = [
+            (row["class_name"], row["instance_name"], row["file_path"])
+            for _, row in selected_rows.iterrows()
+        ]
+
+        return selected_objects
+
+
 
     def set_goals(self, object_descs, object_ids, object_points, repeat_category, zone_pose, zone_size):
         # Random picking sequence.

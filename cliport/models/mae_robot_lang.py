@@ -11,7 +11,7 @@ from cliport.models.resnet import IdentityBlock, ConvBlock
 from transformers import AutoTokenizer
 from cliport.models.featup_pretrained import FeatUp
 from cliport.models.dpt_head import PixelwiseTaskWithDPT, PixelwiseTaskWithDPTOurs
-CACHE_PATH = "/home/a/acw694/CLIPort_new_loss/cache"
+CACHE_PATH = "cache"
 from cliport.models.core.clip import build_model, load_clip, tokenize
 from torchvision import transforms
 from cliport.models.core.fusion import FusionMultOurs

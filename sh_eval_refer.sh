@@ -11,8 +11,8 @@
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 
-module load Miniconda3/4.12.0
-source activate mae-cliport
+#module load Miniconda3/4.12.0
+#source activate mae-cliport
 
 
 # Train voltron ours
@@ -24,6 +24,6 @@ source activate mae-cliport
 
 #Train mae_robot_lang
 python mae/eval_refer.py \
-    --model mae_robot_lang \
-    --pretrain  /home/a/acw694/CLIPort_new_loss/checkpoints/mae_robot_lang_mix_160.pth\
+    --model mae_fuse \
+    --pretrain  /home/robot/Repositories_chaoran/MPI/checkpoints/fuse_multisize_checkpoint-399.pth\
     --mask_ratio 0.95  \

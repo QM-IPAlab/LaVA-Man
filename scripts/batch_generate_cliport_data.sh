@@ -4,7 +4,7 @@
 #SBATCH --job-name=gen_data
 #SBATCH --cpus-per-task=16
 
-export CUDA_VISIBLE_DEVICES=1S
+export CUDA_VISIBLE_DEVICES=1
 export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
@@ -41,8 +41,23 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 #                             disp=False
 # done
 
-python cliport/demos_new.py n=30000 \
+python cliport/demos_ours.py n=1000 \
                         task=packing-omni-objects \
                         mode=train \
-                        data_dir=data_debug\
+                        data_dir=data_ours\
                         record.save_video=False \
+                        disp=False \
+
+python cliport/demos_ours.py n=100 \
+                        task=packing-omni-objects \
+                        mode=val \
+                        data_dir=data_ours\
+                        record.save_video=False \
+                        disp=False \
+
+python cliport/demos_ours.py n=100 \
+                        task=packing-omni-objects \
+                        mode=test \
+                        data_dir=data_ours\
+                        record.save_video=False \
+                        disp=False \

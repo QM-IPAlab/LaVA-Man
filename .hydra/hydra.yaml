@@ -109,20 +109,21 @@ hydra:
   overrides:
     hydra: []
     task:
-    - model_task=multi-language-conditioned
-    - eval_task=packing-shapes
-    - agent=mae_fuse
+    - model_task=packing-omni-objects
+    - eval_task=packing-omni-objects
+    - agent=mae_sep_base
     - mode=test
-    - n_demos=50
-    - train_demos=100
-    - exp_folder=exps_cliport/0412_multisize
-    - checkpoint_type=best
+    - n_demos=100
+    - train_demos=1000
+    - exp_folder=exps_cliport/0419_voltron
+    - checkpoint_type=last
     - update_results=True
     - disp=False
     - record.save_video=False
+    - data_dir=/home/robot/Repositories_chaoran/CLIPort_new_loss/data_debug
   job:
     name: eval_sep
-    override_dirname: agent=mae_fuse,checkpoint_type=best,disp=False,eval_task=packing-shapes,exp_folder=exps_cliport/0412_multisize,mode=test,model_task=multi-language-conditioned,n_demos=50,record.save_video=False,train_demos=100,update_results=True
+    override_dirname: agent=mae_sep_base,checkpoint_type=last,data_dir=/home/robot/Repositories_chaoran/CLIPort_new_loss/data_debug,disp=False,eval_task=packing-omni-objects,exp_folder=exps_cliport/0419_voltron,mode=test,model_task=packing-omni-objects,n_demos=100,record.save_video=False,train_demos=1000,update_results=True
     id: ???
     num: ???
     config_name: eval
@@ -135,12 +136,12 @@ hydra:
         exclude_keys: []
   runtime:
     version: 1.1.1
-    cwd: /gpfs/home/a/acw694/CLIPort_new_loss
+    cwd: /home/robot/Repositories_chaoran/CLIPort_new_loss
     config_sources:
     - path: hydra.conf
       schema: pkg
       provider: hydra
-    - path: /gpfs/home/a/acw694/CLIPort_new_loss/cliport/cfg
+    - path: /home/robot/Repositories_chaoran/CLIPort_new_loss/cliport/cfg
       schema: file
       provider: main
     - path: ''

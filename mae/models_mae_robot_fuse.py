@@ -359,6 +359,19 @@ class MAERobotLangFuse(MAERobot):
 
         return out
     
+    def forward_refer(self, img, processed_lang):
+
+        latent1, mask1, ids_restore1 = self.forward_encoder(img, mask_ratio=0.0)
+        lang_emb = self.get_lang_embed(processed_lang)
+
+        lang_emb = lang_emb[0]
+        for fuse_block in self.fuse_blocks:
+            latent1, lang_emb = fuse_block(latent1, lang_emb, attention_mask_v=None, attention_mask_l=None)
+
+        latent1 = latent1[:, 1:, :]
+        return latent1
+    
+
 
 class MAERobotLangFuseTaskToken(MAERobot):
     """

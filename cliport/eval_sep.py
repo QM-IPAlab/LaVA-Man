@@ -13,7 +13,8 @@ from cliport import agents
 from cliport import dataset
 from cliport import tasks
 from cliport.utils import utils
-from cliport.environments.environment import Environment
+#from cliport.environments.environment import Environment
+from cliport.environments.environment_ours import EnvironmentWhite as Environment
 import cliport.utils.visual_utils as vu
 
 @hydra.main(config_path='./cfg', config_name='eval')

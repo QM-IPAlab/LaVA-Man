@@ -1,21 +1,24 @@
-"""Data collection script.
-MARK how to change the plane and the background color:
-    change the background color: in cliport/environments/assets/plane/plane.urdf,
-        in the material part, change the color of the background
-    change the plane color: in cliport/environments/assets/ur5/workspace.urdf,
-        in the material part, change the color of the plane
-
+"""Data collection script. Save the top-down view of objects directly to hdf5 file.
+update: 2025-03-09
+usage: 
+    python cliport/demos_new.py n=100 \
+                    task=packing-omni-objects \
+                    mode=train \
+                    data_dir=data_debug\
 """
-
 
 import os
 import hydra
 import numpy as np
 import random
+import h5py
+import matplotlib.pyplot as plt
+import cv2
+from tqdm import tqdm
 
 from cliport import tasks
 from cliport.dataset import RavensDataset
-from cliport.environments.environment import Environment
+from cliport.environments.environment_ours import EnvironmentWhite as Environment
 
 
 @hydra.main(config_path='./cfg', config_name='data')
@@ -39,7 +42,7 @@ def main(cfg):
     dataset = RavensDataset(data_path, cfg, n_demos=0, augment=False)
     print(f"Saving to: {data_path}")
     print(f"Mode: {task.mode}")
-
+   
     # Train seeds are even and val/test seeds are odd. Test seeds are offset by 10000
     seed = dataset.max_seed
     if seed < 0:
@@ -65,6 +68,7 @@ def main(cfg):
 
         env.set_task(task)
         obs = env.reset()
+        if not obs: continue
         info = env.info
         reward = 0
 
@@ -94,7 +98,10 @@ def main(cfg):
 
         # Only save completed demonstrations.
         if save_data and total_reward > 0.99:
-            dataset.add(seed, episode)
+            dataset.add(seed, episode)           
+        else:
+            print("demo not finished, skip!")
+            pass
 
 
 if __name__ == '__main__':

@@ -39,7 +39,9 @@ lightning_logs/
 *.zip
 /data-real
 *.ckpt
-
+/untrain_vis
+/models--distilbert-base-uncased
+/.hydra
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -169,3 +171,5 @@ dmypy.json
 
 ros_requirements.txt
 .hydra/
+.hydra/config.yaml
+ziIDifn8
