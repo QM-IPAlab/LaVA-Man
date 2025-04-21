@@ -611,7 +611,7 @@ class MAESegBaseModel(nn.Module):
         super().__init__()
         model_name = 'mae_robot_lang' if model_name is None else model_name
         self.model = models_lib.__dict__[model_name](
-            img_size=input_shape[:2],
+            img_size=[224,224],
             norm_pix_loss=False)
 
         self.linear_probe = False if 'linear_probe' not in cfg['train'] else cfg['train']['linear_probe']
