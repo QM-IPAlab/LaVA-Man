@@ -277,3 +277,44 @@ class PackingOmniObjects(Task):
 
         # Only mistake allowed.
         self.max_steps = len(object_ids)+1
+
+
+class PackingOmniObjectsIntraClass(PackingOmniObjects):
+    """Packing Google Objects Group unseen intra class objects."""
+
+    def get_object_metadata(self):
+            TEXT_DIR = "/media/robot/New Volume/datasets/OmniObjects_text"
+            metadata = []
+            
+            classes = sorted(os.listdir(self.obj_path))
+            for category in classes:
+                
+                if category not in INTRA_CLASS_CATEGORY:
+                    continue
+                              
+                instances = sorted(os.listdir(os.path.join(self.obj_path, category)))
+                instances = instances[:5] # keep the first 5 instances for intra-class testing 
+
+                for instance in instances:
+                    text_dir = os.path.join(TEXT_DIR, category, f"{instance}.txt")
+                    if not os.path.exists(text_dir):
+                        print(f"Text directory does not exist: {text_dir}")
+                        continue
+                    metadata.append([category, instance, text_dir])
+
+            df_metadata = pd.DataFrame(metadata, columns=["class_name", "instance_name", "file_path"])
+            return df_metadata
+
+
+class PackingOmniObjectsInterClass(PackingOmniObjects):
+    """Packing Google Objects Group unseen intra class objects."""
+
+    def __init__(self):
+        super().__init__()
+        self.max_steps = 6
+        self.lang_template = "pack {obj} in the brown box"
+        self.task_completed_desc = "done packing objects."
+        self.obj_path = INTER_CLASS_DIR
+        self.meta_data = self.get_object_metadata()
+
+
