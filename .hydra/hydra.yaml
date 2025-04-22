@@ -110,20 +110,20 @@ hydra:
     hydra: []
     task:
     - model_task=packing-omni-objects
-    - eval_task=packing-omni-objects
-    - agent=mae_sep_base
+    - eval_task=packing-omni-objects-group-inter
+    - agent=cliport
     - mode=test
     - n_demos=100
     - train_demos=1000
-    - exp_folder=exps_cliport/0419_voltron
-    - checkpoint_type=last
+    - exp_folder=exps_cliport/0419_cliport
+    - checkpoint_type=test_best
     - update_results=True
     - disp=False
     - record.save_video=False
-    - data_dir=/home/robot/Repositories_chaoran/CLIPort_new_loss/data_debug
+    - data_dir=/home/robot/Repositories_chaoran/CLIPort_new_loss/data_ours
   job:
-    name: eval_sep
-    override_dirname: agent=mae_sep_base,checkpoint_type=last,data_dir=/home/robot/Repositories_chaoran/CLIPort_new_loss/data_debug,disp=False,eval_task=packing-omni-objects,exp_folder=exps_cliport/0419_voltron,mode=test,model_task=packing-omni-objects,n_demos=100,record.save_video=False,train_demos=1000,update_results=True
+    name: eval
+    override_dirname: agent=cliport,checkpoint_type=test_best,data_dir=/home/robot/Repositories_chaoran/CLIPort_new_loss/data_ours,disp=False,eval_task=packing-omni-objects-group-inter,exp_folder=exps_cliport/0419_cliport,mode=test,model_task=packing-omni-objects,n_demos=100,record.save_video=False,train_demos=1000,update_results=True
     id: ???
     num: ???
     config_name: eval

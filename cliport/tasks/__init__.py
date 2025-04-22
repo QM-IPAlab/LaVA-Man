@@ -41,12 +41,25 @@ from cliport.tasks.towers_of_hanoi_seq import TowersOfHanoiSeqSeenColors
 from cliport.tasks.towers_of_hanoi_seq import TowersOfHanoiSeqUnseenColors
 from cliport.tasks.towers_of_hanoi_seq import TowersOfHanoiSeqFull
 
-from cliport.tasks.packing_omni_objects import PackingOmniObjects
+from cliport.tasks.packing_omni_objects import PackingOmniObjects 
+from cliport.tasks.packing_omni_objects import PackingOmniObjectsIntraClass 
+from cliport.tasks.packing_omni_objects import PackingOmniObjectsInterClass
+from cliport.tasks.packing_omni_objects import PackingOmniOjbectsGroup
+from cliport.tasks.packing_omni_objects import PackingOmniOjbectsGroupInter
+from cliport.tasks.packing_omni_objects import PackingOmniOjbectsGroupIntra
+
+
+
 
 names = {
 
     # ours extension
     'packing-omni-objects': PackingOmniObjects,
+    'packing-omni-objects-intra': PackingOmniObjectsIntraClass,
+    'packing-omni-objects-inter': PackingOmniObjectsInterClass,
+    'packing-omni-objects-group': PackingOmniOjbectsGroup,
+    'packing-omni-objects-group-inter': PackingOmniOjbectsGroupInter,
+    'packing-omni-objects-group-intra': PackingOmniOjbectsGroupIntra,
 
     # demo conditioned
     'align-box-corner': AlignBoxCorner,

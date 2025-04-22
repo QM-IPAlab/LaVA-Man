@@ -41,22 +41,43 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 #                             disp=False
 # done
 
-python cliport/demos_ours.py n=1000 \
-                        task=packing-omni-objects \
-                        mode=train \
+# python cliport/demos_ours.py n=1000 \
+#                         task=packing-omni-objects \
+#                         mode=train \
+#                         data_dir=data_ours\
+#                         record.save_video=False \
+#                         disp=False \
+
+# python cliport/demos_ours.py n=100 \
+#                         task=packing-omni-objects \
+#                         mode=val \
+#                         data_dir=data_ours\
+#                         record.save_video=False \
+#                         disp=False \
+
+# python cliport/demos_ours.py n=100 \
+#                         task=packing-omni-objects-intra \
+#                         mode=test \
+#                         data_dir=data_ours\
+#                         record.save_video=False \
+#                         disp=False \
+
+python cliport/demos_ours.py n=100 \
+                        task=packing-omni-objects-group \
+                        mode=test \
                         data_dir=data_ours\
                         record.save_video=False \
                         disp=False \
 
 python cliport/demos_ours.py n=100 \
-                        task=packing-omni-objects \
-                        mode=val \
+                        task=packing-omni-objects-group-inter \
+                        mode=test \
                         data_dir=data_ours\
                         record.save_video=False \
                         disp=False \
 
 python cliport/demos_ours.py n=100 \
-                        task=packing-omni-objects \
+                        task=packing-omni-objects-group-intra \
                         mode=test \
                         data_dir=data_ours\
                         record.save_video=False \

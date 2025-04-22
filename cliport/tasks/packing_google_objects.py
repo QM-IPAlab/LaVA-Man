@@ -458,6 +458,7 @@ class PackingSeenGoogleObjectsGroup(PackingSeenGoogleObjectsSeq):
         return chosen_objects, repeat_category
 
     def set_goals(self, object_descs, object_ids, object_points, repeat_category, zone_pose, zone_size):
+        
         # Pack all objects of the chosen (repeat) category.
         num_pack_objs = object_descs.count(repeat_category)
         true_poses = []
