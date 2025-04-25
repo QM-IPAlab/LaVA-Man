@@ -1,6 +1,6 @@
 """Ravens main training script."""
 
-from visualizer import get_local
+#from visualizer import get_local
 #get_local.activate()
 
 import os

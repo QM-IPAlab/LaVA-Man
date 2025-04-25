@@ -9,8 +9,8 @@ from cliport.utils import utils
 import pandas as pd
 
 import pybullet as p
-TRAINING_DIR = '/home/robot/Repositories_chaoran/CLIPort_new_loss/omni_objs_processed'
-INTER_CLASS_DIR = '/home/robot/Repositories_chaoran/CLIPort_new_loss/omni_objs_processed_inter_class'
+TRAINING_DIR = 'omni_objs_processed'
+INTER_CLASS_DIR = 'omni_objs_processed_inter_class'
 INTRA_CLASS_CATEGORY = ['ball','book','bottle','boxed_beverage','bucket_noodle', 'cup', 'doll', 'donut', 'egg', 'garlic', 'hamburger', 'hat' ,
                         'mango', 'pear', 'pitaya', 'pizza', 'remote_control', 'rubik_cube', 'shoe', 'steamed_bun']
 
@@ -27,7 +27,7 @@ class PackingOmniObjects(Task):
         
 
     def get_object_metadata(self):
-        TEXT_DIR = "/media/robot/New Volume/datasets/OmniObjects_text"
+        TEXT_DIR = "OmniObjects_text"
         metadata = []
         
         classes = sorted(os.listdir(self.obj_path))
@@ -284,7 +284,7 @@ class PackingOmniObjectsIntraClass(PackingOmniObjects):
     """Packing Google Objects Group unseen intra class objects."""
 
     def get_object_metadata(self):
-            TEXT_DIR = "/media/robot/New Volume/datasets/OmniObjects_text"
+            TEXT_DIR = "OmniObjects_text"
             metadata = []
             
             classes = sorted(os.listdir(self.obj_path))
@@ -568,7 +568,7 @@ class PackingOmniOjbectsGroupInter(PackingOmniOjbectsGroup):
 class PackingOmniOjbectsGroupIntra(PackingOmniOjbectsGroup):
     
     def get_object_metadata(self):
-        TEXT_DIR = "/media/robot/New Volume/datasets/OmniObjects_text"
+        TEXT_DIR = "OmniObjects_text"
         metadata = []
         
         classes = sorted(os.listdir(self.obj_path))
