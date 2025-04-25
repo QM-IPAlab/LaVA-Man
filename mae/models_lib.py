@@ -12,6 +12,7 @@ from models_mae_robot_lang_jepa import JEPARobotLang, JEPARobotLang2loss
 from models_croco import MAERobotLangCroco
 from models_mae_robot_lang_single import MAERobotLangSingle
 from mae.voltron_core.vcond import VCond
+from mae.mpi_models.mpi_model import MPI
 from mae.models_mae_robot_lang_dert import MAERobotLangDertDecode
 from mae.models_mae_robot_fuse import MAERobotLangFuse, MAERobotLangFuseTaskToken, MAERobotLangFuseMix, MAERobotLangFuseDual
 from mae.models_mae_robot_fuse_cv import MAERobotLangFuseCV, MAERobotLangFuseCVDiffLoss
@@ -310,6 +311,9 @@ def mae_vit_base_patch16_fuse_dual(**kwargs):
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
+def mpi(**kwargs):
+    model = MPI(**kwargs)
+    return model
 
 # new models
 mae_dert = mae_vit_base_patch16_dert
@@ -324,6 +328,7 @@ mae_ss = mae_vit_base_patch16_fuse_single_siamese
 mae_ss2 = mae_vit_base_patch16_fuse_single_siamese2
 mae_fuse_mix = mae_vit_base_patch16_fuse_mix
 mae_fuse_dual = mae_vit_base_patch16_fuse_dual
+mpi = mpi
 
 # models
 mae_robot_base = mae_vit_base_patch16_robot_base  # original mae model with cliport image

@@ -209,7 +209,7 @@ def main(args):
         transform_train = get_fix_transform()
     
     # replace with voltron transform if model is voltron
-    if 'voltron' in args.model or 'dino' in args.model:
+    if 'voltron' in args.model or 'dino' in args.model or 'mpi' in args.model:
         print('User Voltron image transform')
         transform_train = get_voltron_transform()
     elif 'bert' in args.text_model:
@@ -221,6 +221,8 @@ def main(args):
     # other dataset
     if args.multisize: 
         transform_ravens = get_ravens_transform()
+    else:
+        transform_ravens = get_fix_transform()
     ravens_train = MAEDataset(transform=transform_ravens, data_path="scratch/top_down_omniobj_white.hdf5", aug=args.aug, condition_free=args.condition_free)
     #ego4d_train = MAEDataset(transform=transform_train, data_path="scratch/mae-data/ego4d_interactive.hdf5", aug=args.aug, condition_free=args.condition_free)
     #co3d_train = MAEDataset(transform=transform_train, data_path="image_pairs_with_captions.hdf5", aug=args.aug, condition_free=args.condition_free)
@@ -240,7 +242,7 @@ def main(args):
     
     dataset_train = ConcatDataset([droid_train,bridge_train,ravens_train])
     dataset_vis = MAEDataset(transform=transform_train, data_path="scratch/bridge_256_val.hdf5", aug=False)
-    #dataset_train = Subset(dataset_train, range(600))
+    dataset_train = Subset(dataset_train, range(600))
     
     #TODO: How to use args to set all training datasets?
     
@@ -318,7 +320,7 @@ def main(args):
     # define the text processor
     if 'res' in args.model:
         text_processor = CLIPResTokenizer()
-    elif 'voltron' in args.model:
+    elif 'voltron' in args.model or 'mpi' in args.model:
         text_processor = AutoTokenizer.from_pretrained("distilbert-base-uncased", cache_dir='cache/hf-cache')
     elif 'bert' in args.text_model:
         text_processor = AutoTokenizer.from_pretrained("distilbert/distilbert-base-uncased", cache_dir='cache/hf-cache')
