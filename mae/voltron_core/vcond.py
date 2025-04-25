@@ -401,7 +401,11 @@ class VCond(nn.Module):
             )
 
         # Add Position Embeddings
-        decoder_patches = unshuffled_patches + self.decoder_pe
+        decoder_pe = self.decoder_pe
+        if decoder_pe.shape[1] != unshuffled_patches.shape[1]:
+            # Dynamic Position Embedding
+            decoder_pe = self.interpolate_pos_encoding(unshuffled_patches, decoder_pe, 320, 160)
+        decoder_patches = unshuffled_patches + decoder_pe
 
         # Apply Transformer Blocks...
         for block in self.decoder_blocks:
@@ -537,16 +541,14 @@ class VCond(nn.Module):
         - https://github.com/facebookresearch/dino/blob/de9ee3df6cf39fac952ab558447af1fa1365362a/vision_transformer.py#L174-L194, and
         - https://github.com/facebookresearch/dinov2/blob/e1277af2ba9496fbadf7aec6eba56e8d882d1e35/dinov2/models/vision_transformer.py#L179-L211
         """
-
-        num_patches = embeddings.shape[1] - 1
-        num_positions = position_embeddings.shape[1] - 1
+        num_patches = embeddings.shape[1] 
+        num_positions = position_embeddings.shape[1]
 
         # always interpolate when tracing to ensure the exported model works for dynamic input shapes
         if num_patches == num_positions and height == width:
             return position_embeddings
 
-        class_pos_embed = position_embeddings[:, :1]
-        patch_pos_embed = position_embeddings[:, 1:]
+        patch_pos_embed = position_embeddings
 
         dim = embeddings.shape[-1]
 
@@ -566,7 +568,7 @@ class VCond(nn.Module):
 
         patch_pos_embed = patch_pos_embed.permute(0, 2, 3, 1).view(1, -1, dim)
 
-        return torch.cat((class_pos_embed, patch_pos_embed), dim=1)
+        return patch_pos_embed
     
 
     # def configure_optimizer(self) -> Tuple[torch.optim.Optimizer, Callable[[int, float], float]]:
