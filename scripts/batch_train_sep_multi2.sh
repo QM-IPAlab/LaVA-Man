@@ -11,14 +11,14 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=chaoran.zhu@qmul.ac.uk
 
-#module load Miniconda3/4.12.0
-#source activate mae-cliport
+module load Miniconda3/4.12.0
+source activate mae-cliport
 
 export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 export TOKENIZERS_PARALLELISM=false
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=0
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 # ======== Checklist ========= #
@@ -33,16 +33,16 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 # 8. check the agent name: sep or not sept, if sep, check train.sep_mode is set to pick or place
 
 
-# exps_name="exps_cliport/0419_voltron"
-# agent_name="mae_sep_base"
-# pretrain_path="/home/robot/Repositories_chaoran/CLIPort_new_loss/checkpoints/voltron-omni-checkpoint-399.pth"
-# mae_model="voltron"
-#pretrain_path=False
+exps_name="exps_cliport/0419_voltron"
+agent_name="mae_sep_base"
+pretrain_path="checkpoints/voltron-omni-checkpoint-399.pth"
+mae_model="voltron"
+pretrain_path=False
 
-exps_name="exps_cliport/0419_ours"
-agent_name="mae_fuse"
-pretrain_path="/home/robot/Repositories_chaoran/MPI/checkpoints/checkpoint-220-fuse-no-pretrained.pth"
-mae_model="mae_fuse"
+# exps_name="exps_cliport/0419_ours"
+# agent_name="mae_fuse"
+# pretrain_path="/home/robot/Repositories_chaoran/MPI/checkpoints/checkpoint-220-fuse-no-pretrained.pth"
+# mae_model="mae_fuse"
 
 
 # python -m cliport.train  train.task=packing-omni-objects\
@@ -91,8 +91,22 @@ mae_model="mae_fuse"
 #                          train.data_dir="/home/robot/Repositories_chaoran/CLIPort_new_loss/data_ours"
                          
 
+# python cliport/eval_sep.py model_task=packing-omni-objects\
+#                     eval_task=packing-omni-objects-inter \
+#                     agent=${agent_name} \
+#                     mode=test \
+#                     n_demos=100 \
+#                     train_demos=1000 \
+#                     exp_folder=${exps_name} \
+#                     checkpoint_type=best \
+#                     update_results=True \
+#                     disp=False\
+#                     record.save_video=False\
+#                     data_dir="data_ours"
+
+
 python cliport/eval_sep.py model_task=packing-omni-objects\
-                    eval_task=packing-omni-objects-group \
+                    eval_task=packing-omni-objects-intra\
                     agent=${agent_name} \
                     mode=test \
                     n_demos=100 \
@@ -102,21 +116,7 @@ python cliport/eval_sep.py model_task=packing-omni-objects\
                     update_results=True \
                     disp=False\
                     record.save_video=False\
-                    data_dir="/home/robot/Repositories_chaoran/CLIPort_new_loss/data_ours"
-
-
-python cliport/eval_sep.py model_task=packing-omni-objects\
-                    eval_task=packing-omni-objects-group\
-                    agent=${agent_name} \
-                    mode=test \
-                    n_demos=100 \
-                    train_demos=1000 \
-                    exp_folder=${exps_name} \
-                    checkpoint_type=last \
-                    update_results=True \
-                    disp=False\
-                    record.save_video=False\
-                    data_dir="/home/robot/Repositories_chaoran/CLIPort_new_loss/data_ours"
+                    data_dir="data_ours"
 
 python cliport/eval_sep.py model_task=packing-omni-objects\
                     eval_task=packing-omni-objects-group-intra \
@@ -129,47 +129,34 @@ python cliport/eval_sep.py model_task=packing-omni-objects\
                     update_results=True \
                     disp=False\
                     record.save_video=False\
-                    data_dir="/home/robot/Repositories_chaoran/CLIPort_new_loss/data_ours"
+                    data_dir="data_ours"
 
-python cliport/eval_sep.py model_task=packing-omni-objects\
-                    eval_task=packing-omni-objects-group-intra \
-                    agent=${agent_name} \
-                    mode=test \
-                    n_demos=100 \
-                    train_demos=1000 \
-                    exp_folder=${exps_name} \
-                    checkpoint_type=last \
-                    update_results=True \
-                    disp=False\
-                    record.save_video=False\
-                    data_dir="/home/robot/Repositories_chaoran/CLIPort_new_loss/data_ours"
+# python cliport/eval_sep.py model_task=packing-omni-objects\
+#                     eval_task=packing-omni-objects-group-inter \
+#                     agent=${agent_name} \
+#                     mode=test \
+#                     n_demos=100 \
+#                     train_demos=1000 \
+#                     exp_folder=${exps_name} \
+#                     checkpoint_type=best \
+#                     update_results=True \
+#                     disp=False\
+#                     record.save_video=False\
+#                     data_dir="data_ours"
 
 
-python cliport/eval_sep.py model_task=packing-omni-objects\
-                    eval_task=packing-omni-objects-group-inter\
-                    agent=${agent_name} \
-                    mode=test \
-                    n_demos=100 \
-                    train_demos=1000 \
-                    exp_folder=${exps_name} \
-                    checkpoint_type=best \
-                    update_results=True \
-                    disp=False\
-                    record.save_video=False\
-                    data_dir="/home/robot/Repositories_chaoran/CLIPort_new_loss/data_ours"
-
-python cliport/eval_sep.py model_task=packing-omni-objects\
-                    eval_task=packing-omni-objects-group-inter \
-                    agent=${agent_name} \
-                    mode=test \
-                    n_demos=100 \
-                    train_demos=1000 \
-                    exp_folder=${exps_name} \
-                    checkpoint_type=last \
-                    update_results=True \
-                    disp=False\
-                    record.save_video=False\
-                    data_dir="/home/robot/Repositories_chaoran/CLIPort_new_loss/data_ours"
+# python cliport/eval_sep.py model_task=packing-omni-objects\
+#                     eval_task=packing-omni-objects-group\
+#                     agent=${agent_name} \
+#                     mode=test \
+#                     n_demos=100 \
+#                     train_demos=1000 \
+#                     exp_folder=${exps_name} \
+#                     checkpoint_type=best \
+#                     update_results=True \
+#                     disp=False\
+#                     record.save_video=False\
+#                     data_dir="data_ours"
 
 
 # python cliport/eval_sep.py model_task=packing-omni-objects\

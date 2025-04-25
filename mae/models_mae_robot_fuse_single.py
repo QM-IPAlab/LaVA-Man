@@ -54,7 +54,7 @@ class MAERobotLangFuseSingle(MAERobot):
 
         # decoder
         pred = self.forward_ca_decoder(latent, ids_restore, lang_emb)
-        loss = self.forward_loss2(img2, pred, mask)
+        loss = self.forward_loss(img2, pred, mask)
 
         return loss, pred, mask
     
@@ -80,7 +80,7 @@ class MAERobotLangFuseSingle(MAERobot):
         decoder_pos_embed = self.decoder_pos_embed
         if self.decoder_pos_embed.shape[1] != x.shape[1]:
             decoder_pos_embed = self.interpolate_pos_encoding(x, decoder_pos_embed, 320, 160)
-        x = x + self.decoder_pos_embed
+        x = x + decoder_pos_embed
 
         out1 = x
         out2 = None

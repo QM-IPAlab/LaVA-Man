@@ -60,10 +60,10 @@ class DistributedSameDatasetBatchSampler(Sampler):
         # 计算数据集的索引范围
         self.dataset_ranges = np.cumsum([0] + self.lens)
 
+        self.epoch = 0
+
         # 计算 batch 索引
         self._create_batches()
-
-        self.epoch = 0
 
     def _create_batches(self):
         rng = np.random.default_rng(self.epoch)
@@ -86,6 +86,13 @@ class DistributedSameDatasetBatchSampler(Sampler):
                 batch_indices.append(batch)
 
         if self.shuffle: rng.shuffle(batch_indices)  # 打乱 batch 顺序
+
+        remainder = len(batch_indices) % self.num_replicas
+        if remainder != 0:
+            pad_count = self.num_replicas - remainder
+            for _ in range(pad_count):
+                batch_indices.append(batch_indices[-1])  # 复制最后一个 batch
+
 
         self.batch_indices = batch_indices[self.rank::self.num_replicas]
 

@@ -173,3 +173,7 @@ ros_requirements.txt
 .hydra/
 .hydra/config.yaml
 ziIDifn8
+.hydra/config.yaml
+.hydra/overrides.yaml
+.hydra/hydra.yaml
+OmniObjects_text

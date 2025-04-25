@@ -145,6 +145,12 @@ def get_fix_transform():
         transforms.Normalize(mean=MEAN_CLIPORT, std=STD_CLIPORT)])
     return trasform_fix
 
+def get_ravens_transform():
+    trasform_fix = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(mean=MEAN_CLIPORT, std=STD_CLIPORT)])
+    return trasform_fix
+
 def get_fix_transform_standnorm():
     
     class StandardNormalize(object):
@@ -208,12 +214,14 @@ def main(args):
         transform_train = get_voltron_transform()
     elif 'bert' in args.text_model:
         print('User BERT transform')
-        transform_train = get_voltron_transform()
+        transform_train = get_voltron_transform()       
     else: 
         print('User default transform')
-    
+
     # other dataset
-    ravens_train = MAEDataset(transform=transform_train, data_path="scratch/top_down_omniobj_white.hdf5", aug=args.aug, condition_free=args.condition_free)
+    if args.multisize: 
+        transform_ravens = get_ravens_transform()
+    ravens_train = MAEDataset(transform=transform_ravens, data_path="scratch/top_down_omniobj_white.hdf5", aug=args.aug, condition_free=args.condition_free)
     #ego4d_train = MAEDataset(transform=transform_train, data_path="scratch/mae-data/ego4d_interactive.hdf5", aug=args.aug, condition_free=args.condition_free)
     #co3d_train = MAEDataset(transform=transform_train, data_path="image_pairs_with_captions.hdf5", aug=args.aug, condition_free=args.condition_free)
 
@@ -235,12 +243,11 @@ def main(args):
     #dataset_train = Subset(dataset_train, range(600))
     
     #TODO: How to use args to set all training datasets?
-    #TODO: How to define the validation dataset?
     
     if True:  # args.distributed:
         num_tasks = misc.get_world_size()
         global_rank = misc.get_rank()
-        print("num  and global rank:", num_tasks, global_rank)
+        print("num and global rank:", num_tasks, global_rank)
         if args.multisize:
             print("Assuming data are of different size")
             sampler_train = DistributedSameDatasetBatchSampler(
@@ -278,7 +285,7 @@ def main(args):
 
         
     if global_rank == 0 and args.my_log:
-        wandb.init(project='MAE', name=args.model, entity='cxz', id=args.wandb_resume)
+        wandb.init(project='MAE', name=args.output_dir, entity='cxz', id=args.wandb_resume)
         log_writer = wandb
     else:
         log_writer = None
@@ -376,7 +383,10 @@ def main(args):
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
-            data_loader_train.sampler.set_epoch(epoch)
+            if args.multisize:
+                data_loader_train.batch_sampler.set_epoch(epoch)
+            else:
+                data_loader_train.sampler.set_epoch(epoch)
 
         train_stats = train_one_epoch_ours(
             model, data_loader_train,
@@ -388,9 +398,10 @@ def main(args):
         )
 
         if args.output_dir and (epoch % 20 == 0 or epoch + 1 == args.epochs):
-            misc.save_model(
-                args=args, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer,
-                loss_scaler=loss_scaler, epoch=epoch)
+            if epoch in [160,220,399]:
+                misc.save_model(
+                    args=args, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer,
+                    loss_scaler=loss_scaler, epoch=epoch)
 
             validate_vis_img2(model_without_ddp, 
                               data_loader_vis, device, 
