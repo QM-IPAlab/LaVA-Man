@@ -125,9 +125,8 @@ for data in dataset_meta:
 
     data_s1 = []
     data_s2 = []
-    data_cv = [] # cross view
-    data_mask_s1 = [] # mask between s1 and s2
-    data_mask_cv = [] # mask between cv2 and cv2
+    data_cv1 = [] # cross-view1
+    data_cv2 = [] # cross-view2
     data_language = []
     
     f = h5py.File(os.path.join('/data/home/acw694/CLIPort_new_loss/scratch/data_hdf5',
@@ -147,6 +146,7 @@ for data in dataset_meta:
     
     print(f"Start processing dataset: {dataset_name}")
     for n_sample, batch in enumerate(filtered_ds):
+
         if (n_sample + 1) % 1000 == 0: 
             print(f"processed {n_sample} samples")
             
@@ -162,33 +162,29 @@ for data in dataset_meta:
             first_valid = is_valid_language(current_first_instruction)
             last_valid = is_valid_language(last_instruction)
 
-            # 只有 Start 和 End 各有至少 2 张非零图片才处理
+            # only when cross-view images are available
             if len(current_first_images) >= 2 and len(last_images) >= 2 and first_valid and last_valid:
-                # 随机选择 Start 的 index
+                
+                # random choose index of start image
                 start_idx = random.choice(current_first_indices)
                 start_img = get_nested_value(batch_start, img_keys[start_idx])
 
                 # 选取 End 的 index（必须和 Start 的 index 不同）
                 crossview_idx_choices = [idx for idx in last_indices if idx != start_idx]
                 if not crossview_idx_choices:
-                    warnings.warn("No valid crossview index available, skipping.")
+                    warnings.warn("No valid cross-view index available, skipping.")
                     continue
 
                 crossview_idx = random.choice(crossview_idx_choices)
                 target_image = get_nested_value(batch, img_keys[start_idx])
-                crossview_image = get_nested_value(batch, img_keys[crossview_idx])
+                crossview_target_image = get_nested_value(batch, img_keys[crossview_idx])
                 crossview_start_image = get_nested_value(batch_start, img_keys[crossview_idx])
-
-                # masks
-                mask_s1 = compute_mask(start_img, target_image)
-                mask_cv = compute_mask(crossview_start_image, crossview_image)
 
                 # 存储数据
                 data_s1.append(start_img)
                 data_s2.append(target_image)
-                data_cv.append(crossview_image)
-                data_mask_s1.append(mask_s1[:,:,None])
-                data_mask_cv.append(mask_cv[:,:,None])
+                data_cv1.append(crossview_start_image)
+                data_cv2.append(crossview_target_image)
                 data_language.append(current_first_instruction)
 
                 batch_start = None
@@ -204,20 +200,18 @@ for data in dataset_meta:
 
     data_s1 = np.array(data_s1)
     data_s2 = np.array(data_s2)
-    data_cv = np.array(data_cv)
-    data_mask_s1 = np.array(data_mask_s1)
-    data_mask_cv = np.array(data_mask_cv)
+    data_cv1 = np.array(data_cv1)
+    data_cv2 = np.array(data_cv2)
     data_language = np.array(data_language, dtype=h5py.special_dtype(vlen=bytes))
 
     n1 = append_or_create_dataset(f, 'image_s1', data=data_s1)
     n2 = append_or_create_dataset(f, 'image_s2', data=data_s2)
     n3 = append_or_create_dataset(f, 'language', data=data_language, dtype=h5py.special_dtype(vlen=bytes))
-    n4 = append_or_create_dataset(f, 'image_cv', data=data_cv)
-    n5 = append_or_create_dataset(f, 'mask_s1', data=data_mask_s1)
-    n6 = append_or_create_dataset(f, 'mask_cv', data=data_mask_cv)
+    n4 = append_or_create_dataset(f, 'image_cv1', data=data_cv1)
+    n5 = append_or_create_dataset(f, 'image_cv2', data=data_cv2)
     f.close()
 
-    assert n1 == n2 == n3 == n4 == n5 == n6
+    assert n1 == n2 == n3 == n4 == n5
 
     print(f'Saved {len(data_s1)} samples to the hdf5 file.')
     print(f'Current number of samples in hdf5 file: {n3}.')

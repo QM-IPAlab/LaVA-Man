@@ -9,11 +9,10 @@ export MASTER_PORT=$(python -c 'import socket; s=socket.socket(); s.bind(("", 0)
 
 python mae/main_pretrain_ours.py \
     --model mae_fuse \
-    --batch_size 64 \
+    --batch_size 96 \
     --input_size 224 224 \
     --output_dir  exps/debug \
     --pretrain checkpoints/mae_pretrain_vit_base.pth\
-    --data_path scratch/bridge_256_train.hdf5 \
-    --test_path scratch/bridge_256_val.hdf5\
     --mask_ratio 0.95 \
     --epochs 100 \
+    --multisize
