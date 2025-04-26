@@ -13,14 +13,19 @@ from cliport import agents
 from cliport import dataset
 from cliport import tasks
 from cliport.utils import utils
-#from cliport.environments.environment import Environment
-from cliport.environments.environment_ours import EnvironmentWhite as Environment
+
 import cliport.utils.visual_utils as vu
 
 @hydra.main(config_path='./cfg', config_name='eval')
 def main(vcfg):
     # Load train cfg
     tcfg = utils.load_hydra_config(vcfg['train_config'])
+    if 'omni' in vcfg['eval_task']:
+        print("Importing our Omni Env ...")
+        from cliport.environments.environment_ours import EnvironmentWhite as Environment
+    else :
+        print("Importing ravens Env ...")
+        from cliport.environments.environment import Environment
 
     # Initialize environment and task.
     env = Environment(
