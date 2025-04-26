@@ -83,8 +83,10 @@ class MPI(nn.Module):
         :param use_cls_token: Add <CLS> token for continued pretraining (NOTE: not used in MAE pretraining/finetuning!)
         """
         super().__init__()
-        if isinstance(img_size, Tuple): 
+        if isinstance(img_size, (Tuple, List)): 
+            self.img_size = img_size
             img_size = img_size[0]
+            
         self.resolution, self.patch_size, self.mask_ratio = img_size, patch_size, mask_ratio
         self.in_channels, self.norm_pixel_loss, self.mlp_ratio = in_channels, norm_pixel_loss, mlp_ratio
         self.optimizer, self.schedule, self.betas, self.weight_decay = optimizer, schedule, betas, weight_decay
@@ -364,8 +366,11 @@ class MPI(nn.Module):
 
         # Patchify, broadcast position embedding 
         patches = self.patch2embed(rearrange(img_ctx, "bsz ctx channels res1 res2 -> (bsz ctx) channels res1 res2"))
-        patches_pe = patches + self.encoder_pe
-        
+        encoder_pe = self.encoder_pe
+        if encoder_pe.shape[1] != patches.shape[1]:
+            # Dynamic Position Embedding
+            encoder_pe = self.interpolate_pos_encoding(patches, encoder_pe, self.img_size[0], self.img_size[1])
+        patches_pe = patches + encoder_pe
         ctx_patches = rearrange(patches_pe, "(bsz ctx) seq embed -> bsz ctx seq embed", ctx=2)
         b, c, seq, d = ctx_patches.shape
         
@@ -424,11 +429,19 @@ class MPI(nn.Module):
         # Use aggregated encoder visual tokens to initialize detection query
         det_query = self.encoder2decoder_det_query(aggregated_embedding_vis).unsqueeze(1)
 
+        decoder_pe = self.decoder_pe
+        if decoder_pe.shape[1] != projected_patches.shape[1]:
+            # Dynamic Position Embedding
+            decoder_pe = self.interpolate_pos_encoding(projected_patches, decoder_pe, self.img_size[0], self.img_size[1])
+
+        if self.img_size[0] == 64 :
+            return fused_visual_embed
+
         det_query_per_layer = []
         for idx, layer in enumerate(self.MotionFormer):
             reconstruction_queries, det_query = layer(
                                 query = reconstruction_queries,
-                                pos_embed = self.decoder_pe,   # Adaptive PE Scaling
+                                pos_embed = decoder_pe,   # Adaptive PE Scaling
                                 src = projected_patches,
                                 reference_points = reference_points,
                                 src_spatial_shapes = spatial_shapes,
@@ -490,6 +503,84 @@ class MPI(nn.Module):
         loss = rec_loss  + contra_loss
 
         return loss, ctx_reconstructions, None
+
+    def cliport_forward(self, img: torch.Tensor, lang: dict) -> torch.Tensor:
+        imgs = torch.stack([img, img], dim=1)
+        input_ids, attention_mask = lang["input_ids"], lang["attention_mask"]
+        task_flag = [True] * img.shape[0]
+        self.patch_embed = self.patch2embed
+        self.img_size = (img.shape[2],img.shape[3])
+        new_patch_h = img.shape[2]//16
+        new_patch_w = img.shape[3]//16
+
+        def generate_reference_boxes(resolution_w, resolution_h, patch_size):
+            grid_x, grid_y = torch.meshgrid(
+                torch.linspace(patch_size // 2 - 1, resolution_w - patch_size // 2 - 1, resolution_w // patch_size),
+                torch.linspace(patch_size // 2 - 1, resolution_h - patch_size // 2 - 1, resolution_h // patch_size),
+                indexing='xy'
+            )
+            grid = torch.stack((grid_x, grid_y), dim=-1)  # (grid_w, grid_h, 2)
+            reference_boxes = torch.cat(
+                (grid, patch_size * torch.ones((grid.shape[0], grid.shape[1], 2))),
+                dim=-1
+            ).unsqueeze(0)  # (1, grid_w, grid_h, 4)
+            reference_boxes = reference_boxes / torch.tensor([resolution_w, resolution_h, resolution_w, resolution_h])
+            return reference_boxes  # Shape: (1, grid_w, grid_h, 4)
+        self.reference_boxes = generate_reference_boxes(img.shape[3], img.shape[2], self.patch_size).to(img.device)
+        
+
+        def resize_embedding(old_embedding: nn.Embedding, 
+                            old_hw: tuple, 
+                            new_hw: tuple) -> nn.Embedding:
+            """
+            Resize an nn.Embedding representing a 2D grid into a new grid size using bilinear interpolation.
+
+            Args:
+                old_embedding (nn.Embedding): original embedding table (num_patches, embed_dim)
+                old_hw (tuple): (height, width) of old patch grid
+                new_hw (tuple): (height, width) of new patch grid
+
+            Returns:
+                nn.Embedding: new resized embedding
+            """
+            # Unpack dimensions
+            old_h, old_w = old_hw
+            new_h, new_w = new_hw
+            num_patches_old, embed_dim = old_embedding.weight.shape
+            
+            # Sanity check
+            assert num_patches_old == old_h * old_w, "Old hw does not match number of embeddings"
+
+            # Reshape weight (num_patches, embed_dim) -> (1, embed_dim, old_h, old_w)
+            weight_2d = old_embedding.weight.transpose(0, 1).reshape(1, embed_dim, old_h, old_w)
+
+            # Bilinear interpolate
+            weight_2d_resized = F.interpolate(weight_2d, size=(new_h, new_w), mode='bilinear', align_corners=False)
+
+            # Reshape back (1, embed_dim, new_h, new_w) -> (new_h * new_w, embed_dim)
+            weight_resized = weight_2d_resized.reshape(embed_dim, -1).transpose(0, 1)
+
+            # Create new embedding
+            new_num_patches = new_h * new_w
+            new_embedding = nn.Embedding(new_num_patches, embed_dim)
+            new_embedding.weight.data.copy_(weight_resized)
+
+            return new_embedding
+        
+        if self.reconstruction_embedding.weight.shape[0] != new_patch_h * new_patch_w:
+            self.reconstruction_embedding = resize_embedding( self.reconstruction_embedding,
+                                                            (14,14),
+                                                            (new_patch_h,new_patch_w)).to(img.device)
+        
+        if self.img_size[0] == 64 :
+            return self.forward_encoder(imgs, input_ids, attention_mask, task_flag)
+        
+        reconstruction_queries, \
+        aggregated_embedding_vis, \
+        aggregated_embedding_lang, \
+        det_query_per_layer = self.forward_encoder(imgs, input_ids, attention_mask, task_flag)
+        ctx_reconstructions = self.forward_decoder(reconstruction_queries, aggregated_embedding_vis, det_query_per_layer)
+        return ctx_reconstructions
 
     def patchify(self, imgs: torch.Tensor) -> torch.Tensor:
         """Convert a batch of (0th + Kth frame) images to their patched equivalents by naive reshaping."""
@@ -568,3 +659,41 @@ class MPI(nn.Module):
         x = torch.einsum('nhwpqc->nchpwq', x)
         imgs = x.reshape(shape=(x.shape[0], 3, h * p, w * p))
         return imgs
+
+    def interpolate_pos_encoding(self, embeddings: torch.Tensor, position_embeddings, height: int, width: int) -> torch.Tensor:
+        """
+        This method allows to interpolate the pre-trained position encodings, to be able to use the model on higher resolution
+        images. This method is also adapted to support torch.jit tracing.
+
+        Adapted from:
+        - https://github.com/facebookresearch/dino/blob/de9ee3df6cf39fac952ab558447af1fa1365362a/vision_transformer.py#L174-L194, and
+        - https://github.com/facebookresearch/dinov2/blob/e1277af2ba9496fbadf7aec6eba56e8d882d1e35/dinov2/models/vision_transformer.py#L179-L211
+        """
+        num_patches = embeddings.shape[1] 
+        num_positions = position_embeddings.shape[1]
+
+        # always interpolate when tracing to ensure the exported model works for dynamic input shapes
+        if num_patches == num_positions and height == width:
+            return position_embeddings
+
+        patch_pos_embed = position_embeddings
+
+        dim = embeddings.shape[-1]
+
+        new_height = height // self.patch_size
+        new_width = width // self.patch_size
+
+        sqrt_num_positions = int(num_positions**0.5)
+        patch_pos_embed = patch_pos_embed.reshape(1, sqrt_num_positions, sqrt_num_positions, dim)
+        patch_pos_embed = patch_pos_embed.permute(0, 3, 1, 2)
+
+        patch_pos_embed = nn.functional.interpolate(
+            patch_pos_embed,
+            size=(new_height, new_width),
+            mode="bicubic",
+            align_corners=False,
+        )
+
+        patch_pos_embed = patch_pos_embed.permute(0, 2, 3, 1).view(1, -1, dim)
+
+        return patch_pos_embed

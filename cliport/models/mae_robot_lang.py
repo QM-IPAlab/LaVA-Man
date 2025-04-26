@@ -658,16 +658,19 @@ class MAESegBaseModel(nn.Module):
             nn.Conv2d(16, self.output_dim, kernel_size=1)
         )
 
-        if 'voltron' in model_name: 
+        if 'voltron' in model_name or 'mpi' in model_name: 
             self.text_processor = AutoTokenizer.from_pretrained("distilbert-base-uncased", cache_dir=CACHE_PATH)
+            self.dist = 'voltron'
+            
+            input_dim = 384 if 'voltron' in model_name else 768
             self.layer1 = nn.Sequential(
-                ConvBlock(384, [256, 256, 256], kernel_size=3, stride=1, batchnorm=self.batchnorm),
+                ConvBlock(input_dim, [256, 256, 256], kernel_size=3, stride=1, batchnorm=self.batchnorm),
                 IdentityBlock(256, [256, 256, 256], kernel_size=3, stride=1, batchnorm=self.batchnorm),
                 nn.UpsamplingBilinear2d(scale_factor=2),
             )
         else:
             self.text_processor = AutoTokenizer.from_pretrained("openai/clip-vit-base-patch32")
-
+            self.dist = 'clip'
 
     def unpatchify(self, x):
         p = self.model.patch_embed.patch_size[0]
@@ -702,7 +705,7 @@ class MAESegBaseModel(nn.Module):
 
     @get_local('predict', 'rgb', 'relevance')
     def forward(self, x, lang):
-        img_processed = self.preprocess(x, dist='clip')
+        img_processed = self.preprocess(x, dist=self.dist)
         lang_processed = self.get_lang_processed(lang, img_processed.device) 
 
         in_shape = img_processed.shape
@@ -1501,7 +1504,7 @@ class MAEFuseSeg2ModelFullMask(MAESeg2ModelFullMask):
         out = self.model.decoder_norm(out1)
        
         out = out[:, 1:, :]  # 1, 400, 512
-        out = self.unpatchify(out)
+        out = self.unpatchify_feature(out, rgb.shape[2], rgb.shape[3] )
 
         out = self.layer1(out)
         out = self.cat1(out, rgb)
@@ -1518,6 +1521,13 @@ class MAEFuseSeg2ModelFullMask(MAESeg2ModelFullMask):
 
         predict = self.conv(out)
         return predict
+
+    def unpatchify_feature(self, x, h=0, w=0):
+        p = self.model.patch_embed.patch_size[0]
+        h = h // p
+        w = w // p
+        x = rearrange(x, 'b (nh nw) c -> b c nh nw', nh=h, nw=w)
+        return x
 
 
 class MAESeg2ModelCLIPVision(MAESeg2Model):
