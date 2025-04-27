@@ -1,4 +1,12 @@
-"""Data collection script."""
+"""Data collection script.
+MARK how to change the plane and the background color:
+    change the background color: in cliport/environments/assets/plane/plane.urdf,
+        in the material part, change the color of the background
+    change the plane color: in cliport/environments/assets/ur5/workspace.urdf,
+        in the material part, change the color of the plane
+
+"""
+
 
 import os
 import hydra
@@ -36,11 +44,11 @@ def main(cfg):
     seed = dataset.max_seed
     if seed < 0:
         if task.mode == 'train':
-            seed = -2 + 100000 # +100000 for new dataset with full colors
+            seed = -2 # +100000 for new dataset with full colors
         elif task.mode == 'val': # NOTE: beware of increasing val set to >100
-            seed = -1 + 100000
+            seed = -1 
         elif task.mode == 'test':
-            seed = -1 + 10000 + 100000
+            seed = -1 + 10000 
         else:
             raise Exception("Invalid mode. Valid options: train, val, test")
 

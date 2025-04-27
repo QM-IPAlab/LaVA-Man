@@ -37,7 +37,7 @@ class RealDataset(Dataset):
             self.path = os.path.join(self.path, task_name, 'test', 'unseen')
             self.augment = False
         elif data_type == 'train_all':
-            self.path = "/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_real_idiap"
+            self.path = "/home/a/acw694/CLIPort_new_loss/data_real_idiap"
             self.augment = True
         self.annotation_file = os.path.join(self.path, 'annotations.json')
         self.in_shape = (320, 160, 6)

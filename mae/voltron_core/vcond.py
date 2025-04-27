@@ -25,8 +25,8 @@ from mae.util.pos_embed import get_2d_varsize_sincos_pos_embed
 
 # Suppress Transformers Logging
 transformers.logging.set_verbosity_error()
-
-CACHE_PATH = "/home/a/acw694/CLIPort_new_loss/cache"
+CACHE_PATH = "cache"
+#CACHE_PATH = "/home/robot/Repositories_chaoran/CLIPort_new_loss"
 
 def get_2D_position_embeddings_ours(embed_dim: int, h: int, w: int, cls_token: bool = False):
     # Create 2D Position embeddings by taking cross product of height and width and splicing 1D embeddings...
@@ -46,20 +46,21 @@ def get_2D_position_embeddings_ours(embed_dim: int, h: int, w: int, cls_token: b
 class VCond(nn.Module):
     def __init__(
         self,
-        resolution: Tuple[int, int],
-        patch_size: int,
-        encoder_depth: int,
-        encoder_embed_dim: int,
-        encoder_n_heads: int,
-        decoder_depth: int,
-        decoder_embed_dim: int,
-        decoder_n_heads: int,
-        language_dim: int,
+        img_size: Tuple[int, int] = (224,224),
+        patch_size: int = 16,
+        encoder_depth: int = 12,
+        encoder_embed_dim: int = 384,
+        encoder_n_heads: int = 6,
+        decoder_depth: int = 6,
+        decoder_embed_dim: int = 192,
+        decoder_n_heads: int = 6,
+        language_dim: int = 768,
         mask_ratio: float = 0.75,
         mlp_ratio: float = 4.0,
         in_channels: int = 3,
         norm_pixel_loss: bool = True,
         use_cls_token: bool = False,
+        **kwargs
     ) -> None:
         """
         Initialize a VCond model with the requisite architecture parameters.
@@ -91,7 +92,7 @@ class VCond(nn.Module):
         :param use_cls_token: Add <CLS> token for continued pretraining (NOTE: not used in MAE pretraining/finetuning!)
         """
         super().__init__()
-        self.resolution, self.patch_size, self.mask_ratio = resolution, patch_size, mask_ratio
+        self.resolution, self.patch_size, self.mask_ratio = img_size, patch_size, mask_ratio
         self.in_channels, self.norm_pixel_loss, self.mlp_ratio = in_channels, norm_pixel_loss, mlp_ratio
         self.use_cls_token = use_cls_token
         self.language_dim = language_dim
@@ -274,9 +275,10 @@ class VCond(nn.Module):
 
         :return: Extracted representations given (img, language) input as sequence.
         """
-        assert img.ndim == 4 and (
-            language is None or isinstance(language, list) or isinstance(language, tuple)
-        ), "Invalid input to `get_representations()`"
+        assert img.ndim == 4 
+        #and (
+        #    language is None or isinstance(language, list) or isinstance(language, tuple)
+        #), "Invalid input to `get_representations()`"
         assert mode in {"multimodal", "visual"}, f"Extraction mode `{mode}` not supported!"
 
         # Tokenize Language --> note max length is 20!
@@ -284,8 +286,8 @@ class VCond(nn.Module):
             lang, lang_mask = [torch.zeros(img.shape[0], 20, dtype=int, device=self.lm.device) for _ in range(2)]
             lang[:, 0], lang_mask[:, 0] = self.tokenizer.cls_token_id, 1
         else:
-            tokens = self.tokenizer(language, return_tensors="pt", max_length=20, padding="max_length", truncation=True)
-            lang, lang_mask = tokens["input_ids"].to(self.lm.device), tokens["attention_mask"].to(self.lm.device)
+            #tokens = self.tokenizer(language, return_tensors="pt", max_length=20, padding="max_length", truncation=True)
+            lang, lang_mask = language["input_ids"].to(self.lm.device), language["attention_mask"].to(self.lm.device)
 
             # Tile Language & Language Mask if mismatch with # images!
             if not len(lang) == len(img):
@@ -310,6 +312,10 @@ class VCond(nn.Module):
             patches = torch.cat([cls_tokens, patches], dim=1)
 
         # Position Encoding
+        encoder_pe = self.encoder_pe
+        if encoder_pe.shape[1] != patches.shape[1]:
+            # Dynamic Position Embedding
+           encoder_pe = self.interpolate_pos_encoding(patches, encoder_pe, 320, 160)
         patches_pe = patches + self.encoder_pe
 
         # Add "modality" embeddings to patches & language
@@ -336,7 +342,12 @@ class VCond(nn.Module):
 
         # Patchify + Position Embedding (without <CLS> Token!)
         patches = self.patch2embed(img)
-        patches_pe = patches + (self.encoder_pe if not self.use_cls_token else self.encoder_pe[:, 1:, :])
+        # Dynamic Position Embedding
+        encoder_pe = self.encoder_pe
+        if encoder_pe.shape[1] != patches.shape[1]:
+            # Dynamic Position Embedding
+            encoder_pe = self.interpolate_pos_encoding(patches, encoder_pe, 320, 160)
+        patches_pe = patches + (encoder_pe if not self.use_cls_token else encoder_pe[:, 1:, :])
 
         # Create mask (and go ahead and mask out patches at the same time)
         visible_patches, mask, restore_idxs = self.mask(patches_pe, mask_ratio)
@@ -390,7 +401,11 @@ class VCond(nn.Module):
             )
 
         # Add Position Embeddings
-        decoder_patches = unshuffled_patches + self.decoder_pe
+        decoder_pe = self.decoder_pe
+        if decoder_pe.shape[1] != unshuffled_patches.shape[1]:
+            # Dynamic Position Embedding
+            decoder_pe = self.interpolate_pos_encoding(unshuffled_patches, decoder_pe, 320, 160)
+        decoder_patches = unshuffled_patches + decoder_pe
 
         # Apply Transformer Blocks...
         for block in self.decoder_blocks:
@@ -516,6 +531,44 @@ class VCond(nn.Module):
         # Run final projection & return --> note <CLS> token handling!
         decoder_prediction = self.decoder_prediction(decoder_patches)
         return decoder_prediction
+    
+    def interpolate_pos_encoding(self, embeddings: torch.Tensor, position_embeddings, height: int, width: int) -> torch.Tensor:
+        """
+        This method allows to interpolate the pre-trained position encodings, to be able to use the model on higher resolution
+        images. This method is also adapted to support torch.jit tracing.
+
+        Adapted from:
+        - https://github.com/facebookresearch/dino/blob/de9ee3df6cf39fac952ab558447af1fa1365362a/vision_transformer.py#L174-L194, and
+        - https://github.com/facebookresearch/dinov2/blob/e1277af2ba9496fbadf7aec6eba56e8d882d1e35/dinov2/models/vision_transformer.py#L179-L211
+        """
+        num_patches = embeddings.shape[1] 
+        num_positions = position_embeddings.shape[1]
+
+        # always interpolate when tracing to ensure the exported model works for dynamic input shapes
+        if num_patches == num_positions and height == width:
+            return position_embeddings
+
+        patch_pos_embed = position_embeddings
+
+        dim = embeddings.shape[-1]
+
+        new_height = height // self.patch_size
+        new_width = width // self.patch_size
+
+        sqrt_num_positions = int(num_positions**0.5)
+        patch_pos_embed = patch_pos_embed.reshape(1, sqrt_num_positions, sqrt_num_positions, dim)
+        patch_pos_embed = patch_pos_embed.permute(0, 3, 1, 2)
+
+        patch_pos_embed = nn.functional.interpolate(
+            patch_pos_embed,
+            size=(new_height, new_width),
+            mode="bicubic",
+            align_corners=False,
+        )
+
+        patch_pos_embed = patch_pos_embed.permute(0, 2, 3, 1).view(1, -1, dim)
+
+        return patch_pos_embed
     
 
     # def configure_optimizer(self) -> Tuple[torch.optim.Optimizer, Callable[[int, float], float]]:

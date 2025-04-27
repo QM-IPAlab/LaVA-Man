@@ -160,3 +160,29 @@ python cliport/train.py  train.task=multi-language-conditioned\
     #                     update_results=True \
     #                     disp=False\
     #                     record.save_video=False
+
+
+python cliport/train.py  train.task=${task_name}\
+                         train.agent=${agent_name}\
+                         train.exp_folder=${exps_name}\
+                         wandb.run_name=${exps_name}_${task_name}\
+                         train.n_demos=100 \
+                         train.n_steps=40100 \
+                         train.lr_scheduler=True\
+                         train.lr=2e-5\
+                         train.warmup_epochs=10\
+                         train.precision=32\
+                         train.batch_size=1\
+                         train.batchnorm=True\
+                         train.load_from_last_ckpt=False\
+                         train.log=False\
+                         mae_model=voltron \
+                         pretrain_path=False\
+                         cliport_checkpoint=False\
+                         dataset.cache=False \
+                         dataset.type=real_all\
+                         train.sep_mode=pick\
+                         train.linear_probe=True\
+                         #text_model="openai/clip-vit-base-patch16"\
+
+

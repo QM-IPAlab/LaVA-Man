@@ -11,6 +11,7 @@
 import argparse
 import datetime
 import json
+from random import shuffle
 import numpy as np
 import os
 import time
@@ -18,9 +19,8 @@ from pathlib import Path
 import wandb
 
 import torch
-import torch.backends.cudnn as cudnn
 import torchvision.transforms as transforms
-from torch.utils.data import Subset
+from torch.utils.data import Subset,ConcatDataset
 
 #import timm
 #import timm.optim.optim_factory as optim_factory
@@ -30,10 +30,13 @@ from util.misc import NativeScalerWithGradNormCount as NativeScaler
 from engine_pretrain_ours import train_one_epoch_ours, validate_vis_img2
 from save_relevance import save_relevance_maps
 from dataset_mae import MAEDataset
+from dataset_crossview import MAEDatasetCV,MAEDatasetCVGoal, MAEDatasetCV2
+from dataset_diffmask import MAEDatasetCVDf
 import models_lib
 from transformers import AutoTokenizer
 from cliport.models.core.clip import CLIPResTokenizer
 import sys
+from sampler import SameDatasetBatchSampler, DistributedSameDatasetBatchSampler
 
 
 #assert timm.__version__ == "0.3.2"  # version check
@@ -44,6 +47,8 @@ TEST_PATH = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/data_hdf5/exist_dat
 
 def get_args_parser():
     parser = argparse.ArgumentParser('MAE pre-training', add_help=False)
+    
+    # Training paramters
     parser.add_argument('--batch_size', default=64, type=int,
                         help='Batch size per GPU (effective batch size is batch_size * accum_iter * # gpus')
     parser.add_argument('--epochs', default=400, type=int)
@@ -53,13 +58,10 @@ def get_args_parser():
     # Model parameters
     parser.add_argument('--model', default='None', type=str, metavar='MODEL',
                         help='Name of model to train')
-
-    parser.add_argument('--input_size', default=224, type=int,
-                        help='images input size')
-
+    parser.add_argument('--input_size', default=(224, 224), nargs=2, type=int,
+                    help="Images input size as two integers, e.g., '224 224'")
     parser.add_argument('--mask_ratio', default=0.75, type=float,
                         help='Masking ratio (percentage of removed patches).')
-
     parser.add_argument('--norm_pix_loss', action='store_true',
                         help='Use (per-patch) normalized pixels as targets for computing loss')
     parser.set_defaults(norm_pix_loss=False)
@@ -67,21 +69,20 @@ def get_args_parser():
     # Optimizer parameters
     parser.add_argument('--weight_decay', type=float, default=0.05,
                         help='weight decay (default: 0.05)')
-
     parser.add_argument('--lr', type=float, default=None, metavar='LR',
                         help='learning rate (absolute lr)')
     parser.add_argument('--blr', type=float, default=1e-3, metavar='LR',
                         help='base learning rate: absolute_lr = base_lr * total_batch_size / 256')
     parser.add_argument('--min_lr', type=float, default=0., metavar='LR',
                         help='lower lr bound for cyclic schedulers that hit 0')
-
     parser.add_argument('--warmup_epochs', type=int, default=40, metavar='N',
                         help='epochs to warmup LR')
 
     # Dataset parameters
     parser.add_argument('--data_path', default=PATH, type=str,
                         help='dataset path')
-
+    parser.add_argument('--test_path', default=TEST_PATH, type=str,
+                        help='test dataset path')
     parser.add_argument('--output_dir', default='./debug',
                         help='path where to save, empty for no saving')
     parser.add_argument('--my_log', action='store_true',
@@ -99,6 +100,9 @@ def get_args_parser():
                         help='Pin CPU memory in DataLoader for more efficient (sometimes) transfer to GPU.')
     parser.add_argument('--no_pin_mem', action='store_false', dest='pin_mem')
     parser.set_defaults(pin_mem=False)
+    parser.add_argument('--multisize', action='store_true',
+                        help='Use multi-view training')
+    parser.set_defaults(multiview=False)
 
     # distributed training parameters
     parser.add_argument('--world_size', default=1, type=int,
@@ -109,7 +113,7 @@ def get_args_parser():
                         help='url used to set up distributed training')
 
     # ours parameters and other function
-    parser.add_argument('--pretrain', default=None, type=str)
+    parser.add_argument('--pretrain', default=None, type=parse_pretrain)
     parser.add_argument('--demo', action='store_true')
     parser.add_argument('--save_ca', action='store_true', help='save cross attention maps')
     parser.add_argument('--wandb_resume', default=None, type=str)
@@ -121,6 +125,11 @@ def get_args_parser():
     parser.add_argument('--condition_free', action='store_true')
     return parser
 
+def parse_pretrain(value):
+    if value.lower() in ['none', 'false']:
+        return False
+    return value  # 返回路径字符串
+
 def get_flip_transform():
     transform_flip = transforms.Compose([
         transforms.ToTensor(),
@@ -130,6 +139,13 @@ def get_flip_transform():
     return transform_flip
 
 def get_fix_transform():
+    trasform_fix = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Resize((224,224)),
+        transforms.Normalize(mean=MEAN_CLIPORT, std=STD_CLIPORT)])
+    return trasform_fix
+
+def get_ravens_transform():
     trasform_fix = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(mean=MEAN_CLIPORT, std=STD_CLIPORT)])
@@ -152,7 +168,7 @@ def get_fix_transform_standnorm():
 
 def get_aug_transform(input_size):
     transform_train = transforms.Compose([
-        transforms.RandomResizedCrop(args.input_size, scale=(0.2, 1.0), interpolation=3),  # 3 is bicubic
+        transforms.RandomResizedCrop(input_size, scale=(0.2, 1.0), interpolation=3),  # 3 is bicubic # type: ignore
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         transforms.Normalize(mean=MEAN_CLIPORT, std=STD_CLIPORT)])
@@ -193,37 +209,88 @@ def main(args):
         transform_train = get_fix_transform()
     
     # replace with voltron transform if model is voltron
-    #if 'voltron' in args.model:
-    #    transform_train = get_voltron_transform()
+    if 'voltron' in args.model or 'dino' in args.model or 'mpi' in args.model:
+        print('User Voltron image transform')
+        transform_train = get_voltron_transform()
+    elif 'bert' in args.text_model:
+        print('User BERT transform')
+        transform_train = get_voltron_transform()       
+    else: 
+        print('User default transform')
 
-    dataset_train = MAEDataset(transform=transform_train, data_path=args.data_path, aug=args.aug, condition_free=args.condition_free)
-    dataset_vis = MAEDataset(transform=transform_train, data_path=TEST_PATH, aug=False)
-    #dataset_train = Subset(dataset_train, range(600))
+    # other dataset
+    if args.multisize: 
+        transform_ravens = get_ravens_transform()
+    else:
+        transform_ravens = get_fix_transform()
+    ravens_train = MAEDataset(transform=transform_ravens, data_path="scratch/top_down_omniobj_white.hdf5", aug=args.aug, condition_free=args.condition_free)
+    #ego4d_train = MAEDataset(transform=transform_train, data_path="scratch/mae-data/ego4d_interactive.hdf5", aug=args.aug, condition_free=args.condition_free)
+    #co3d_train = MAEDataset(transform=transform_train, data_path="image_pairs_with_captions.hdf5", aug=args.aug, condition_free=args.condition_free)
 
+    # original dataset
+    #droid_train = MAEDatasetCV2(transform=transform_train, data_path="scratch/droid_256_cv_4imgs.hdf5", aug=args.aug, condition_free=args.condition_free)
+    #bridge_train = MAEDatasetCV2(transform=transform_train, data_path="scratch/bridge_256_cv_4imgs.hdf5", aug=args.aug, condition_free=args.condition_free)
+    droid_train = MAEDataset(transform=transform_train, data_path="scratch/droid_left.hdf5", aug=args.aug, condition_free=args.condition_free)
+    bridge_train = MAEDataset(transform=transform_train, data_path="scratch/bridge_256_train.hdf5", aug=args.aug, condition_free=args.condition_free)
+    # cv goal datasets (2 image but crossview)
+    #bridge_train = MAEDatasetCVGoal(transform=transform_train, data_path="scratch/bridge_crossview_goal_3imgs.hdf5", aug=args.aug, condition_free=args.condition_free)
+    #droid_train = MAEDatasetCVGoal(transform=transform_train, data_path="scratch/droid_multiview_3imgs.hdf5", aug=args.aug, condition_free=args.condition_free)
+    
+    # cv datasets 3 images
+    #bridge_train = MAEDatasetCV(transform=transform_train, data_path="scratch/bridge_crossview_goal_3imgs.hdf5", aug=args.aug, condition_free=args.condition_free)
+    #droid_train = MAEDatasetCV(transform=transform_train, data_path="scratch/droid_multiview_3imgs.hdf5", aug=args.aug, condition_free=args.condition_free)
+    
+    dataset_train = ConcatDataset([droid_train,bridge_train,ravens_train])
+    dataset_vis = MAEDataset(transform=transform_train, data_path="scratch/bridge_256_val.hdf5", aug=False)
+    dataset_train = Subset(dataset_train, range(600))
+    
+    #TODO: How to use args to set all training datasets?
+    
     if True:  # args.distributed:
         num_tasks = misc.get_world_size()
         global_rank = misc.get_rank()
-        print("num tasks and global rank:", num_tasks, global_rank)
-        sampler_train = torch.utils.data.DistributedSampler(
-            dataset_train, num_replicas=num_tasks, rank=global_rank, shuffle=True
-        )
-        print("Sampler_train = %s" % str(sampler_train))
-    else:
-        sampler_train = torch.utils.data.RandomSampler(dataset_train)
+        print("num and global rank:", num_tasks, global_rank)
+        if args.multisize:
+            print("Assuming data are of different size")
+            sampler_train = DistributedSameDatasetBatchSampler(
+                [droid_train, bridge_train, ravens_train],
+                batch_size=args.batch_size,
+                num_replicas=num_tasks,
+                rank=global_rank,
+                drop_last=True,
+                shuffle=True)
+            
+            data_loader_train = torch.utils.data.DataLoader(
+                dataset_train, 
+                batch_sampler=sampler_train,
+                num_workers=4,
+                pin_memory=args.pin_mem,
+            )
 
+        else:
+            print("Assuming data are of the same size")
+            sampler_train = torch.utils.data.DistributedSampler(
+                dataset_train,
+                num_replicas=num_tasks,
+                rank=global_rank,
+                shuffle=True)
+            
+            data_loader_train = torch.utils.data.DataLoader(
+                dataset_train, 
+                sampler=sampler_train,
+                batch_size=args.batch_size,
+                num_workers=4,
+                pin_memory=args.pin_mem,
+                drop_last=True,
+                shuffle=False
+            )
+
+        
     if global_rank == 0 and args.my_log:
-        wandb.init(project='MAE', name=args.model, entity='cxz', mode='offline', id=args.wandb_resume)
+        wandb.init(project='MAE', name=args.output_dir, entity='cxz', id=args.wandb_resume)
         log_writer = wandb
     else:
         log_writer = None
-
-    data_loader_train = torch.utils.data.DataLoader(
-        dataset_train, sampler=sampler_train,
-        batch_size=args.batch_size,
-        num_workers=2,
-        pin_memory=args.pin_mem,
-        drop_last=True
-    )
 
     data_loader_vis = torch.utils.data.DataLoader(
         dataset_vis, batch_size=1, shuffle=False,
@@ -231,7 +298,8 @@ def main(args):
     )
 
     # define the model
-    model = models_lib.__dict__[args.model](norm_pix_loss=args.norm_pix_loss, text_model=args.text_model)
+    args.input_size = tuple(args.input_size)  # Convert list to tuple
+    model = models_lib.__dict__[args.model](norm_pix_loss=args.norm_pix_loss, text_model=args.text_model, img_size=args.input_size)
     print("Imported model: %s" % args.model)
     model.to(device)
     model_without_ddp = model
@@ -252,8 +320,10 @@ def main(args):
     # define the text processor
     if 'res' in args.model:
         text_processor = CLIPResTokenizer()
-    elif 'voltron' in args.model:
+    elif 'voltron' in args.model or 'mpi' in args.model:
         text_processor = AutoTokenizer.from_pretrained("distilbert-base-uncased", cache_dir='cache/hf-cache')
+    elif 'bert' in args.text_model:
+        text_processor = AutoTokenizer.from_pretrained("distilbert/distilbert-base-uncased", cache_dir='cache/hf-cache')
     else:
         text_processor = AutoTokenizer.from_pretrained(args.text_model)
     
@@ -284,10 +354,6 @@ def main(args):
     else:
         misc.load_model(args=args, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler)
     
-    # condition free
-    if args.condition_free:
-        print("Enabled condition free training")
-        model_without_ddp.copy_mask_tokens()
 
 # ============== Demo mode ==============
     if args.demo:
@@ -319,7 +385,10 @@ def main(args):
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
-            data_loader_train.sampler.set_epoch(epoch)
+            if args.multisize:
+                data_loader_train.batch_sampler.set_epoch(epoch)
+            else:
+                data_loader_train.sampler.set_epoch(epoch)
 
         train_stats = train_one_epoch_ours(
             model, data_loader_train,
@@ -331,9 +400,10 @@ def main(args):
         )
 
         if args.output_dir and (epoch % 20 == 0 or epoch + 1 == args.epochs):
-            misc.save_model(
-                args=args, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer,
-                loss_scaler=loss_scaler, epoch=epoch)
+            if epoch in [160,220,399]:
+                misc.save_model(
+                    args=args, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer,
+                    loss_scaler=loss_scaler, epoch=epoch)
 
             validate_vis_img2(model_without_ddp, 
                               data_loader_vis, device, 

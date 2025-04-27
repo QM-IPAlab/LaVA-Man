@@ -1,21 +1,27 @@
 """
-Construct a real HDF5 file from the real dataset (RT-1-X)
-"""
+Construct a HDF5 file from the real image dataset (RT-1-X)
 
-#load the dataset
+python build_real_hdf5_2.py -s train -o name
+
+"""
 import os
-os.environ['CURL_CA_BUNDLE'] = '/etc/ssl/certs/ca-bundle.crt'
 import tensorflow as tf 
 import tensorflow_datasets as tfds
-import tqdm
 import h5py
 import numpy as np
-from PIL import Image
 import cv2
-import matplotlib.pyplot as plt
 import warnings
 import nltk
 from nltk.corpus import words
+import argparse
+
+os.environ['CURL_CA_BUNDLE'] = '/etc/ssl/certs/ca-bundle.crt'
+
+parser = argparse.ArgumentParser(description="Evaluate validation data.")
+parser.add_argument("-s", "--split", type=str, default="train", help="train or val split")
+parser.add_argument("-o", "--output_name", type=str, default="real_img", help="output name of the dataset")
+
+args = parser.parse_args()
 
 nltk.download('words')
 word_list = set(words.words())
@@ -25,14 +31,14 @@ dataset_meta = [
     'img_key': ['observation','image_0'],
     'lang_key': ['language_instruction']
     },
-   {'name' :'cmu_play_fusion',
-    'img_key': ['observation','image'],
-    'lang_key': ['language_instruction']
-    },
-    {'name' :'jaco_play',
-    'img_key': ['observation','image'],
-    'lang_key': ['observation','natural_language_instruction']
-    }
+#    {'name' :'cmu_play_fusion',
+#     'img_key': ['observation','image'],
+#     'lang_key': ['language_instruction']
+#     },
+#     {'name' :'jaco_play',
+#     'img_key': ['observation','image'],
+#     'lang_key': ['observation','natural_language_instruction']
+#     }
 ]
 
 data_dir= '/data/home/acw694/CLIPort_new_loss/scratch/tensorflow_datasets'
@@ -81,7 +87,7 @@ def resize_and_crop_longest_edge_cv2(image, target_height=320, target_width=160)
     
      # rotate if width > height
     if input_width > input_height:
-        image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+        image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE) # type: ignore
     input_height, input_width = image.shape[:2]
     
     # 计算目标的宽高比
@@ -99,7 +105,7 @@ def resize_and_crop_longest_edge_cv2(image, target_height=320, target_width=160)
         new_width = int(input_width * (target_height / input_height))  # 按比例调整宽度
 
     # 使用 OpenCV 的 resize 方法，保持宽高比
-    resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
+    resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA) # type: ignore
 
     # 获取调整后图像的高度和宽度
     current_height, current_width = resized_image.shape[:2]
@@ -117,11 +123,11 @@ def resize_and_crop_longest_edge_cv2(image, target_height=320, target_width=160)
     pad_width = max(target_width - resized_image.shape[1], 0)
 
     # 使用 cv2.copyMakeBorder 进行填充
-    padded_image = cv2.copyMakeBorder(
+    padded_image = cv2.copyMakeBorder( # type: ignore
         resized_image,
         pad_height // 2, pad_height - pad_height // 2,
         pad_width // 2, pad_width - pad_width // 2,
-        cv2.BORDER_CONSTANT, value=[0, 0, 0]  # 填充黑色
+        cv2.BORDER_CONSTANT, value=[0, 0, 0]  # 填充黑色 # type: ignore
     )
 
     return padded_image
@@ -132,7 +138,7 @@ def resize_and_crop_longest_edge(image, target_height=320, target_width=160):
     
     # rotate if width > height
     if input_width > input_height:
-        image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+        image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE) # type: ignore
     input_height, input_width = image.shape[:2]
     
     # scale iamge if the height is less than target height
@@ -140,7 +146,7 @@ def resize_and_crop_longest_edge(image, target_height=320, target_width=160):
         scale_factor = target_height / input_height
         new_width = int(input_width * scale_factor)
         new_height = target_height
-        image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
+        image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA) # type: ignore
 
     cropped_image = center_crop(image, target_height, target_width)
     
@@ -160,7 +166,6 @@ def center_crop(image, target_height, target_width):
     cropped_image = image[start_y:start_y + target_height, start_x:start_x + target_width]
     
     return cropped_image
-
 
 def is_valid_language(input_data):
     
@@ -193,15 +198,15 @@ for data in dataset_meta:
     data_s2 = []
     data_language = []
     f = h5py.File(os.path.join('/data/home/acw694/CLIPort_new_loss/scratch/data_hdf5',
-                                    'real_img_v2_full_val.hdf5'), 'a')
+                                    f'{args.output_name}.hdf5'), 'a')
     
     # load the dataset
     ds, ds_info = tfds.load(
-        dataset_name, data_dir = data_dir, download=False, split='val', with_info=True)
+        dataset_name, data_dir = data_dir, download=False, split=args.split, with_info=True) # type: ignore
     print(f"Successfully load dataset: {dataset_name}")
 
     # first map to steps
-    ds_steps = ds.map(
+    ds_steps = ds.map( # type: ignore
         episode2steps, num_parallel_calls=tf.data.AUTOTUNE).flat_map(lambda x: x)
 
     # then filtered out the first and the last image
@@ -226,8 +231,8 @@ for data in dataset_meta:
             last_valid = is_valid_language(last_instruction)
             if current_first_instruction  == last_instruction and first_valid and last_valid:
                 #Add them to our lists
-                data_s1.append(resize_and_crop_longest_edge(current_first_image))
-                data_s2.append(resize_and_crop_longest_edge(last_image))
+                data_s1.append(current_first_image)
+                data_s2.append(last_image)
                 data_language.append(current_first_instruction)
             else:
                 warnings.warn("Instruction is not the same or not valid, skipping.")

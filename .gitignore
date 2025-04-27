@@ -9,7 +9,15 @@ output*/
 wandb*/
 *.png
 debug/
-scripts_hpc/
+*.json
+*.pth 
+*.hdf5
+/data_debug
+/data*
+.hydra/
+/omni*
+/hf_cache
+exps
 # Folders
 cliport/data/
 cliport/outputs/
@@ -31,7 +39,9 @@ lightning_logs/
 *.zip
 /data-real
 *.ckpt
-
+/untrain_vis
+/models--distilbert-base-uncased
+/.hydra
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -84,7 +94,7 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
-
+scratch
 # Translations
 *.mo
 *.pot
@@ -160,6 +170,13 @@ dmypy.json
 .pyre/
 
 ros_requirements.txt
+.hydra/
+.hydra/config.yaml
+ziIDifn8
+.hydra/config.yaml
+.hydra/overrides.yaml
+.hydra/hydra.yaml
+OmniObjects_text
 exps_real_sep_seg2_add
 .gitignore
 output_mae_robot_lang_big_extra2

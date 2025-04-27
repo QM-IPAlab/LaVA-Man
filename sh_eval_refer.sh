@@ -5,18 +5,25 @@
 #SBATCH --mem-per-cpu=3850
 #SBATCH --gres=gpu:ampere_a100:1
 #SBATCH --partition=gpu
-#SBATCH --time=08:00:00
+#SBATCH --time=24:00:00
 #SBATCH --account=su008-acw694
 
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 
-# module load Miniconda3/4.12.0
-# source activate mae-cliport
+#module load Miniconda3/4.12.0
+#source activate mae-cliport
 
+
+# Train voltron ours
+# python mae/eval_refer.py \
+#     --model voltron \
+#     --pretrain  /home/a/acw694/CLIPort_new_loss/checkpoints/voltron_ours_pretrain.ckpt\
+#     --mask_ratio 0.75  \
+#     --text_model distilbert-base-uncased
+
+#Train mae_robot_lang
 python mae/eval_refer.py \
-    --model voltron \
-    --pretrain  /home/a/acw694/CLIPort_new_loss/checkpoints/voltron_ours_pretrain.ckpt\
+    --model mae_fuse \
+    --pretrain  /home/robot/Repositories_chaoran/MPI/checkpoints/fuse_multisize_checkpoint-399.pth\
     --mask_ratio 0.95  \
-    --text_model None
-

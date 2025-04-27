@@ -51,6 +51,23 @@ def get_2d_varsize_sincos_pos_embed(embed_dim, height, width, cls_token=False):
         pos_embed = np.concatenate([np.zeros([1, embed_dim]), pos_embed], axis=0)
     return pos_embed
 
+def get_2d_varsize_sincos_pos_embed_varied_tokens(embed_dim, height, width, cls_token=1):
+    """
+    grid_size: int of the grid height and width
+    return:
+    pos_embed: [grid_size*grid_size, embed_dim] or [1+grid_size*grid_size, embed_dim] (w/ or w/o cls_token)
+    """
+    grid_h = np.arange(height, dtype=np.float32)
+    grid_w = np.arange(width, dtype=np.float32)
+    grid = np.meshgrid(grid_w, grid_h)  # here w goes first
+    grid = np.stack(grid, axis=0)
+
+    grid = grid.reshape([2, 1, grid_h.size, grid_w.size])
+    pos_embed = get_2d_sincos_pos_embed_from_grid(embed_dim, grid)
+    if cls_token:
+        pos_embed = np.concatenate([np.zeros([cls_token, embed_dim]), pos_embed], axis=0)
+    return pos_embed
+
 
 def get_2d_sincos_pos_embed_from_grid(embed_dim, grid):
     assert embed_dim % 2 == 0

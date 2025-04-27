@@ -340,6 +340,9 @@ def preprocess(img, dist='transporter'):
     clip_color_mean = [0.48145466, 0.4578275, 0.40821073]
     clip_color_std = [0.26862954, 0.26130258, 0.27577711]
 
+    voltron_color_mean = [0.485, 0.456, 0.406]
+    voltron_color_std = [0.229, 0.224, 0.225]
+
     # choose distribution
     if dist == 'clip':
         color_mean = clip_color_mean
@@ -347,6 +350,9 @@ def preprocess(img, dist='transporter'):
     elif dist == 'franka':
         color_mean = franka_color_mean
         color_std = franka_color_std
+    elif dist == 'voltron':
+        color_mean = voltron_color_mean
+        color_std = voltron_color_std
     else:
         color_mean = transporter_color_mean
         color_std = transporter_color_std

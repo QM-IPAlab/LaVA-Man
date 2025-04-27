@@ -10,27 +10,27 @@ export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 
-exps_name="exps_real_sep_seg2_add_lp"
-agent_name="mae_sep_seg2_add"
+exps_name="exps_real_cliport"
+agent_name="clip_lingunet_transporter"
 
 # ======== task name ========= #
 
 task_name="pack_objects"
 
-# python cliport/train.py  train.task=multi-language-conditioned\
-#                          train.agent=${agent_name}\
-#                          train.exp_folder=${exps_name}\
-#                          wandb.run_name=debug\
-#                          train.n_demos=1000 \
-#                          train.n_steps=60100 \
-#                          train.precision=32\
-#                          train.batch_size=1\
-#                          train.batchnorm=True\
-#                          train.load_from_last_ckpt=False\
-#                          train.log=False\
-#                          cliport_checkpoint=False\
-#                          dataset.cache=False \
-#                          dataset.type=mix\
+python cliport/train.py  train.task=${task_name}\
+                         train.agent=${agent_name}\
+                         train.exp_folder=${exps_name}\
+                         wandb.run_name=debug\
+                         train.n_demos=100 \
+                         train.n_steps=40100 \
+                         train.precision=32\
+                         train.batch_size=1\
+                         train.batchnorm=False\
+                         train.load_from_last_ckpt=False\
+                         train.log=False\
+                         cliport_checkpoint=False\
+                         dataset.cache=False \
+                         dataset.type=real\
 
 # python -m cliport.train  train.task=${task_name}\
 #                          train.agent=${agent_name}\
@@ -54,51 +54,7 @@ task_name="pack_objects"
 #                          #cliport_checkpoint=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/exps_extra_unbatched/multi-language-conditioned-mae_seg2-n1000-train/checkpoints/best.ckpt\
 
 
-python cliport/train.py  train.task=pack_objects\
-                         train.agent=${agent_name}\
-                         train.exp_folder=${exps_name}\
-                         wandb.run_name=${exps_name}_${task_name}\
-                         train.n_demos=100 \
-                         train.n_steps=40100 \
-                         train.lr_scheduler=True\
-                         train.lr=2e-5\
-                         train.warmup_epochs=10\
-                         train.precision=32\
-                         train.batch_size=16\
-                         train.batchnorm=True\
-                         train.load_from_last_ckpt=False\
-                         train.log=False\
-                         mae_model=mae_robot_lang \
-                         pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_mix_v2_full/checkpoint-60.pth\
-                         cliport_checkpoint=False\
-                         dataset.cache=False \
-                         dataset.type=real\
-                         train.sep_mode=place\
-                         train.linear_probe=True
-
-python cliport/train.py  train.task=pack_objects\
-                         train.agent=${agent_name}\
-                         train.exp_folder=${exps_name}\
-                         wandb.run_name=${exps_name}_${task_name}\
-                         train.n_demos=100 \
-                         train.n_steps=40100 \
-                         train.lr_scheduler=True\
-                         train.lr=2e-5\
-                         train.warmup_epochs=10\
-                         train.precision=32\
-                         train.batch_size=32\
-                         train.batchnorm=True\
-                         train.load_from_last_ckpt=False\
-                         train.log=False\
-                         mae_model=mae_robot_lang \
-                         pretrain_path=/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/output_mae_robot_lang_mix_v2_full/checkpoint-60.pth\
-                         cliport_checkpoint=False\
-                         dataset.cache=False \
-                         dataset.type=real\
-                         train.sep_mode=pick\
-                         train.linear_probe=True
-
-python cliport/eval_pick_place_sep.py model_task=pack_objects\
+python cliport/eval_pick_place.py model_task=pack_objects\
                        eval_task=${task_name} \
                        agent=${agent_name} \
                        mode=test_unseen \
@@ -111,31 +67,6 @@ python cliport/eval_pick_place_sep.py model_task=pack_objects\
                        record.save_video=False\
                        type=real_ours\
 
-python cliport/eval_pick_place_sep.py model_task=pack_objects\
-                       eval_task=${task_name} \
-                       agent=${agent_name} \
-                       mode=test_unseen \
-                       n_demos=100 \
-                       train_demos=100 \
-                       exp_folder=${exps_name} \
-                       checkpoint_type=best \
-                       update_results=True \
-                       disp=False\
-                       record.save_video=False\
-                       type=real\
-
-python cliport/eval_pick_place_sep.py model_task=pack_objects\
-                       eval_task=${task_name} \
-                       agent=${agent_name} \
-                       mode=test_seen \
-                       n_demos=100 \
-                       train_demos=100 \
-                       exp_folder=${exps_name} \
-                       checkpoint_type=best \
-                       update_results=True \
-                       disp=False\
-                       record.save_video=False\
-                       type=real\
 
 # python cliport/eval_pick_place.py model_task=${task_name}\
 #                        eval_task=${task_name} \
@@ -148,7 +79,7 @@ python cliport/eval_pick_place_sep.py model_task=pack_objects\
 #                        update_results=True \
 #                        disp=False\
 #                        record.save_video=False\
-#                        type=real_ours\
+#                        type=real\
 
 
 # python cliport/eval_pick_place.py model_task=${task_name}\

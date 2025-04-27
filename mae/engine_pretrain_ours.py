@@ -3,6 +3,7 @@ import sys
 from typing import Iterable
 from unittest.util import _MAX_LENGTH
 
+from numpy import isin
 import torch
 
 import util.misc as misc
@@ -47,8 +48,14 @@ def train_one_epoch_ours(model: torch.nn.Module,
 
         # get batch
         img1, img2, lang, pick, place = batch
-        img1 = img1.to(device, non_blocking=True).half()
-        img2 = img2.to(device, non_blocking=True).half()
+        if isinstance(img1, list):
+            img1 = list(i.to(device, non_blocking=True).half() for i in img1)
+        else:
+            img1 = img1.to(device, non_blocking=True).half()
+        if isinstance(img2, list):
+            img2 = list(i.to(device, non_blocking=True).half() for i in img2)
+        else:
+            img2 = img2.to(device, non_blocking=True).half()
         pick = pick.to(device, non_blocking=True).half()
         place = place.to(device, non_blocking=True).half()
 
@@ -61,6 +68,11 @@ def train_one_epoch_ours(model: torch.nn.Module,
         with torch.cuda.amp.autocast():
             loss, _, _ = model(img1, img2, pick, place, processed_lang, mask_ratio=args.mask_ratio)
 
+        if isinstance(loss, tuple):
+            loss_pred, loss_complete = loss
+            loss = loss_pred + 0.1 * loss_complete
+        else:
+            loss_pred, loss_complete = 0, 0
         loss_value = loss.item()
 
         if not math.isfinite(loss_value):
@@ -97,7 +109,15 @@ def train_one_epoch_ours(model: torch.nn.Module,
             epoch_1000x = int((data_iter_step / len(data_loader) + epoch) * 1000)
             log_writer.log({
                 'train_loss': loss_value_reduce,
-                'lr': lr,
+                'lr': lr
+            }, step=epoch_1000x)
+            
+            if loss_pred :
+                loss_pred_value_reduce = misc.all_reduce_mean(loss_pred.item())
+                loss_complete_value_reduce = misc.all_reduce_mean(loss_complete.item())
+                log_writer.log({
+                    'train_loss_pred': loss_pred_value_reduce,
+                    'train_loss_complete': loss_complete_value_reduce
                 }, step=epoch_1000x)
 
     # gather the stats from all processes
@@ -124,9 +144,12 @@ def validate_vis_img2(model: torch.nn.Module,
         place = place.to(device, non_blocking=True).float()
 
         with torch.no_grad():
+            
             max_length = 20 if 'voltron' in args.model else 77
             processed_lang = generate_token(text_processor, lang, device, max_length)    
-            loss, predict, mask = model(img1, img2, pick, place, processed_lang, mask_ratio=args.mask_ratio)
+            if 'cv' in args.model: img2_input = list([img2,img2])
+            else: img2_input = img2
+            loss, predict, mask = model(img1, img2_input, pick, place, processed_lang, mask_ratio=args.mask_ratio)
             loss += loss.item()
 
             if data_iter_step in TESTSET_IDX or data_iter_step-1 in TESTSET_IDX:

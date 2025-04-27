@@ -25,8 +25,12 @@ class Real207Dataset(Dataset):
 
         print(f"Loading real 207 dataset...") 
 
-    
-        self.path = "/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/real_img_eng207" # FIXME: hardcoded path
+        self.augment = augment
+        if data_type == 'train_ann':
+            self.path = "/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/real_annotated"
+        else:
+            self.path = "/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/real_img_eng207" # FIXME: hardcoded path
+
         self.annotation_file = os.path.join(self.path, 'annotations.json')
         self.in_shape = (320, 160, 6)
         self.pix_size = 0.003125
@@ -87,6 +91,9 @@ class Real207Dataset(Dataset):
 
         p0_theta = 0
         p1_theta = 0
+
+        if self.augment:
+            img, _, (p0, p1), perturb_params = utils.perturb(img, [p0, p1])
         
         img = np.float32(img)
         sample = {

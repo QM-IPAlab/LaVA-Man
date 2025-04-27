@@ -2,16 +2,32 @@
 Choose which model to load
 """
 from models_mae_robot import MAERobotBase, MAERobot
-from models_mae_robot_lang import MAERobotLang, MAERobotLangNoRef, MAERobotLang2, MAERobotLangRecon
+from models_mae_robot_lang import MAERobotLang, MAERobotLangNoRef, MAERobotLang2, MAERobotLangRecon, MAERobotLangDiffLoss
 from models_mae_robot_lang import MAERobotLangDualMasking, MAERobotLangReverse, MAERobotLangCF, MAERobotLangReverse2, MAERobotLangNodec
 from models_mae_robot_lang_vision import MAERobotLangVisonE, MAERobotLangVisonProjector, MAERobotLangVisonProMul, MAERobotLangVisonProMulCat
 from models_mae_robot_lang_vision2 import MAERobotLangVisonCLIP, MAERobotLangVisonCLIPRes, MAECLIP, MAECLIPPE
 from models_mae_robot_lang_relevance import MAERobotLangRel
 from models_mae_robot_cliploss import MAERobotLangCLIPLoss
 from models_mae_robot_lang_jepa import JEPARobotLang, JEPARobotLang2loss
-from voltron_instantiate import voltron_vcond
+from models_croco import MAERobotLangCroco
+from models_mae_robot_lang_single import MAERobotLangSingle
+from mae.voltron_core.vcond import VCond
+from mae.mpi_models.mpi_model import MPI
+from mae.models_mae_robot_lang_dert import MAERobotLangDertDecode
+from mae.models_mae_robot_fuse import MAERobotLangFuse, MAERobotLangFuseTaskToken, MAERobotLangFuseMix, MAERobotLangFuseDual
+from mae.models_mae_robot_fuse_cv import MAERobotLangFuseCV, MAERobotLangFuseCVDiffLoss
+from mae.models_mae_robot_fuse_single import MAERobotLangFuseSingle, MAERobotLangFuseSingleSiamese, MAERobotLangFuseSingleSiamese2
+from mae.models_mae_robot_latent import MAERobotLangFuseDino,MAERobotLangFuseDinoDecoder
 from functools import partial
 import torch.nn as nn
+
+
+def mae_vit_base_patch16_croco(**kwargs):
+    model = MAERobotLangCroco(
+        patch_size=16, embed_dim=768, depth=12, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
 
 
 def mae_vit_base_patch16_rl_noref(**kwargs):
@@ -23,6 +39,13 @@ def mae_vit_base_patch16_rl_noref(**kwargs):
 
 def mae_vit_base_patch16_rl(**kwargs):
     model = MAERobotLang(
+        patch_size=16, embed_dim=768, depth=12, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
+def mae_vit_base_patch16_rl_diffloss(**kwargs):
+    model = MAERobotLangDiffLoss(
         patch_size=16, embed_dim=768, depth=12, num_heads=12,
         decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
@@ -187,7 +210,7 @@ def jepa_vit_base_patch16_rl_2loss(**kwargs):
     return model
 
 def vcond(**kwargs):
-    model = voltron_vcond()
+    model = VCond(**kwargs)
     return model
 
 def mae_vit_base_patch16_rlcf(**kwargs):
@@ -196,6 +219,116 @@ def mae_vit_base_patch16_rlcf(**kwargs):
         decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
         mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
+
+def mae_vit_base_patch16_single(**kwargs):
+    model = MAERobotLangSingle(
+        patch_size=16, embed_dim=768, depth=12, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
+def mae_vit_base_patch16_dert(**kwargs):
+    model = MAERobotLangDertDecode(
+        patch_size=16, embed_dim=768, depth=12, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=8, decoder_num_heads=16,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
+def mae_vit_base_patch16_fuse(**kwargs):
+    model = MAERobotLangFuse(
+        patch_size=16, embed_dim=768, depth=6, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=4, decoder_num_heads=8,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
+def mae_vit_base_patch16_fuse_cv(**kwargs):
+    model = MAERobotLangFuseCV(
+        patch_size=16, embed_dim=768, depth=6, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=4, decoder_num_heads=8,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
+def mae_vit_base_patch16_fuse_cv_df(**kwargs):
+    model = MAERobotLangFuseCVDiffLoss(
+        patch_size=16, embed_dim=768, depth=6, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=4, decoder_num_heads=8,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
+def mae_vit_base_patch16_fuse_task_token(**kwargs):
+    model = MAERobotLangFuseTaskToken(
+        patch_size=16, embed_dim=768, depth=6, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=4, decoder_num_heads=8,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
+def mae_vit_base_patch16_fuse_single(**kwargs):
+    model = MAERobotLangFuseSingle(
+        patch_size=16, embed_dim=768, depth=6, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=4, decoder_num_heads=8,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
+def mae_vit_base_patch16_dino(**kwargs):
+    model = MAERobotLangFuseDino(
+        patch_size=14, embed_dim=768, depth=12, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=4, decoder_num_heads=8,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
+def mae_vit_base_patch16_dino_decoder(**kwargs):
+    model = MAERobotLangFuseDinoDecoder(
+        patch_size=14, embed_dim=768, depth=12, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=4, decoder_num_heads=8,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
+def mae_vit_base_patch16_fuse_single_siamese(**kwargs):
+    model = MAERobotLangFuseSingleSiamese(
+        patch_size=16, embed_dim=768, depth=6, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=4, decoder_num_heads=8,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
+def mae_vit_base_patch16_fuse_single_siamese2(**kwargs):
+    model = MAERobotLangFuseSingleSiamese2(
+        patch_size=16, embed_dim=768, depth=6, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=4, decoder_num_heads=8,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
+def mae_vit_base_patch16_fuse_mix(**kwargs):
+    model = MAERobotLangFuseMix(
+        patch_size=16, embed_dim=768, depth=6, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=4, decoder_num_heads=8,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
+def mae_vit_base_patch16_fuse_dual(**kwargs):
+    model = MAERobotLangFuseDual(
+        patch_size=16, embed_dim=768, depth=6, num_heads=12,
+        decoder_embed_dim=512, decoder_depth=4, decoder_num_heads=8,
+        mlp_ratio=4, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
+
+def mpi(**kwargs):
+    model = MPI(**kwargs)
+    return model
+
+# new models
+mae_dert = mae_vit_base_patch16_dert
+mae_fuse = mae_vit_base_patch16_fuse
+mae_cv = mae_vit_base_patch16_fuse_cv
+mae_cv_df = mae_vit_base_patch16_fuse_cv_df
+mae_fuse_tt= mae_vit_base_patch16_fuse_task_token
+mae_fuse_single = mae_vit_base_patch16_fuse_single
+mae_dino = mae_vit_base_patch16_dino
+mae_dino_decoder = mae_vit_base_patch16_dino_decoder
+mae_ss = mae_vit_base_patch16_fuse_single_siamese
+mae_ss2 = mae_vit_base_patch16_fuse_single_siamese2
+mae_fuse_mix = mae_vit_base_patch16_fuse_mix
+mae_fuse_dual = mae_vit_base_patch16_fuse_dual
+mpi = mpi
 
 # models
 mae_robot_base = mae_vit_base_patch16_robot_base  # original mae model with cliport image
@@ -223,3 +356,6 @@ mae_robot_lang_cf = mae_vit_base_patch16_rlcf
 mae_clip = vit_base_patch16_mae_clip
 mae_clip_pe = vit_base_patch16_mae_clip_pe
 mae_robot_lang_rev2 = mae_vit_base_patch16_rl_rev2
+mae_croco = mae_vit_base_patch16_croco
+mae_single = mae_vit_base_patch16_single
+mae_robot_lang_diffloss = mae_vit_base_patch16_rl_diffloss

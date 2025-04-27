@@ -74,6 +74,110 @@ class MAERobotLang(MAERobot):
         out = out[:, 1:, :]
         return out
 
+    def forward_refer_fm(self, img, processed_lang):
+        # forward with full mask tokens
+        
+        latent1, mask1, ids_restore1 = self.forward_encoder(img, mask_ratio=0.0)
+        latent2, mask2, ids_restore2 = self.forward_encoder(img, mask_ratio=1.0)
+        lang_emb = self.get_lang_embed(processed_lang)
+
+        fea1 = self.decoder_embed(latent1)
+        fea2 = self.decoder_embed(latent2)
+
+        masked_tokens = self.mask_token.repeat(fea2.shape[0],
+                                               ids_restore2.shape[1] + 1 - fea2.shape[1], 1)
+        fea2_ = torch.cat([fea2[:, 1:, :], masked_tokens], dim=1)  # no cls token
+        fea2_ = torch.gather(fea2_, dim=1,
+                             index=ids_restore2.unsqueeze(-1).repeat(1, 1, fea2.shape[2]))  # unshuffle
+        fea2 = torch.cat([fea2[:, :1, :], fea2_], dim=1)  # append cls token
+
+        fea1 = fea1 + self.decoder_pos_embed
+        fea2 = fea2 + self.decoder_pos_embed
+
+        out1 = fea1
+        out2 = fea2
+
+        for blk in self.decoder_blocks:
+            out1, out2 = blk(out1, out2, lang_emb)
+        out = self.decoder_norm(out1)
+        out = out[:, 1:, :]
+        return out
+
+
+class MAERobotLangDiffLoss(MAERobotLang):
+    """Same as MAERobotLang but with loss function related to 
+    the difference of the two images
+    """
+
+    def forward(self, img1, img2, pick=None, place=None, lang=None, mask_ratio=0.75):
+        #self.decoder_pos_embed_2 = self.decoder_pos_embed2
+
+        # encoder of the first observed image (no mask)
+        latent1, mask1, ids_restore1 = self.forward_encoder(img1, mask_ratio=0.0)
+        latent2, mask2, ids_restore2 = self.forward_encoder(img2, mask_ratio)
+
+        # encoder of the language goal
+        lang_emb = self.get_lang_embed(lang)
+
+        # decoder
+        pred = self.forward_ca_decoder(latent1, latent2, ids_restore2, lang_emb)
+        loss = self.forward_loss(img1, img2, pred, mask2)
+
+        return loss, pred, mask2 
+    
+    def forward_loss(self, img1, imgs, pred, mask):
+        """
+        imgs: [N, 3, H, W]
+        pred: [N, L, p*p*3]
+        mask: [N, L], 0 is keep, 1 is remove,
+        """
+        
+        target = self.patchify(imgs)
+        if self.norm_pix_loss:
+            mean = target.mean(dim=-1, keepdim=True)
+            var = target.var(dim=-1, keepdim=True)
+            target = (target - mean) / (var + 1.e-6) ** .5
+
+        loss = (pred - target) ** 2
+        loss = loss.mean(dim=-1)  # [N, L], mean loss per patch
+        foreground_mask, background_mask = self.compute_differce(img1, imgs)
+        foreground_mask = self.patchify_mask(foreground_mask).squeeze(-1)
+        background_mask = self.patchify_mask(background_mask).squeeze(-1)
+
+        weight_map = foreground_mask * 0.7 + background_mask * 0.3
+        masked_loss = loss * mask * weight_map
+        weighted_loss = masked_loss.sum() / (mask.sum() + 1e-6)
+
+        return weighted_loss
+    
+    def compute_differce(self, img1, img2, threshold=0.1):
+        """
+        Compute the difference between two images and return the foreground and background mask
+        """
+        diff_map = torch.abs(img1 - img2).mean(dim=1, keepdim=True)  # [N, 1, H, W]
+        
+        # normalization
+        min_val, max_val = diff_map.amin(dim=[2, 3], keepdim=True), diff_map.amax(dim=[2, 3], keepdim=True)
+        normalized_diff = (diff_map - min_val) / (max_val - min_val + 1e-6)  # 避免除 0
+
+        # get the mask，batch-wise
+        foreground_mask = (normalized_diff > threshold).float()  # [N, 1, H, W]
+        background_mask = 1.0 - foreground_mask  # [N, 1, H, W]
+
+        return foreground_mask, background_mask
+
+    def patchify_mask(self, imgs):
+        p = self.patch_embed.patch_size[0]
+        assert imgs.shape[2] % p == 0 and imgs.shape[3] % p == 0
+
+        h = imgs.shape[2] // p
+        w = imgs.shape[3] // p
+        x = imgs.reshape(shape=(imgs.shape[0], 1, h, p, w, p))
+        x = torch.einsum('nchpwq->nhwpqc', x)
+        x = x.reshape(shape=(imgs.shape[0], h * w, p ** 2 * 1))
+        patch_mask = x.mean(dim=-1)
+        return patch_mask
+
 
 class MAERobotLangNoRef(MAERobot):
     """No Siamese encoder. Only one encoder for the o_t image
