@@ -502,7 +502,19 @@ class TransporterAgentSep(LightningModule):
         p1_theta = argmax[2] * (2 * np.pi / place_conf.shape[2])
 
         # for visulizaiton only
-        place_heatmap = place_conf[:,:,argmax[2]]
+        # place_heatmap = place_conf[:,:,argmax[2]]
+        # pick_heapmap = pick_conf[:,:,0]
+        # img_save = img[:,:,:3]
+        # img_save = (img_save - img_save.min()) / (img_save.max() - img_save.min())
+        # img_save = img_save * 255.0
+        # img_save = cv2.cvtColor(img_save, cv2.COLOR_RGB2BGR)
+        # img_save = img_save.astype(np.uint8)
+        
+        # # visualize
+        # save = vu.save_tensor_with_heatmap(img_save, pick_heapmap, 'pick_heatmap.png', l=lang_goal)
+        # save = vu.save_tensor_with_heatmap(img_save, place_heatmap, 'place_heatmap.png', l=lang_goal)
+        # input("Press Enter to continue...")
+
 
         # Pixels to end effector poses.
         hmap = img[:, :, 3]
@@ -656,6 +668,7 @@ class TransporterAgentSep(LightningModule):
         self.to(device=self.device_type)
 
     def load_sep(self, model_pick, model_place):
+
         self.load_state_dict(torch.load(model_pick)['state_dict'], strict=False)
         self.load_state_dict(torch.load(model_place)['state_dict'], strict=False)
         self.to(device=self.device_type)

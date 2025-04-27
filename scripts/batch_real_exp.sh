@@ -12,8 +12,8 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 #source ~/real_robot_control/robot_ws_modern/devel/setup.bash
 
 
-exps_name="exps_real_nobatched"
-agent_name="mae_seg2"
+exps_name="exps_real_ann_sep_seg2_add_lp"
+agent_name="mae_sep_seg2_add"
 
 # ======== task name ========= #
 
@@ -69,14 +69,14 @@ task_name="pack_objects"
 #                        type=real\
 
 
-python cliport/eval_real_exp.py model_task=${task_name}\
+python cliport/eval_real_exp_sep.py model_task=${task_name}\
                        eval_task=${task_name} \
                        agent=${agent_name} \
                        mode=test_unseen \
                        n_demos=100 \
                        train_demos=100 \
                        exp_folder=${exps_name} \
-                       checkpoint_type=last \
+                       checkpoint_type=best \
                        update_results=True \
                        disp=False\
                        record.save_video=False\

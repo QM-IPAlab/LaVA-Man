@@ -166,6 +166,7 @@ class OneStreamTransportMAEBatch(OneStreamTransportMAEFixSize):
             lang_goal: Goal language tensor [B G]
             softmax: Apply softmax to output
         """
+        b, h, w, c = inp_img.shape
         # Pad input image.
         inp_img = inp_img.permute(0, 3, 1, 2) #[b, 6, 320, 160]
         pad_left_right = int(self.padding[1][0]), int(self.padding[1][1])
@@ -195,7 +196,7 @@ class OneStreamTransportMAEBatch(OneStreamTransportMAEFixSize):
         cropped_tensor = cropped_tensor.unsqueeze(1) # Shape (batch_size, 1, 6, 64, 64)
         cropped_tensor = cropped_tensor.repeat(1, self.n_rotations, 1, 1, 1) # Shape (batch_size, 36, 6, 64, 64)
         cropped_rotated = self.rotator(cropped_tensor, pivot=pv) # Shape (batch_size, 6, 64, 64)
-        cropped_rotated = cropped_rotated.view(-1, 6, 64, 64)
+        cropped_rotated = cropped_rotated.view(-1, c, 64, 64)
         
         # image = cropped_rotated[:36,:3,:,:]
         # image = image/255
@@ -203,7 +204,6 @@ class OneStreamTransportMAEBatch(OneStreamTransportMAEFixSize):
          
         # torchvision.utils.save_image(image, '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/batch_image2.png', nrow=8)
         # import pdb; pdb.set_trace()
-
         logits, kernel = self.transport(inp_img, cropped_rotated, lang_goal)
         out = self.correlate(logits, kernel, softmax)
         return out

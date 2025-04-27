@@ -148,7 +148,7 @@ def save_feature_map(image, mask, folder_name, file_name=None, prompt=None):
     #     save = utils.save_tensor_with_heatmap(crop_img, kernel[0,i,...], f"vis_12_Dec/vis_trans_logits_crop{i}.png", "")
 
 
-def save_tensor_with_heatmap(image: np.ndarray, heatmap: np.ndarray, filename, l=None, return_img=False):
+def save_tensor_with_heatmap(image: np.ndarray, heatmap: np.ndarray, filename='vis', l=None, return_img=False):
     """
     Save an original image, its heatmap, and the overlay of both to a local file using OpenCV.
     """
@@ -177,7 +177,7 @@ def save_tensor_with_heatmap(image: np.ndarray, heatmap: np.ndarray, filename, l
     # from icecream import ic
     # ic("heatmap position", position)
 
-    # cv2.circle(overlay, (position[1], position[0]), 5, (0, 0, 255), 2)
+    #cv2.circle(overlay, (position[1], position[0]), 5, (0, 0, 255), 2)
     # concatenate original image, heatmap, and overlay
     # image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
     combined = np.hstack((image, heatmap, overlay))

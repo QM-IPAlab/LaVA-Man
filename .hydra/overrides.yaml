@@ -1,10 +1,10 @@
 - model_task=pack_objects
 - eval_task=pack_objects
 - agent=mae_sep_seg2_add
-- mode=test_seen
+- mode=test_unseen
 - n_demos=100
 - train_demos=100
-- exp_folder=exps_real_all_sep_seg2_add
+- exp_folder=exps_real_ann_sep_seg2_add_lp
 - checkpoint_type=best
 - update_results=True
 - disp=False
