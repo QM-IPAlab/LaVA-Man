@@ -1,12 +1,11 @@
-- model_task=packing-omni-objects
-- eval_task=packing-omni-objects-group-inter
-- agent=cliport
+- model_task=multi-language-conditioned-full
+- eval_task=separating-piles-full
+- agent=mae_fuse
 - mode=test
 - n_demos=100
 - train_demos=1000
-- exp_folder=exps_cliport/0419_cliport
-- checkpoint_type=test_best
+- exp_folder=exps_cliport/abla_m/0425_fuse_multisze_m90
+- checkpoint_type=last
 - update_results=True
 - disp=False
 - record.save_video=False
-- data_dir=/home/robot/Repositories_chaoran/CLIPort_new_loss/data_ours

@@ -15,18 +15,18 @@
 # ====== Usage ======
 # Scripts for training and testing on downstream task of ravens dataset
 
-module load Miniconda3/4.12.0
-source activate mae-cliport
+#module load Miniconda3/4.12.0
+#source activate mae-cliport
 
 export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 export TOKENIZERS_PARALLELISM=false
 
-exps_name="exps_cliport/0423_multisize-ck220-full"
-agent_name="mae_fuse"
-pretrain_path="checkpoints/checkpoint-220-fuse-no-pretrained.pth"
-mae_model="mae_fuse"
+exps_name="exps_cliport/0426_mpi_omini"
+agent_name="mae_sep_base"
+pretrain_path="/home/a/acw694/CLIPort_new_loss/exps/0425_mpi/checkpoint-399.pth"
+mae_model="mpi"
 
 python -m cliport.train  train.task=packing-omni-objects\
                          train.agent=${agent_name}\
@@ -48,7 +48,7 @@ python -m cliport.train  train.task=packing-omni-objects\
                          dataset.cache=False \
                          train.sep_mode=pick\
                          train.linear_probe=False\
-                         train.data_dir="/home/robot/Repositories_chaoran/CLIPort_new_loss/data_ours"
+                         train.data_dir="data_ours"
 
 python -m cliport.train  train.task=packing-omni-objects\
                          train.agent=${agent_name}\
@@ -70,7 +70,7 @@ python -m cliport.train  train.task=packing-omni-objects\
                          dataset.cache=False \
                          train.sep_mode=place\
                          train.linear_probe=False\
-                         train.data_dir="/home/robot/Repositories_chaoran/CLIPort_new_loss/data_ours"
+                         train.data_dir="data_ours"
 
 python cliport/eval_sep.py model_task=packing-omni-objects\
                     eval_task=packing-omni-objects-intra\

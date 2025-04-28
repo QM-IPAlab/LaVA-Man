@@ -36,7 +36,7 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 exps_name="exps_cliport/0419_voltron"
 agent_name="mae_sep_base"
 pretrain_path="checkpoints/voltron-omni-checkpoint-399.pth"
-mae_model="voltron"
+mae_model="mvp"
 pretrain_path=False
 
 # exps_name="exps_cliport/0419_ours"

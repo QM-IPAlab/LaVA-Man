@@ -109,21 +109,20 @@ hydra:
   overrides:
     hydra: []
     task:
-    - model_task=packing-omni-objects
-    - eval_task=packing-omni-objects-group-inter
-    - agent=cliport
+    - model_task=multi-language-conditioned-full
+    - eval_task=separating-piles-full
+    - agent=mae_fuse
     - mode=test
     - n_demos=100
     - train_demos=1000
-    - exp_folder=exps_cliport/0419_cliport
-    - checkpoint_type=test_best
+    - exp_folder=exps_cliport/abla_m/0425_fuse_multisze_m90
+    - checkpoint_type=last
     - update_results=True
     - disp=False
     - record.save_video=False
-    - data_dir=/home/robot/Repositories_chaoran/CLIPort_new_loss/data_ours
   job:
-    name: eval
-    override_dirname: agent=cliport,checkpoint_type=test_best,data_dir=/home/robot/Repositories_chaoran/CLIPort_new_loss/data_ours,disp=False,eval_task=packing-omni-objects-group-inter,exp_folder=exps_cliport/0419_cliport,mode=test,model_task=packing-omni-objects,n_demos=100,record.save_video=False,train_demos=1000,update_results=True
+    name: eval_sep
+    override_dirname: agent=mae_fuse,checkpoint_type=last,disp=False,eval_task=separating-piles-full,exp_folder=exps_cliport/abla_m/0425_fuse_multisze_m90,mode=test,model_task=multi-language-conditioned-full,n_demos=100,record.save_video=False,train_demos=1000,update_results=True
     id: ???
     num: ???
     config_name: eval
@@ -136,12 +135,12 @@ hydra:
         exclude_keys: []
   runtime:
     version: 1.1.1
-    cwd: /home/robot/Repositories_chaoran/CLIPort_new_loss
+    cwd: /gpfs/home/a/acw694/CLIPort_new_loss
     config_sources:
     - path: hydra.conf
       schema: pkg
       provider: hydra
-    - path: /home/robot/Repositories_chaoran/CLIPort_new_loss/cliport/cfg
+    - path: /gpfs/home/a/acw694/CLIPort_new_loss/cliport/cfg
       schema: file
       provider: main
     - path: ''

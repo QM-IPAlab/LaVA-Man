@@ -23,11 +23,9 @@ export MASTER_ADDR=$(hostname)
 export MASTER_PORT=$(python -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
 
 torchrun --nproc_per_node 3 mae/main_pretrain_ours.py \
-    --model voltron \
-    --batch_size 96 \
+    --model mvp \
+    --batch_size 64 \
     --input_size 224 224  \
-    --output_dir  exps/0418_vcond \
-    --mask_ratio 0.95 \
-    --pretrain checkpoints/mae_pretrain_vit_base.pth \
+    --output_dir  exps/0425_mpi \
     --epochs 400 \
     --my_log \
