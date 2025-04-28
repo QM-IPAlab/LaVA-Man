@@ -177,3 +177,14 @@ ziIDifn8
 .hydra/overrides.yaml
 .hydra/hydra.yaml
 OmniObjects_text
+exps_real_sep_seg2_add
+.gitignore
+output_mae_robot_lang_big_extra2
+output_mae_robot_lang_mix_v2_full
+output_mae_robot_lang_big_extra
+output_mae_robot_lang_mix_v2
+exps_real_all_sep_seg2_add_lp
+exps_real_ann_sep_seg2_add
+exps_real_ann_sep_seg2_add_lp_correct
+exps_real_ann_sep_seg2_add_lp
+*.mp4

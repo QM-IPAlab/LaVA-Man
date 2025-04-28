@@ -484,12 +484,12 @@ class VCond(nn.Module):
         # Patchify + Position Embedding (without <CLS> Token!)
         patches = self.patch2embed(img)
         
-        # Dynamic Position Embedding
-        position_embeddings = get_2d_varsize_sincos_pos_embed(self.encoder_embed_dim, H // self.patch_size, W // self.patch_size)
-        position_embeddings = torch.from_numpy(position_embeddings).to(patches.device).float()
-        patches_pe = patches + position_embeddings.unsqueeze(0).expand(patches.size(0), -1, -1)
+        encoder_pe = self.encoder_pe
+        if encoder_pe.shape[1] != patches.shape[1]:
+            # Dynamic Position Embedding
+            encoder_pe = self.interpolate_pos_encoding(patches, encoder_pe, H, W)
+        patches_pe = patches + (encoder_pe if not self.use_cls_token else encoder_pe[:, 1:, :])
     
-
         # Create mask (and go ahead and mask out patches at the same time)
         visible_patches = patches_pe
 

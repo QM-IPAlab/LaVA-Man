@@ -16,6 +16,9 @@ from cliport.models.core.clip import build_model, load_clip, tokenize
 from torchvision import transforms
 from cliport.models.core.fusion import FusionMultOurs
 from cliport.models.core.unet import Up
+import numpy as np
+import matplotlib.pyplot as plt
+import cv2
 class MAEModel(nn.Module):
 
     def __init__(self, input_shape, output_dim, cfg, device, preprocess, model_name='mae_robot_lang',
