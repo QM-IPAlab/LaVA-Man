@@ -18,7 +18,7 @@ export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 export TOKENIZERS_PARALLELISM=false
-export CUDA_VISIBLE_DEVICES=0
+#export CUDA_VISIBLE_DEVICES=0
 
 # ======== Checklist ========= #
 # Check the following before running this script:
@@ -32,10 +32,10 @@ export CUDA_VISIBLE_DEVICES=0
 # 8. check the agent name: sep or not sept, if sep, check train.sep_mode is set to pick or place
 
 
-exps_name="exps_cliport/0423_old_multisize-ck220-full"
-agent_name="mae_fuse"
-pretrain_path="/home/a/acw694/CLIPort_new_loss/checkpoints/checkpoint-220-fuse-no-pretrained.pth"
-mae_model="mae_fuse"
+exps_name="exps_cliport/0428_voltron"
+agent_name="mae_sep_base"
+pretrain_path="/data/home/acw694/CLIPort_new_loss/checkpoints/voltron-omni-checkpoint-399.pth"
+mae_model="voltron"
 #pretrain_path=False
 
 # #tasks for ablation study (mask ratio)
@@ -74,27 +74,27 @@ tasks=("assembling-kits-seq-full"\
     "packing-shapes"\
 )
 
-python -m cliport.train  train.task=multi-language-conditioned-full\
-                         train.agent=${agent_name}\
-                         train.exp_folder=${exps_name}\
-                         wandb.run_name=${exps_name}_multi\
-                         train.n_demos=1000 \
-                         train.n_steps=60100 \
-                         train.lr_scheduler=True\
-                         train.lr=2e-5\
-                         train.warmup_epochs=10\
-                         train.precision=32\
-                         train.batch_size=32\
-                         train.batchnorm=True\
-                         train.load_from_last_ckpt=False\
-                         train.log=False\
-                         mae_model=${mae_model} \
-                         pretrain_path=${pretrain_path}\
-                         cliport_checkpoint=False\
-                         dataset.cache=False \
-                         train.sep_mode=pick\
-                         dataset.type=multi\
-                         train.linear_probe=False\
+# python -m cliport.train  train.task=multi-language-conditioned-full\
+#                          train.agent=${agent_name}\
+#                          train.exp_folder=${exps_name}\
+#                          wandb.run_name=${exps_name}_multi\
+#                          train.n_demos=1000 \
+#                          train.n_steps=60100 \
+#                          train.lr_scheduler=True\
+#                          train.lr=2e-5\
+#                          train.warmup_epochs=10\
+#                          train.precision=32\
+#                          train.batch_size=32\
+#                          train.batchnorm=True\
+#                          train.load_from_last_ckpt=False\
+#                          train.log=False\
+#                          mae_model=${mae_model} \
+#                          pretrain_path=${pretrain_path}\
+#                          cliport_checkpoint=False\
+#                          dataset.cache=False \
+#                          train.sep_mode=pick\
+#                          dataset.type=multi\
+#                          train.linear_probe=False\
 
 
 python -m cliport.train  train.task=multi-language-conditioned-full\
@@ -107,7 +107,7 @@ python -m cliport.train  train.task=multi-language-conditioned-full\
                          train.lr=2e-5\
                          train.warmup_epochs=10\
                          train.precision=32\
-                         train.batch_size=8\
+                         train.batch_size=2\
                          train.batchnorm=True\
                          train.load_from_last_ckpt=False\
                          train.log=False\
@@ -146,19 +146,18 @@ python -m cliport.train  train.task=multi-language-conditioned-full\
 #                        record.save_video=False\
 #                        type=real\
 
-for task in "${tasks[@]}"
-do
-    echo "Running evaluation for agent: $agent with task: $task"
-    python cliport/eval_sep.py model_task=multi-language-conditioned-full\
-                        eval_task=${task} \
-                        agent=${agent_name} \
-                        mode=test \
-                        n_demos=100 \
-                        train_demos=1000 \
-                        exp_folder=${exps_name} \
-                        checkpoint_type=last \
-                        checkpoint_type=last \
-                        update_results=True \
-                        disp=False\
-                        record.save_video=False
-done
+# for task in "${tasks[@]}"
+# do
+#     echo "Running evaluation for agent: $agent with task: $task"
+#     python cliport/eval_sep.py model_task=multi-language-conditioned-full\
+#                         eval_task=${task} \
+#                         agent=${agent_name} \
+#                         mode=test \
+#                         n_demos=100 \
+#                         train_demos=1000 \
+#                         exp_folder=${exps_name} \
+#                         checkpoint_type=best \
+#                         update_results=True \
+#                         disp=False\
+#                         record.save_video=False
+# done
