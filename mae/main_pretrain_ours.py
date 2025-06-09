@@ -224,7 +224,7 @@ def main(args):
     else:
         transform_ravens = get_fix_transform()
     ravens_train = MAEDataset(transform=transform_ravens, data_path="scratch/top_down_omniobj_white.hdf5", aug=args.aug, condition_free=args.condition_free)
-    #ego4d_train = MAEDataset(transform=transform_train, data_path="scratch/mae-data/ego4d_interactive.hdf5", aug=args.aug, condition_free=args.condition_free)
+    ego4d_train = MAEDataset(transform=transform_train, data_path="scratch/mae-data/ego4d_interactive.hdf5", aug=args.aug, condition_free=args.condition_free)
     #co3d_train = MAEDataset(transform=transform_train, data_path="image_pairs_with_captions.hdf5", aug=args.aug, condition_free=args.condition_free)
 
     # original dataset
@@ -240,9 +240,9 @@ def main(args):
     #bridge_train = MAEDatasetCV(transform=transform_train, data_path="scratch/bridge_crossview_goal_3imgs.hdf5", aug=args.aug, condition_free=args.condition_free)
     #droid_train = MAEDatasetCV(transform=transform_train, data_path="scratch/droid_multiview_3imgs.hdf5", aug=args.aug, condition_free=args.condition_free)
     
-    dataset_train = ConcatDataset([droid_train,bridge_train,ravens_train])
+    dataset_train = ConcatDataset([droid_train,bridge_train,ravens_train,ego4d_train])
     dataset_vis = MAEDataset(transform=transform_train, data_path="scratch/bridge_256_val.hdf5", aug=False)
-    dataset_train = Subset(dataset_train, range(600))
+    #dataset_train = Subset(dataset_train, range(600))
     
     #TODO: How to use args to set all training datasets?
     
@@ -253,7 +253,7 @@ def main(args):
         if args.multisize:
             print("Assuming data are of different size")
             sampler_train = DistributedSameDatasetBatchSampler(
-                [droid_train, bridge_train, ravens_train],
+                [droid_train, bridge_train, ravens_train,ego4d_train],
                 batch_size=args.batch_size,
                 num_replicas=num_tasks,
                 rank=global_rank,

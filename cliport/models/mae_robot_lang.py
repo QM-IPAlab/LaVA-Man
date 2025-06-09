@@ -665,7 +665,7 @@ class MAESegBaseModel(nn.Module):
             self.text_processor = AutoTokenizer.from_pretrained("distilbert-base-uncased", cache_dir=CACHE_PATH)
             self.dist = 'voltron'
             
-            input_dim = 384 if 'voltron' in model_name else 768
+            input_dim = 384 if 'voltron' in model_name else 512
             self.layer1 = nn.Sequential(
                 ConvBlock(input_dim, [256, 256, 256], kernel_size=3, stride=1, batchnorm=self.batchnorm),
                 IdentityBlock(256, [256, 256, 256], kernel_size=3, stride=1, batchnorm=self.batchnorm),

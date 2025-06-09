@@ -571,32 +571,71 @@ class VCond(nn.Module):
         return patch_pos_embed
     
 
-    # def configure_optimizer(self) -> Tuple[torch.optim.Optimizer, Callable[[int, float], float]]:
-    #     # Short-Circuit on Valid Optimizers
-    #     if self.optimizer not in ["adamw"]:
-    #         raise NotImplementedError(f"Optimizer `{self.optimizer}` not supported - try [`adamw`] instead!")
+class MVP(VCond):
+    
+    def forward(
+        self, 
+        img: torch.Tensor,
+        img2: torch.Tensor,
+        pick: torch.Tensor,
+        place: torch.Tensor,
+        lang: dict, 
+        mask_ratio: Optional[float] = None
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        
+        mask_ratio = mask_ratio if mask_ratio is not None else self.mask_ratio
+        visible_patches, mask, restore_idxs = self.forward_encoder(img, mask_ratio)
+        reconstructions = self.forward_decoder(visible_patches, restore_idxs)
+        loss = self.compute_loss(img, reconstructions, mask)
+        return loss, reconstructions, mask
 
-    #     # Create Parameter Groups --> bias terms, normalization layer parameters shouldn't be decayed...
-    #     #   > This is a compact rewrite of `param_groups_weight_decay()` from TIMM because I don't want the dependency
-    #     decay, no_decay = [], []
-    #     for name, param in self.named_parameters():
-    #         if not param.requires_grad:
-    #             continue
+    def forward_encoder(
+        self, imgs: torch.Tensor, mask_ratio: Optional[float] = None
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        # Patchify + Position Embedding (without the CLS Token)
+        patches = self.patch2embed(imgs)
+        patches_pe = patches + self.encoder_pe[:, 1:, :]
 
-    #         # Check on any parameters with fewer than 2 dimensions or with "bias" in the name...
-    #         if param.ndim <= 1 or name.endswith(".bias"):
-    #             no_decay.append(param)
-    #         else:
-    #             decay.append(param)
+        # Create mask (and go ahead and mask out patches at the same time)
+        visible_patches, mask, restore_idxs = self.mask(patches_pe, mask_ratio)
 
-    #     # Build Parameter Groups
-    #     groups = [{"params": decay, "weight_decay": self.weight_decay}, {"params": no_decay, "weight_decay": 0.0}]
+        # Add the CLS Token
+        cls_token = self.cls_token + self.encoder_pe[:, :1, :]
+        cls_tokens = cls_token.expand(imgs.shape[0], -1, -1)
+        cls_visible_patches = torch.cat([cls_tokens, visible_patches], dim=1)
 
-    #     # Compute LR -- MAE uses the `linear scaling rule` :: lr = base_lr * (effective_bsz / 256)
-    #     #   > https://github.com/facebookresearch/mae/blob/main/PRETRAIN.md
-    #     self.lr = self.base_lr * (self.effective_bsz / 256)
+        # Apply Transformer Blocks...
+        for block in self.encoder_blocks:
+            cls_visible_patches = block(cls_visible_patches)
+        cls_visible_patches = self.encoder_norm(cls_visible_patches)
 
-    #     # Create Optimizer & LR Scheduler
-    #     optimizer = torch.optim.AdamW(groups, lr=self.lr, betas=self.betas)
-    #     update_lr = get_lr_update(optimizer, self.schedule, self.lr, self.min_lr, self.warmup_epochs, self.max_epochs)
-    #     return optimizer, update_lr
+        return cls_visible_patches, mask, restore_idxs
+
+    def forward_decoder(self, visible_patches: torch.Tensor, restore_idxs: torch.Tensor) -> torch.Tensor:
+        # Project patches into decoder embedding dimension
+        projected_patches = self.encoder2decoder(visible_patches)
+
+        # Add Mask Tokens to Sequence
+        mask_tokens = self.mask_token.repeat(
+            projected_patches.shape[0], restore_idxs.shape[1] - visible_patches.shape[1] + 1, 1
+        )
+
+        # Remove & add back CLS Token as part of the "unshuffling"
+        concatenated_patches = torch.cat([projected_patches[:, 1:, :], mask_tokens], dim=1)  # Skip CLS Token
+        unshuffled_patches = torch.gather(
+            concatenated_patches, dim=1, index=restore_idxs[..., None].repeat(1, 1, self.decoder_embed_dim)
+        )
+        cls_unshuffled_patches = torch.cat([projected_patches[:, :1, :], unshuffled_patches], dim=1)  # Add CLS Token
+
+        # Add Position Embeddings
+        cls_decoder_patches = cls_unshuffled_patches + self.decoder_pe
+
+        # Apply Transformer Blocks...
+        for block in self.decoder_blocks:
+            cls_decoder_patches = block(cls_decoder_patches)
+        cls_decoder_patches = self.decoder_norm(cls_decoder_patches)
+
+        # Run final projection, remove the CLS token, and return
+        cls_decoder_prediction = self.decoder_prediction(cls_decoder_patches)
+        decoder_prediction = cls_decoder_prediction[:, 1:, :]
+        return decoder_prediction

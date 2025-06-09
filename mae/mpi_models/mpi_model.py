@@ -356,6 +356,109 @@ class MPI(nn.Module):
             return torch.cat([fused_visual_embed, aggregated_embedding_vis.unsqueeze(1)], dim=1)
 
 
+    def encode_cliport(self, imgs: torch.Tensor, lang: torch.Tensor, lang_mask: torch.Tensor, with_lang_tokens = True) -> torch.Tensor:
+        """Default representation extraction function, given a batch of dual-images and tokenized language."""
+        if with_lang_tokens:
+            lang_embeddings = self.encode_language(lang, lang_mask)
+            projected_lang = self.lang2encoder(lang_embeddings)
+            lang = projected_lang + self.lang_token
+
+        # Patchify, broadcast position embedding across ctx_len (0 + K) dimension, unfold, add `ctx_enc_pe` embeddings!
+        patches = self.patch2embed(rearrange(imgs, "bsz ctx channels res1 res2 -> (bsz ctx) channels res1 res2"))
+        encoder_pe = self.encoder_pe
+        if encoder_pe.shape[1] != patches.shape[1]:
+            # Dynamic Position Embedding
+            encoder_pe = self.interpolate_pos_encoding(patches, encoder_pe, imgs.shape[3], imgs.shape[4])
+        patches_pe = patches + encoder_pe
+        ctx_patches = rearrange(patches_pe, "(bsz ctx) seq embed -> bsz ctx seq embed", ctx=2)
+        b, c, seq, d = ctx_patches.shape
+
+        # Add context embedding to differentiate
+        ctx_patches = ctx_patches + torch.index_select(self.ctx_enc_pe, 1, torch.tensor([0, 0]).to(patches.device))
+        visible_patches = rearrange(ctx_patches, "bsz ctx seq embed -> bsz (seq ctx) embed", ctx=2)
+                           
+        # Add "modality" embeddings to patches & language & flatten out context patches...
+        visible_patches = visible_patches + self.img_token
+
+        # Create "dummy" visible mask
+        visible_mask = torch.ones_like(visible_patches[..., -1], dtype=lang_mask.dtype)
+        for idx, block in enumerate(self.encoder_blocks):
+            visible_patches = block(visible_patches, visible_mask)
+        visible_patches = self.encoder_norm(visible_patches)
+
+
+        # Temporal Attention
+        def generate_reference_boxes(resolution_w, resolution_h, patch_size):
+            grid_x, grid_y = torch.meshgrid(
+                torch.linspace(patch_size // 2 - 1, resolution_w - patch_size // 2 - 1, resolution_w // patch_size),
+                torch.linspace(patch_size // 2 - 1, resolution_h - patch_size // 2 - 1, resolution_h // patch_size),
+                indexing='xy'
+            )
+            grid = torch.stack((grid_x, grid_y), dim=-1)  # (grid_w, grid_h, 2)
+            reference_boxes = torch.cat(
+                (grid, patch_size * torch.ones((grid.shape[0], grid.shape[1], 2))),
+                dim=-1
+            ).unsqueeze(0)  # (1, grid_w, grid_h, 4)
+            reference_boxes = reference_boxes / torch.tensor([resolution_w, resolution_h, resolution_w, resolution_h])
+            return reference_boxes  # Shape: (1, grid_w, grid_h, 4)
+        self.reference_boxes = generate_reference_boxes(imgs.shape[4], imgs.shape[3], self.patch_size).to(imgs.device)
+        reference_points = self.reference_boxes.to(ctx_patches.device)\
+                           .flatten(1,2).unsqueeze(2).repeat(ctx_patches.shape[0], 1, 1, 1) # (bsz, num_queries=14*14, num_levels=1, 4)
+        spatial_shapes = torch.tensor(self.reference_boxes.shape[1:3]).unsqueeze(0).to(ctx_patches.device) # (num_levels=1, 2)
+
+        visual_embed = rearrange(visible_patches, "bsz (seq ctx) embed -> bsz ctx seq embed", ctx=2)
+        fused_visual_embed = self.temporal_attn(query = visual_embed[:,0], key = visual_embed[:,1], value = visual_embed[:,1],
+                                                reference_points = reference_points,
+                                                spatial_shapes = spatial_shapes,
+                                                level_start_index = torch.tensor(0).to(ctx_patches.device))
+        fused_visual_embed = self.temporal_attn_norm( visual_embed[:,0] + fused_visual_embed )
+
+        # Token aggregator
+        aggregated_embedding_vis  = self.token_aggregate(fused_visual_embed, self.vis_latents)
+
+        # Context preparation
+        projected_patches = self.encoder2decoder_vis(fused_visual_embed)
+        if imgs.shape[0] > 36 :
+            return projected_patches
+        if self.use_text_cross_attention:
+            projected_lang = self.encoder2decoder_lang(lang)    # Decoupled Projection
+        else:
+            projected_lang = None
+
+        # Initialize reconstruction quereis
+        task_flag = [True] * imgs.shape[0]
+        decode_ctx_embed = []
+        for flag in task_flag:
+            idx = 2 if flag else 1
+            decode_ctx_embed.append(self.ctx_enc_pe[:,idx])
+        decode_ctx_embed = torch.cat(decode_ctx_embed, dim=0)
+        reconstruction_queries = self.reconstruction_embedding.weight[None,:,:].repeat(projected_patches.shape[0], 1, 1)
+        reconstruction_queries = self.resize_queries(reconstruction_queries, (14,14), (imgs.shape[3]//16, imgs.shape[4]//16))
+        reconstruction_queries = reconstruction_queries + self.encoder2decoder_ctx(decode_ctx_embed)
+        # Use aggregated encoder visual tokens to initialize detection query
+        det_query = self.encoder2decoder_det_query(aggregated_embedding_vis).unsqueeze(1)
+
+        decoder_pe = self.decoder_pe
+        if decoder_pe.shape[1] != projected_patches.shape[1]:
+            # Dynamic Position Embedding
+            decoder_pe = self.interpolate_pos_encoding(projected_patches, decoder_pe, imgs.shape[3], imgs.shape[4])
+        det_query_per_layer = []
+        for idx, layer in enumerate(self.MotionFormer):
+            reconstruction_queries, det_query = layer(
+                                query = reconstruction_queries,
+                                pos_embed = decoder_pe,   # Adaptive PE Scaling
+                                src = projected_patches,
+                                reference_points = reference_points,
+                                src_spatial_shapes = spatial_shapes,
+                                lang = projected_lang,
+                                lang_mask = (torch.ones_like(lang_mask) - lang_mask).bool(),
+                                det_query = det_query
+                            )
+            det_query_per_layer.append(det_query)
+        reconstruction_queries = self.decoder_norm(reconstruction_queries)
+        return reconstruction_queries
+
+
     def forward_encoder(
         self, img_ctx: torch.Tensor, lang: torch.Tensor, lang_mask: torch.Tensor, task_flag
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -507,80 +610,72 @@ class MPI(nn.Module):
     def cliport_forward(self, img: torch.Tensor, lang: dict) -> torch.Tensor:
         imgs = torch.stack([img, img], dim=1)
         input_ids, attention_mask = lang["input_ids"], lang["attention_mask"]
-        task_flag = [True] * img.shape[0]
+        self.img_size = img.shape[2:]
         self.patch_embed = self.patch2embed
-        self.img_size = (img.shape[2],img.shape[3])
-        new_patch_h = img.shape[2]//16
-        new_patch_w = img.shape[3]//16
-
-        def generate_reference_boxes(resolution_w, resolution_h, patch_size):
-            grid_x, grid_y = torch.meshgrid(
-                torch.linspace(patch_size // 2 - 1, resolution_w - patch_size // 2 - 1, resolution_w // patch_size),
-                torch.linspace(patch_size // 2 - 1, resolution_h - patch_size // 2 - 1, resolution_h // patch_size),
-                indexing='xy'
-            )
-            grid = torch.stack((grid_x, grid_y), dim=-1)  # (grid_w, grid_h, 2)
-            reference_boxes = torch.cat(
-                (grid, patch_size * torch.ones((grid.shape[0], grid.shape[1], 2))),
-                dim=-1
-            ).unsqueeze(0)  # (1, grid_w, grid_h, 4)
-            reference_boxes = reference_boxes / torch.tensor([resolution_w, resolution_h, resolution_w, resolution_h])
-            return reference_boxes  # Shape: (1, grid_w, grid_h, 4)
-        self.reference_boxes = generate_reference_boxes(img.shape[3], img.shape[2], self.patch_size).to(img.device)
+        
+        # def generate_reference_boxes(resolution_w, resolution_h, patch_size):
+        #     grid_x, grid_y = torch.meshgrid(
+        #         torch.linspace(patch_size // 2 - 1, resolution_w - patch_size // 2 - 1, resolution_w // patch_size),
+        #         torch.linspace(patch_size // 2 - 1, resolution_h - patch_size // 2 - 1, resolution_h // patch_size),
+        #         indexing='xy'
+        #     )
+        #     grid = torch.stack((grid_x, grid_y), dim=-1)  # (grid_w, grid_h, 2)
+        #     reference_boxes = torch.cat(
+        #         (grid, patch_size * torch.ones((grid.shape[0], grid.shape[1], 2))),
+        #         dim=-1
+        #     ).unsqueeze(0)  # (1, grid_w, grid_h, 4)
+        #     reference_boxes = reference_boxes / torch.tensor([resolution_w, resolution_h, resolution_w, resolution_h])
+        #     return reference_boxes  # Shape: (1, grid_w, grid_h, 4)
+        #self.reference_boxes = generate_reference_boxes(img.shape[3], img.shape[2], self.patch_size).to(img.device)
         
 
-        def resize_embedding(old_embedding: nn.Embedding, 
-                            old_hw: tuple, 
-                            new_hw: tuple) -> nn.Embedding:
-            """
-            Resize an nn.Embedding representing a 2D grid into a new grid size using bilinear interpolation.
+        # def resize_embedding(old_embedding: nn.Embedding, 
+        #                     old_hw: tuple, 
+        #                     new_hw: tuple) -> nn.Embedding:
+        #     """
+        #     Resize an nn.Embedding representing a 2D grid into a new grid size using bilinear interpolation.
 
-            Args:
-                old_embedding (nn.Embedding): original embedding table (num_patches, embed_dim)
-                old_hw (tuple): (height, width) of old patch grid
-                new_hw (tuple): (height, width) of new patch grid
+        #     Args:
+        #         old_embedding (nn.Embedding): original embedding table (num_patches, embed_dim)
+        #         old_hw (tuple): (height, width) of old patch grid
+        #         new_hw (tuple): (height, width) of new patch grid
 
-            Returns:
-                nn.Embedding: new resized embedding
-            """
-            # Unpack dimensions
-            old_h, old_w = old_hw
-            new_h, new_w = new_hw
-            num_patches_old, embed_dim = old_embedding.weight.shape
+        #     Returns:
+        #         nn.Embedding: new resized embedding
+        #     """
+        #     # Unpack dimensions
+        #     old_h, old_w = old_hw
+        #     new_h, new_w = new_hw
+        #     num_patches_old, embed_dim = old_embedding.weight.shape
             
-            # Sanity check
-            assert num_patches_old == old_h * old_w, "Old hw does not match number of embeddings"
+        #     # Sanity check
+        #     assert num_patches_old == old_h * old_w, "Old hw does not match number of embeddings"
 
-            # Reshape weight (num_patches, embed_dim) -> (1, embed_dim, old_h, old_w)
-            weight_2d = old_embedding.weight.transpose(0, 1).reshape(1, embed_dim, old_h, old_w)
+        #     # Reshape weight (num_patches, embed_dim) -> (1, embed_dim, old_h, old_w)
+        #     weight_2d = old_embedding.weight.transpose(0, 1).reshape(1, embed_dim, old_h, old_w)
 
-            # Bilinear interpolate
-            weight_2d_resized = F.interpolate(weight_2d, size=(new_h, new_w), mode='bilinear', align_corners=False)
+        #     # Bilinear interpolate
+        #     weight_2d_resized = F.interpolate(weight_2d, size=(new_h, new_w), mode='bilinear', align_corners=False)
 
-            # Reshape back (1, embed_dim, new_h, new_w) -> (new_h * new_w, embed_dim)
-            weight_resized = weight_2d_resized.reshape(embed_dim, -1).transpose(0, 1)
+        #     # Reshape back (1, embed_dim, new_h, new_w) -> (new_h * new_w, embed_dim)
+        #     weight_resized = weight_2d_resized.reshape(embed_dim, -1).transpose(0, 1)
 
-            # Create new embedding
-            new_num_patches = new_h * new_w
-            new_embedding = nn.Embedding(new_num_patches, embed_dim)
-            new_embedding.weight.data.copy_(weight_resized)
+        #     # Create new embedding
+        #     new_num_patches = new_h * new_w
+        #     new_embedding = nn.Embedding(new_num_patches, embed_dim)
+        #     new_embedding.weight.data.copy_(weight_resized)
 
-            return new_embedding
+        #     return new_embedding
         
-        if self.reconstruction_embedding.weight.shape[0] != new_patch_h * new_patch_w:
-            self.reconstruction_embedding = resize_embedding( self.reconstruction_embedding,
-                                                            (14,14),
-                                                            (new_patch_h,new_patch_w)).to(img.device)
+        # if self.reconstruction_embedding.weight.shape[0] != new_patch_h * new_patch_w:
+        #     self.reconstruction_embedding = resize_embedding( self.reconstruction_embedding,
+        #                                                     (14,14),
+        #                                                     (new_patch_h,new_patch_w)).to(img.device)
         
-        if self.img_size[0] == 64 :
-            return self.forward_encoder(imgs, input_ids, attention_mask, task_flag)
-        
-        reconstruction_queries, \
-        aggregated_embedding_vis, \
-        aggregated_embedding_lang, \
-        det_query_per_layer = self.forward_encoder(imgs, input_ids, attention_mask, task_flag)
-        ctx_reconstructions = self.forward_decoder(reconstruction_queries, aggregated_embedding_vis, det_query_per_layer)
-        return ctx_reconstructions
+        #if self.img_size[0] == 64 :
+        #    return self.forward_encoder(imgs, input_ids, attention_mask, task_flag)
+        representations = self.encode_cliport(imgs, input_ids, attention_mask, True)
+        return representations
 
     def patchify(self, imgs: torch.Tensor) -> torch.Tensor:
         """Convert a batch of (0th + Kth frame) images to their patched equivalents by naive reshaping."""
@@ -697,3 +792,38 @@ class MPI(nn.Module):
         patch_pos_embed = patch_pos_embed.permute(0, 2, 3, 1).view(1, -1, dim)
 
         return patch_pos_embed
+
+
+    def resize_queries(self, queries: torch.Tensor, old_hw: tuple, new_hw: tuple) -> torch.Tensor:
+        """
+        Resize batched queries [B, N, C] based on old and new patch grid sizes.
+
+        Args:
+            queries (Tensor): input queries of shape (batch_size, num_patches_old, embed_dim)
+            old_hw (tuple): (height, width) of old patch grid
+            new_hw (tuple): (height, width) of new patch grid
+
+        Returns:
+            Tensor: resized queries of shape (batch_size, num_patches_new, embed_dim)
+        """
+        B, N_old, C = queries.shape
+        old_h, old_w = old_hw
+        new_h, new_w = new_hw
+
+        # Quick sanity check
+        assert N_old == old_h * old_w, "Old hw does not match number of tokens"
+
+        # 如果尺寸一致，直接返回
+        if (old_h, old_w) == (new_h, new_w):
+            return queries
+
+        # reshape [B, N, C] -> [B, C, H, W]
+        queries_2d = queries.permute(0, 2, 1).reshape(B, C, old_h, old_w)
+
+        # 插值
+        queries_2d_resized = F.interpolate(queries_2d, size=(new_h, new_w), mode='bilinear', align_corners=False)
+
+        # reshape back [B, C, H, W] -> [B, N_new, C]
+        queries_resized = queries_2d_resized.flatten(2).transpose(1, 2)
+
+        return queries_resized
