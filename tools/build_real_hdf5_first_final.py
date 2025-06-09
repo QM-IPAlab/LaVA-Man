@@ -1,5 +1,6 @@
 """
 Construct a HDF5 file from the real image dataset (RT-1-X)
+Store the first and the last image of each episode, along with the language instruction.
 
 python build_real_hdf5_2.py -s train -o name
 
