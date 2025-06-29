@@ -61,8 +61,8 @@ def load_vae(
     else:
         revision = None
     vae, vae_params = FlaxAutoencoderKL.from_pretrained(
-        path, subfolder="vae", revision=revision
-    )
+    path, subfolder="vae", revision=revision, from_pt=True  # Add from_pt=True as there is no flax_model.msgpack in the mirror repo
+)
     # monkey-patch encode to use channels-last (it returns a FlaxDiagonalGaussianDistribution object, which is already
     # channels-last)
     vae.encode = lambda self, sample, *args, **kwargs: FlaxAutoencoderKL.encode(
@@ -122,10 +122,10 @@ def load_text_encoder(
     else:
         revision = None
     text_encoder = FlaxCLIPTextModel.from_pretrained(
-        path, subfolder="text_encoder", revision=revision
+        path, subfolder="text_encoder", revision=revision, from_pt=True
     )
     tokenizer = CLIPTokenizer.from_pretrained(
-        path, subfolder="tokenizer", revision=revision
+        path, subfolder="tokenizer", revision=revision,from_pt=True
     )
 
     def tokenize(s: List[str]) -> np.ndarray:
@@ -178,7 +178,7 @@ def create_sample_fn(
     prompt_w: float = 7.5,
     context_w: float = 2.5,
     eta: float = 0.0,
-    pretrained_path: str = "runwayml/stable-diffusion-v1-5:flax",
+    pretrained_path: str = "stable-diffusion-v1-5/stable-diffusion-v1-5",
 ) -> Callable[[np.ndarray, str], np.ndarray]:
     if (
         os.path.exists(path)
