@@ -8,6 +8,7 @@ import os
 import numpy as np
 from tqdm import tqdm
 import hydra
+import pickle
 
 from susie.model import create_sample_fn
 from susie.jax_utils import initialize_compilation_cache
@@ -108,7 +109,7 @@ class RavensDatasetToHdf5(RavensDataset):
         return image_s1[:, :, :3], image_s2[:, :, :3], language, gt_pick, gt_place
 
 
-class RavensMultiTaskDatasetToHdf5(RavensMultiTaskDataset):
+class RavensMultiTaskDatasetSuSIE(RavensMultiTaskDataset):
     def __init__(self, data_dir, cfg, group, mode, n_demos, augment):
         super().__init__(data_dir, cfg, group, mode, n_demos, augment)
         print("Data dir: ", data_dir)
@@ -144,11 +145,11 @@ class RavensMultiTaskDatasetToHdf5(RavensMultiTaskDataset):
                 data_gt_pick.append(gt_pick)
                 data_gt_place.append(gt_place)
 
-                if len(data_s1) > 10:
-                    break
+                break
+
+            break
 
         return data_s1, data_s2, data_language, data_gt_pick, data_gt_place
-
 
     def interpret(self, sample, goal):
         # Interpret the sample and goal data
@@ -169,16 +170,16 @@ def main(cfg):
     # Datasets
     dataset_type = "multi"
     if 'multi' in dataset_type:
-        ds = RavensMultiTaskDatasetToHdf5(data_dir, cfg, group=task, mode='train', n_demos=n_demos, augment=False)
+        ds = RavensMultiTaskDatasetSuSIE(data_dir, cfg, group=task, mode='train', n_demos=n_demos, augment=False)
     else:
         #TODO: save train set, test set and val set separately
         ds = RavensDatasetToHdf5(os.path.join(data_dir, '{}-train'.format(task)), cfg, n_demos=n_demos, augment=False)
     data_s1, data_s2, data_language, data_gt_pick, data_gt_place = ds.run()
+    image = data_s1[0][:, :, :3] 
     import pdb; pdb.set_trace()
 
     initialize_compilation_cache()
     sample_fn = create_sample_fn("kvablack/susie")
-
     image_out = sample_fn(image, "open the drawer")
 
 
