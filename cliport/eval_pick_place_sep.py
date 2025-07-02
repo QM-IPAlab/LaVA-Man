@@ -14,6 +14,7 @@ from pytorch_lightning.loggers import WandbLogger
 from torch.utils.data import random_split, DataLoader
 WANDB_DIR = '/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/wandb_cliport'
 from cliport.real_dataset_207 import Real207Dataset
+from cliport.real_dataset_ann import RealAnnDataset
 
 
 @hydra.main(config_path='./cfg', config_name='eval')
@@ -47,6 +48,8 @@ def main(vcfg):
         ds = RealDataset(task_name=eval_task, data_type=mode, augment=False)
     elif dataset_type == 'real_ours':
         ds = Real207Dataset(task_name=eval_task, data_type=mode, augment=False)
+    elif dataset_type == 'susie_real':
+        ds = RealAnnDataset(task_name=eval_task, data_type=mode, augment=False)
     else:
         ds = dataset.RavensDataset(os.path.join(vcfg['data_dir'], f"{eval_task}-{mode}"),
                                    tcfg,

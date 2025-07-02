@@ -63,22 +63,38 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 #                         disp=False \
 
 python cliport/demos_ours.py n=100 \
-                        task=packing-omni-objects-group \
-                        mode=test \
-                        data_dir=data_ours\
-                        record.save_video=False \
-                        disp=False \
-
-python cliport/demos_ours.py n=100 \
-                        task=packing-omni-objects-group-inter \
-                        mode=test \
-                        data_dir=data_ours\
-                        record.save_video=False \
-                        disp=False \
-
-python cliport/demos_ours.py n=100 \
                         task=packing-omni-objects-group-intra \
-                        mode=test \
-                        data_dir=data_ours\
-                        record.save_video=False \
-                        disp=False \
+                        mode=train \
+                        data_dir=debug2\
+                        record.save_video=False\
+                        disp=True \
+
+
+# python cliport/demos_ours.py n=10 \
+#                         task=packing-omni-objects-inter \
+#                         mode=train \
+#                         data_dir=debug\
+#                         record.save_video=True \
+#                         disp=False \
+
+
+# python cliport/demos_ours.py n=10 \
+#                         task=packing-omni-objects-group-intra \
+#                         mode=train \
+#                         data_dir=debug\
+#                         record.save_video=True \
+#                         disp=False \
+
+# python cliport/demos_ours.py n=100 \
+#                         task=packing-omni-objects-group-inter \
+#                         mode=test \
+#                         data_dir=data_ours\
+#                         record.save_video=False \
+#                         disp=False \
+
+# python cliport/demos_ours.py n=100 \
+#                         task=packing-omni-objects-group-intra \
+#                         mode=test \
+#                         data_dir=data_ours\
+#                         record.save_video=False \
+#                         disp=False \

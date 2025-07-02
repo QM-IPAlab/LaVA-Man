@@ -255,7 +255,7 @@ class PackingOmniObjects(Task):
             for _, row in selected_rows.iterrows()
         ]
 
-        return selected_objects
+        return selected_objects, None
 
 
     def set_goals(self, object_descs, object_ids, object_points, repeat_category, zone_pose, zone_size):

@@ -1,0 +1,49 @@
+from cliport.agents.transporter_sep import TransporterAgentSep
+from cliport.models.streams.one_stream_attention_lang_fusion import OneStreamAttentionMAEBatch
+from cliport.models.streams.one_stream_transport_lang_fusion import OneStreamTransportMAEBatch
+from cliport.utils import utils
+
+class MAESepSeg2AgentSusie(TransporterAgentSep):
+    def __init__(self, name, cfg, train_ds, test_ds, sep_mode):
+        self.sep_mode = sep_mode
+        super().__init__(name, cfg, train_ds, test_ds, sep_mode)
+    
+    def create_attention(self, stream_fcn):
+        return OneStreamAttentionMAEBatch(
+            stream_fcn=(stream_fcn, None),
+            in_shape=self.in_shape,
+            n_rotations=1,
+            preprocess=utils.preprocess,
+            cfg=self.cfg,
+            device=self.device_type
+        )
+
+    def create_transport(self, stream_fcn):
+        return OneStreamTransportMAEBatch(
+            stream_fcn=(stream_fcn, None),
+            in_shape=self.in_shape,
+            n_rotations=self.n_rotations,
+            crop_size=self.crop_size,
+            preprocess=utils.preprocess,
+            cfg=self.cfg,
+            device=self.device_type
+        )
+
+    def _build_model(self):
+        stream_fcn = 'susie'
+        if self.sep_mode == 'pick':
+            self.attention = self.create_attention(stream_fcn)
+            self.transport = None
+        
+        elif self.sep_mode == 'place':
+            self.transport = self.create_transport(stream_fcn)
+            self.attention = None
+        
+        elif self.sep_mode == 'both':
+            self.attention = self.create_attention(stream_fcn)
+            self.transport = self.create_transport(stream_fcn)
+        
+        else:
+            raise ValueError(f"Invalid sep_mode: {self.sep_mode}")
+        
+    

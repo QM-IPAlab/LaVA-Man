@@ -28,6 +28,8 @@ from cliport.agents.sep_transporter import PickAgent, PlaceAgent
 from cliport.agents.transporter_sep_models import MAESepSeg2Agent, MAESepDPTAgent, MAESepDPTSKAgent, MAESepDPTSegAgent, MAESepSeg2DAgent
 from cliport.agents.transporter_sep_models import MAESepCLIP, MAESepBase, MAESepDual, MAESepFullmasked, MAEFozenEncoder, MAESepRecon, MAESepAdd, MAESepAddClipv, MAESepFuse, MAESepFuseFM
 
+from cliport.agents.susie_transporter import MAESepSeg2AgentSusie
+
 names = {
 
          ### OURS MAE
@@ -62,6 +64,8 @@ names = {
          'mae_sep_seg2_add_clipv':MAESepAddClipv,
          'mae_fuse':MAESepFuse,
          'mae_fuse_fm':MAESepFuseFM,
+
+         'susie': MAESepSeg2AgentSusie,
 
          #ablation study:
          'mae_sep_seg2_dual': MAESepDual,

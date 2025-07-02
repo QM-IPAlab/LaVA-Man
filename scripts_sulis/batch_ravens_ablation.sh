@@ -11,8 +11,8 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=chaoran.zhu@qmul.ac.uk
 
-module load Miniconda3/4.12.0
-source activate mae-cliport
+#module load Miniconda3/4.12.0
+#source activate mae-cliport
 
 export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)
@@ -32,9 +32,9 @@ export TOKENIZERS_PARALLELISM=false
 
 
 exps_name="exps_cliport/abla_m/0425_fuse_multisze_m75"
-agent_name="mae_fuse"
-pretrain_path="/home/a/acw694/CLIPort_new_loss/exps/0424_multisize_from_scratch_m75/checkpoint-399.pth"
-mae_model="mae_fuse"
+agent_name="mae_sep_base"
+pretrain_path=False
+mae_model="mpi"
 #pretrain_path=False
 
 # #tasks for ablation study (mask ratio)
@@ -71,27 +71,27 @@ tasks=("assembling-kits-seq-full"\
     "separating-piles-full"\
 )
 
-python -m cliport.train  train.task=multi-language-conditioned-full\
-                         train.agent=${agent_name}\
-                         train.exp_folder=${exps_name}\
-                         wandb.run_name=${exps_name}_multi\
-                         train.n_demos=1000 \
-                         train.n_steps=60100 \
-                         train.lr_scheduler=True\
-                         train.lr=2e-5\
-                         train.warmup_epochs=10\
-                         train.precision=32\
-                         train.batch_size=32\
-                         train.batchnorm=True\
-                         train.load_from_last_ckpt=False\
-                         train.log=False\
-                         mae_model=${mae_model} \
-                         pretrain_path=${pretrain_path}\
-                         cliport_checkpoint=False\
-                         dataset.cache=False \
-                         train.sep_mode=pick\
-                         dataset.type=multi\
-                         train.linear_probe=False\
+# python -m cliport.train  train.task=multi-language-conditioned-full\
+#                          train.agent=${agent_name}\
+#                          train.exp_folder=${exps_name}\
+#                          wandb.run_name=${exps_name}_multi\
+#                          train.n_demos=1000 \
+#                          train.n_steps=60100 \
+#                          train.lr_scheduler=True\
+#                          train.lr=2e-5\
+#                          train.warmup_epochs=10\
+#                          train.precision=32\
+#                          train.batch_size=32\
+#                          train.batchnorm=True\
+#                          train.load_from_last_ckpt=False\
+#                          train.log=False\
+#                          mae_model=${mae_model} \
+#                          pretrain_path=${pretrain_path}\
+#                          cliport_checkpoint=False\
+#                          dataset.cache=False \
+#                          train.sep_mode=pick\
+#                          dataset.type=multi\
+#                          train.linear_probe=False\
 
 
 python -m cliport.train  train.task=multi-language-conditioned-full\
