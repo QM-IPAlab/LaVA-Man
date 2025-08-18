@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <!-- Meta tags for social media banners, these should be filled in appropriatly as they are your "business card" -->
+  <!-- Replace the content tag with appropriate information -->
+  <meta name="description" content="DESCRIPTION META TAG">
+  <meta property="og:title" content="SOCIAL MEDIA TITLE TAG" />
+  <meta property="og:description" content="SOCIAL MEDIA DESCRIPTION TAG TAG" />
+  <meta property="og:url" content="URL OF THE WEBSITE" />
+  <!-- Path to banner image, should be in the path listed below. Optimal dimenssions are 1200X630-->
+  <meta property="og:image" content="static/image/your_banner_image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+
+
+  <meta name="twitter:title" content="TWITTER BANNER TITLE META TAG">
+  <meta name="twitter:description" content="TWITTER BANNER DESCRIPTION META TAG">
+  <!-- Path to banner image, should be in the path listed below. Optimal dimenssions are 1200X600-->
+  <meta name="twitter:image" content="static/images/your_twitter_banner_image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <!-- Keywords for your paper to be indexed by-->
+  <meta name="keywords" content="human-robot interaction, handover, hand-object reconstruction">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+
+  <title>LaVA-Man: Learning Visual Action Representations for Robot Manipulation</title>
+  <link rel="icon" type="image/x-icon" href="static/images/favicon.ico">
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+
+  <link rel="stylesheet" href="static/css/bulma.min.css">
+  <link rel="stylesheet" href="static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="static/css/fontawesome.all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="static/css/index.css">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script src="https://documentcloud.adobe.com/view-sdk/main.js"></script>
+  <script defer src="static/js/fontawesome.all.min.js"></script>
+  <script src="static/js/bulma-carousel.min.js"></script>
+  <script src="static/js/bulma-slider.min.js"></script>
+  <script src="static/js/index.js"></script>
+</head>
+
+<body>
+
+
+  <section class="hero">
+    <div class="hero-body">
+      <div class="container is-max-desktop">
+        <div class="columns is-centered">
+          <div class="column has-text-centered">
+            <h1 class="title is-1 publication-title">LaVA-Man: Learning Visual Action Representations for Robot Manipulation</h1>
+            <div class="is-size-5 publication-authors">
+              <!-- Paper authors -->
+              <span class="author-block">
+                <a href="https://noone65536.github.io/" target="_blank">Chaoran
+                  Zhu</a><sup>1</sup>,</span>
+              <span class="author-block">
+                <a href="https://hengyiwang.github.io/" target="_blank">Hengyi Wang</a><sup>2</sup>,</span>
+              <span class="author-block">
+                <a href="https://yiklungpang.github.io/" target = "_blank" >Yik Lung Pang</a><sup>1</sup>,
+              </span>
+              <span class="author-block">
+                <a href="http://eecs.qmul.ac.uk/~coh/" target="_blank">Changjae Oh</a><sup>1</sup>,
+              </span>
+            </div>
+
+            <div class="is-size-5 publication-authors">
+              <span class="author-block">Queen Mary University of London, UK<sup>1</sup><br>
+                University College London<sup>2</sup>
+            </div>
+
+            <br>
+            <h2 class="title is-4 publication-title">CoRL 2025</h2>
+
+
+            <div class="column has-text-centered">
+              <div class="publication-links">
+
+                <!-- Arxiv PDF link -->
+                <span class="link-block">
+                  <a href="" target="_blank" class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon">
+                      <i class="fas fa-file-pdf"></i>
+                    </span>
+                    <span>Paper 
+                    </span>
+                  </a>
+                </span>
+
+                <!-- Supplementary PDF link -->
+                <!-- <span class="link-block">
+                      <a href="static/pdfs/supplementary_material.pdf" target="_blank"
+                      class="external-link button is-normal is-rounded is-dark">
+                      <span class="icon">
+                        <i class="fas fa-file-pdf"></i>
+                      </span>
+                      <span>Supplementary</span>
+                    </a>
+                  </span> -->
+
+                <!-- Github link -->
+                <span class="link-block">
+                  <a href="" target="_blank"
+                    class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon">
+                      <i class="fab fa-github"></i>
+                    </span>
+                    <span>Code (Comming soon)</span>
+                  </a>
+                </span>
+
+                <!-- ArXiv abstract Link -->
+                <!-- <span class="link-block">
+                  <a href="https://arxiv.org/abs/<ARXIV PAPER ID>" target="_blank"
+                  class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                    <i class="ai ai-arxiv"></i>
+                  </span>
+                  <span>arXiv</span>
+                </a>
+              </span> -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- Teaser video-->
+  <section class="hero teaser">
+    <div class="container">
+      <div class="hero-body">
+        <video autoplay loop muted playsinline style="width: 90%; height: 90%; margin-left: 5%;">
+          <source src="videos/clip_overview.mp4" type="video/mp4">
+        </video>
+        <h2 class="subtitle has-text-centered">
+          We present LaVA-Man,  a self-supervised framework for learning visual-action representations for robot manipulation via goal image prediction.
+          We also introduce the Omni-Object Pick-and-Place dataset to ensure the model learns a diverse, open-vocabulary-based object prior. The learned 
+          representations can be adapted to various downstream robotic perception and manipulation tasks. 
+        </h2>
+      </div>
+    </div>
+  </section>
+  <!-- End teaser video -->
+   
+
+  <!-- Paper abstract -->
+  <section class="section hero">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-four-fifths">
+          <h2 class="title is-3">Abstract</h2>
+          <div class="content has-text-justified">
+            <p>
+              Visual-textual understanding is essential for language-guided robot manipulation. Recent works leverage pre-trained vision-language models to measure the similarity between encoded visual observations and textual instructions, and then train a model to map this similarity to robot actions.
+              However, this two-step approach limits the model to capture the relationship between visual observations and textual instructions, leading to reduced precision in manipulation tasks.
+              We propose to learn visual-textual associations through a self-supervised pretext task: reconstructing a masked goal image conditioned on an input image and textual instructions. This formulation allows the model to learn visual-action representations without robot action supervision. The learned representations can then be fine-tuned for manipulation tasks with only a few demonstrations.
+              We also introduce the \textit{Omni-Object Pick-and-Place} dataset, which consists of annotated robot tabletop manipulation episodes, including 180 object classes and 3,200 instances with corresponding textual instructions. This dataset enables the model to acquire diverse object priors and allows for a more comprehensive evaluation of its generalisation capability across object instances.
+              Experimental results on the five benchmarks, including both simulated and real-robot validations, demonstrate that our method outperforms prior art.
+            </p>
+          </div>
+          <div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- End paper abstract -->
+
+  <!-- pipeline -->
+  <!--
+  <section class="section is-small">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-full">
+          <div class="content">
+            <h2 class="title is-3">Pipeline</h2>
+            <div class="level-set has-text-justified">
+              <p>
+                We use a fixed backbone while adapting the output head for pretext and downstream tasks. 
+                We use a Siamese ViT encoder, where visual features from an input image are fed into the 
+                self-attention layer and then fused with the visual features from the masked goal image 
+                and text features. The dashed line indicates that we use a partially masked goal image for 
+                the pretext task and a fully masked image for robot action prediction.
+              </p>
+            </div>
+          </div>
+          <div class="columns is-centered">
+            <img src="static/images/pipeline.png" alt="Robot setup" width="100%" class="center-image" />
+          </div>
+        </div>
+      </div>
+  </section>
+  -->
+
+  <!-- prediction -->
+  <section class="hero section is-small">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-full">
+          <div class="content">
+            <h2 class="title is-3">Predictions</h2>
+            <div class="level-set has-text-justified">
+              <p>
+                We conduct experiments using a Franka Emika Panda robot equipped with an RGB-D end-effector camera. We
+                also show our seen and unseen split of objects and colored blocks in the manipulation tasks.
+              </p>
+            </div>
+          </div>
+          <div class="columns is-centered">
+            <video autoplay loop muted playsinline style="width: 100%; height: 100%;">
+              <source src="videos/clip_prediction.mp4" type="video/mp4">
+            </video>
+          </div>
+        </div>
+      </div>
+  </section>
+
+   <!-- dataset -->
+  <section class="hero section is-small">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-full">
+          <div class="content">
+            <h2 class="title is-3">Proposed new dataset</h2>
+            <div class="level-set has-text-justified">
+              <p>
+                We conduct experiments using a Franka Emika Panda robot equipped with an RGB-D end-effector camera. We
+                also show our seen and unseen split of objects and colored blocks in the manipulation tasks.
+              </p>
+            </div>
+          </div>
+          <div class="columns is-centered">
+            <video autoplay loop muted playsinline style="width: 100%; height: 100%;">
+              <source src="videos/clip_dataset.mp4" type="video/mp4">
+            </video>
+          </div>
+        </div>
+      </div>
+  </section>
+
+  <!-- real robot experiment -->
+  <section class="hero is-small">
+    <div class="hero-body">
+      <div class="container has-text-centered">
+        <h2 class="title is-3">Real robot experiments</h2>
+        <div class="level-set has-text-justified">
+        </div>
+        <div class="video-container">
+          <div class="video-item">
+            <div class="video-crop-wrapper2">
+            <video autoplay muted loop">
+              <source src="videos/clip_real_exp_1.mp4" type="video/mp4">
+            </video>
+            </div>
+            <div class="description">Pick and place seen and unseen objects</div>
+          </div>
+          <div class="video-item">
+          <div class="video-crop-wrapper2">
+            <video  autoplay muted loop>
+              <source src="videos/clip_real_exp2.mp4" type="video/mp4">
+            </video>
+            </div>
+            <div class="description">More complex manipulation tasks</div>
+          </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+   <!-- dataset -->
+   <section class="hero section is-small">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-full">
+          <div class="content">
+            <h2 class="title is-3">Failure cases</h2>
+          </div>
+          <div class="columns is-centered">
+            <div class="video-crop-wrapper">
+            <video autoplay loop muted playsinline style="width: 100%; height: 100%;">
+              <source src="videos/clip_failure.mp4" type="video/mp4">
+            </video>
+            </div>
+          </div>
+        </div>
+      </div>
+  </section>
+  
+
+  <footer class="footer">
+    <div class="container">
+      <div class="columns is-centered">
+        <div class="column is-8">
+          <div class="content">
+
+            <p>
+              This page was built using the <a href="https://github.com/eliahuhorwitz/Academic-project-page-template"
+                target="_blank">Academic Project Page Template</a> which was adopted from the <a
+                href="https://nerfies.github.io" target="_blank">Nerfies</a> project page.
+              You are free to borrow the source code of this website, we just ask that you link back to this page in the
+              footer. <br> This website is licensed under a <a rel="license"
+                href="http://creativecommons.org/licenses/by-sa/4.0/" target="_blank">Creative
+                Commons Attribution-ShareAlike 4.0 International License</a>.
+            </p>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Statcounter tracking code -->
+
+  <!-- You can add a tracker to track page visits by creating an account at statcounter.com -->
+
+  <!-- End of Statcounter Code -->
+
+</body>
+
+</html>
