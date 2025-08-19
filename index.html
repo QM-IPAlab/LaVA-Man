@@ -7,7 +7,8 @@
   <!-- Replace the content tag with appropriate information -->
   <meta name="description" content="DESCRIPTION META TAG">
   <meta property="og:title" content="LaVA-Man: Learning Visual Action Representations for Robot Manipulation" />
-  <meta property="og:description" content="A self-supervised framework for learning visual-action representations for robot manipulation via goal image prediction" />
+  <meta property="og:description"
+    content="A self-supervised framework for learning visual-action representations for robot manipulation via goal image prediction" />
   <meta property="og:url" content="URL OF THE WEBSITE" />
   <!-- Path to banner image, should be in the path listed below. Optimal dimenssions are 1200X630-->
   <meta property="og:image" content="static/image/your_banner_image.png" />
@@ -52,7 +53,8 @@
       <div class="container is-max-desktop">
         <div class="columns is-centered">
           <div class="column has-text-centered">
-            <h1 class="title is-1 publication-title">LaVA-Man: Learning Visual Action Representations for Robot Manipulation</h1>
+            <h1 class="title is-1 publication-title">LaVA-Man: Learning Visual Action Representations for Robot
+              Manipulation</h1>
             <div class="is-size-5 publication-authors">
               <!-- Paper authors -->
               <span class="author-block">
@@ -61,7 +63,7 @@
               <span class="author-block">
                 <a href="https://hengyiwang.github.io/" target="_blank">Hengyi Wang</a><sup>2</sup>,</span>
               <span class="author-block">
-                <a href="https://yiklungpang.github.io/" target = "_blank" >Yik Lung Pang</a><sup>1</sup>,
+                <a href="https://yiklungpang.github.io/" target="_blank">Yik Lung Pang</a><sup>1</sup>,
               </span>
               <span class="author-block">
                 <a href="http://eecs.qmul.ac.uk/~coh/" target="_blank">Changjae Oh</a><sup>1</sup>
@@ -69,8 +71,8 @@
             </div>
 
             <div class="is-size-5 publication-authors">
-                Queen Mary University of London, UK<sup>1</sup><br>
-                University College London, UK<sup>2</sup>
+              Queen Mary University of London, UK<sup>1</sup><br>
+              University College London, UK<sup>2</sup>
             </div>
 
             <br>
@@ -86,7 +88,7 @@
                     <span class="icon">
                       <i class="fas fa-file-pdf"></i>
                     </span>
-                    <span>Paper 
+                    <span>Paper
                     </span>
                   </a>
                 </span>
@@ -104,8 +106,7 @@
 
                 <!-- Github link -->
                 <span class="link-block">
-                  <a href="" target="_blank"
-                    class="external-link button is-normal is-rounded is-dark">
+                  <a href="" target="_blank" class="external-link button is-normal is-rounded is-dark">
                     <span class="icon">
                       <i class="fab fa-github"></i>
                     </span>
@@ -133,22 +134,24 @@
 
 
   <!-- Teaser video-->
-  <section class="hero teaser"> 
+  <section class="hero teaser">
     <div class="container">
       <div class="hero-body">
         <video autoplay loop muted playsinline style="width: 90%; height: 90%; margin-left: 5%;">
           <source src="videos/clip_overview2.mp4" type="video/mp4">
         </video>
         <h2 class="subtitle has-text-centered">
-          We present LaVA-Man,  a self-supervised framework for learning visual-action representations for robot manipulation via goal image prediction.
-          We also introduce the Omni-Object Pick-and-Place dataset to ensure the model learns a diverse, open-vocabulary-based object prior. The learned 
-          representations can be adapted to various downstream robotic perception and manipulation tasks. 
+          We present LaVA-Man, a self-supervised framework for learning visual-action representations for robot
+          manipulation via goal image prediction.
+          We also introduce the Omni-Object Pick-and-Place dataset to ensure the model learns a diverse,
+          open-vocabulary-based object prior. The learned
+          representations can be adapted to various downstream robotic perception and manipulation tasks.
         </h2>
       </div>
     </div>
   </section>
   <!-- End teaser video -->
-   
+
 
   <!-- Paper abstract -->
   <section class="section hero">
@@ -158,11 +161,21 @@
           <h2 class="title is-3">Abstract</h2>
           <div class="content has-text-justified">
             <p>
-              Visual-textual understanding is essential for language-guided robot manipulation. Recent works leverage pre-trained vision-language models to measure the similarity between encoded visual observations and textual instructions, and then train a model to map this similarity to robot actions.
-              However, this two-step approach limits the model to capture the relationship between visual observations and textual instructions, leading to reduced precision in manipulation tasks.
-              We propose to learn visual-textual associations through a self-supervised pretext task: reconstructing a masked goal image conditioned on an input image and textual instructions. This formulation allows the model to learn visual-action representations without robot action supervision. The learned representations can then be fine-tuned for manipulation tasks with only a few demonstrations.
-              We also introduce the \textit{Omni-Object Pick-and-Place} dataset, which consists of annotated robot tabletop manipulation episodes, including 180 object classes and 3,200 instances with corresponding textual instructions. This dataset enables the model to acquire diverse object priors and allows for a more comprehensive evaluation of its generalisation capability across object instances.
-              Experimental results on the five benchmarks, including both simulated and real-robot validations, demonstrate that our method outperforms prior art.
+              Visual-textual understanding is essential for language-guided robot manipulation. Recent works leverage
+              pre-trained vision-language models to measure the similarity between encoded visual observations and
+              textual instructions, and then train a model to map this similarity to robot actions.
+              However, this two-step approach limits the model to capture the relationship between visual observations
+              and textual instructions, leading to reduced precision in manipulation tasks.
+              We propose to learn visual-textual associations through a self-supervised pretext task: reconstructing a
+              masked goal image conditioned on an input image and textual instructions. This formulation allows the
+              model to learn visual-action representations without robot action supervision. The learned representations
+              can then be fine-tuned for manipulation tasks with only a few demonstrations.
+              We also introduce the Omni-Object Pick-and-Place dataset, which consists of annotated robot tabletop
+              manipulation episodes, including 180 object classes and 3,200 instances with corresponding textual
+              instructions. This dataset enables the model to acquire diverse object priors and allows for a more
+              comprehensive evaluation of its generalisation capability across object instances.
+              Experimental results on the five benchmarks, including both simulated and real-robot validations,
+              demonstrate that our method outperforms prior art.
             </p>
           </div>
           <div>
@@ -220,9 +233,10 @@
           </div>
         </div>
       </div>
+    </div>
   </section>
 
-   <!-- dataset -->
+  <!-- dataset -->
   <section class="hero section is-small">
     <div class="container is-max-desktop">
       <div class="columns is-centered has-text-centered">
@@ -231,7 +245,8 @@
             <h2 class="title is-3">New dataset</h2>
             <div class="level-set has-text-justified">
               <p>
-                We also introduce the OOPP dataset, a tabletop simulation benchmark consisting of 3,200 unique real-scanned objects across 180 distinct categories.
+                We also introduce the OOPP dataset, a tabletop simulation benchmark consisting of 3,200 unique
+                real-scanned objects across 180 distinct categories.
               </p>
             </div>
           </div>
@@ -242,73 +257,79 @@
           </div>
         </div>
       </div>
+    </div>
   </section>
 
-  <!-- real robot experiment -->
-  <section class="hero is-small">
-    <div class="hero-body">
-      <div class="container has-text-centered">
-        <h2 class="title is-3">Robot experiments</h2>
-        <div class="level-set has-text-justified">
-        </div>
-        <div class="video-container">
-          <div class="video-item">
-            <div class="video-crop-wrapper2">
-            <video autoplay muted loop playsinline>
+  <!-- Real robot experiments -->
+  <!--
+  <section class="hero section is-small">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-full">
+          <div class="content">
+            <h2 class="title is-3">Real robot experiments</h2>
+          </div>
+          <div class="columns is-centered">
+            <video autoplay loop muted playsinline style="width: 100%; height: 100%;">
               <source src="videos/clip_real_exp_1_2.mp4" type="video/mp4">
             </video>
-            </div>
-            <div class="description">Pick and place seen and unseen objects</div>
           </div>
-          <div class="video-item">
-          <div class="video-crop-wrapper2">
-            <video  autoplay muted loop>
-              <source src="videos/clip_real_exp2_2.mp4" type="video/mp4">
-            </video>
-            </div>
-            <div class="description">More complex manipulation tasks</div>
-          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  -->
 
+  <section class="hero section is-small">
+    <div class="hero-body">
+      <div class="container is-max-desktop">
+        <div class="column is-full is-centered has-text-centered">
+          <h2 class="title is-3">Real robot experiments</h2>
+          <div id="results-carousel" class="carousel results-carousel">
+            <div class="item item-video1">
+              <video poster="" id="video1" autoplay muted loop height="100%">
+                <!-- Your video file here -->
+                <source src="videos/clip_real_exp_1_2.mp4" type="video/mp4">
+              </video>
+            </div>
+            <div class="item item-video2">
+              <video poster="" id="video2" autoplay muted loop height="100%">
+                <!-- Your video file here -->
+                <source src="videos/clip_real_exp2_2.mp4" type="video/mp4">
+              </video>
+            </div>
+            <div class="item item-video3">
+              <video poster="" id="video3" autoplay muted loop height="100%">
+                <!-- Your video file here -->
+                <source src="videos/clip_exp_add_1.mp4" type="video/mp4">
+              </video>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-   <!-- Additional robot experiment -->
-   <section class="hero is-small">
-    <div class="hero-body">
-      <div class="container has-text-centered">
-        <div class="level-set has-text-justified">
-        </div>
-        <div class="video-container">
-          <div class="video-item">
-            <div class="video-crop-wrapper2">
-            <video autoplay muted loop playsinline>
-              <source src="videos/clip_exp_add_1.mp4" type="video/mp4">
-            </video>
-            </div>
-            <br>
-            <div class="description">Additional real robot experiments</div>
+  <!-- Simulation experiments -->
+  <section class="hero section is-small">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-full">
+          <div class="content">
+            <h2 class="title is-3">Simulation experiments</h2>
           </div>
-          <div class="video-item">
-          <div class="video-crop-wrapper2">
-            <video autoplay muted loop playsinline>
+          <div class="columns is-centered">
+            <video autoplay loop muted playsinline style="width: 100%; height: 100%;">
               <source src="videos/clip_exp_add_2.mp4" type="video/mp4">
             </video>
-            </div>
-            <br>
-            <div class="description">Additional experiments in different simulatior</div>
-          </div>
-
           </div>
         </div>
       </div>
     </div>
   </section>
 
-   <!-- Failure cases -->
-   <section class="hero section is-small">
+  <!-- Failure cases -->
+  <section class="hero section is-small">
     <div class="container is-max-desktop">
       <div class="columns is-centered has-text-centered">
         <div class="column is-full">
@@ -317,15 +338,16 @@
           </div>
           <div class="columns is-centered">
             <div class="video-crop-wrapper">
-            <video autoplay loop muted playsinline style="width: 100%; height: 100%;">
-              <source src="videos/clip_failure.mp4" type="video/mp4">
-            </video>
+              <video autoplay loop muted playsinline style="width: 100%; height: 100%;">
+                <source src="videos/clip_failure.mp4" type="video/mp4">
+              </video>
             </div>
           </div>
         </div>
       </div>
+    </div>
   </section>
-  
+
 
   <footer class="footer">
     <div class="container">

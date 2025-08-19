@@ -6,7 +6,7 @@ $(document).ready(function() {
 
     var options = {
 			slidesToScroll: 1,
-			slidesToShow: 2,
+			slidesToShow: 1,
 			loop: true,
 			infinite: true,
 			autoplay: true,
