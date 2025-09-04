@@ -31,10 +31,10 @@ export TOKENIZERS_PARALLELISM=false
 # 8. check the agent name: sep or not sept, if sep, check train.sep_mode is set to pick or place
 
 
-exps_name="exps_cliport/abla_m/0425_fuse_multisze_m75"
-agent_name="mae_fuse"
-pretrain_path="/home/a/acw694/CLIPort_new_loss/exps/0424_multisize_from_scratch_m75/checkpoint-399.pth"
-mae_model="mae_fuse"
+exps_name="exps_cliport/0430_mpi"
+agent_name="mae_sep_base"
+pretrain_path="/home/a/acw694/CLIPort_new_loss/checkpoints/MPI-base-state_dict.pt"
+mae_model="mpi"
 #pretrain_path=False
 
 # #tasks for ablation study (mask ratio)
@@ -79,12 +79,12 @@ python -m cliport.train  train.task=multi-language-conditioned-full\
                          train.n_steps=60100 \
                          train.lr_scheduler=True\
                          train.lr=2e-5\
-                         train.warmup_epochs=10\
+                         train.warmup_epochs=20\
                          train.precision=32\
-                         train.batch_size=32\
+                         train.batch_size=16\
                          train.batchnorm=True\
                          train.load_from_last_ckpt=False\
-                         train.log=False\
+                         train.log=True\
                          mae_model=${mae_model} \
                          pretrain_path=${pretrain_path}\
                          cliport_checkpoint=False\
@@ -102,12 +102,12 @@ python -m cliport.train  train.task=multi-language-conditioned-full\
                          train.n_steps=60100 \
                          train.lr_scheduler=True\
                          train.lr=2e-5\
-                         train.warmup_epochs=10\
+                         train.warmup_epochs=20\
                          train.precision=32\
-                         train.batch_size=2\
+                         train.batch_size=4\
                          train.batchnorm=True\
                          train.load_from_last_ckpt=False\
-                         train.log=False\
+                         train.log=True\
                          mae_model=${mae_model} \
                          pretrain_path=${pretrain_path}\
                          cliport_checkpoint=False\
@@ -158,15 +158,15 @@ do
                         disp=False\
                         record.save_video=False
 
-    python cliport/eval_sep.py model_task=multi-language-conditioned-full\
-                        eval_task=${task} \
-                        agent=${agent_name} \
-                        mode=test \
-                        n_demos=100 \
-                        train_demos=1000 \
-                        exp_folder=${exps_name} \
-                        checkpoint_type=last\
-                        update_results=True \
-                        disp=False\
-                        record.save_video=False
+    # python cliport/eval_sep.py model_task=multi-language-conditioned-full\
+    #                     eval_task=${task} \
+    #                     agent=${agent_name} \
+    #                     mode=test \
+    #                     n_demos=100 \
+    #                     train_demos=1000 \
+    #                     exp_folder=${exps_name} \
+    #                     checkpoint_type=last\
+    #                     update_results=True \
+    #                     disp=False\
+    #                     record.save_video=False
 done

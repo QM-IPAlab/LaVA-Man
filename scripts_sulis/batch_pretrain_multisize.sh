@@ -5,8 +5,8 @@
 #SBATCH --mem-per-cpu=3850
 #SBATCH --gres=gpu:ampere_a100:3
 #SBATCH --partition=gpu
-#SBATCH --time=24:00:00
-#SBATCH --account=su008-acw544
+#SBATCH --time=48:00:00
+#SBATCH --account=su008-acw694
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=chaoran.zhu@qmul.ac.uk
 
@@ -27,7 +27,8 @@ torchrun --nproc_per_node 3 mae/main_pretrain_ours.py \
     --model mae_fuse \
     --batch_size 96 \
     --input_size 224 224  \
-    --output_dir  exps/0427_mae_fuse_4dataset \
+    --output_dir  exps/0607_mae_fuse_4dataset \
     --mask_ratio 0.95\
     --epochs 400 \
-    #--my_log \
+    --multisize \
+    --my_log \

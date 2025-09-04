@@ -21,13 +21,18 @@ import cv2
 class RealAnnDataset(Dataset):
     """Dataset for loading real images."""
 
-    def __init__(self, task_name="pack_objects", data_type = 'train', augment=false):
+    def __init__(self, task_name="train_ann", data_type = 'train', augment=false):
         """A simple RGB-D image dataset."""
 
         print(f"Loading real 207 dataset...") 
 
         self.augment = augment
-        self.path = "/jmain02/home/J2AD007/txk47/cxz00-txk47/cliport/real_annotated"
+        if task_name == "train_ann":
+            self.path = "/home/a/acw694/CLIPort_new_loss/real_annotated"
+        elif task_name == "train_ann2":
+            self.path = "/home/a/acw694/CLIPort_new_loss/real_annotated2"
+        else:
+            print("No valid dataset !!") 
 
         self.annotation_file = os.path.join(self.path, 'annotations.json')
         self.in_shape = (320, 160, 6)
@@ -130,7 +135,7 @@ def draw_circle_on_image(image, pick_coords, pick_radius, save_path="circle.png"
     
     # 画圈
     img_with_circle = img.copy()
-    img_with_circle = cv2.circle(img_with_circle, (pick_coords[1],pick_coords[0]), pick_radius, pick_color, thickness)
+    img_with_circle = cv2.circle(img_with_circle, (pick_coords[1],pick_coords[0]), pick_radius, pick_color, thickness) # type: ignore
     
     # 保存结果
     img_with_circle = Image.fromarray(img_with_circle)  # 转换回PIL图像格式

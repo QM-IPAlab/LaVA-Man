@@ -13,6 +13,7 @@ from pytorch_lightning.loggers import WandbLogger
 from cliport.models.core.attention import Attention
 import cv2
 from visualizer import get_local
+from torchvision.utils import save_image
 
 
 class TransporterAgentSep(LightningModule):
@@ -673,6 +674,29 @@ class TransporterAgentSep(LightningModule):
         self.load_state_dict(torch.load(model_place)['state_dict'], strict=False)
         self.to(device=self.device_type)
         
+
+    def predict_step(self, batch, batch_idx):
+        
+        if self.attention is not None: self.attention.eval()
+        assert self.transport is None, 'Only support prediction in pick mode'
+        assert self.sep_mode == 'pick', 'Only support prediction in pick mode'
+        frame, _ = batch
+
+        inp_img = frame['img']
+        p0, p0_theta = frame['p0'], frame['p0_theta']
+        lang_goal = frame['lang_goal']
+                
+        out = self.attention.predict(inp_img, lang_goal)
+        img = out
+        img = (img- img.min()) / (img.max() - img.min())
+        
+        save_image(img, f'{batch_idx}_prediction.png')
+        print('Saved successfully')
+        
+
+    def predict_dataloader(self):
+        return self.test_ds
+
 
 class TransporterAgentSepRecon(TransporterAgentSep):
     

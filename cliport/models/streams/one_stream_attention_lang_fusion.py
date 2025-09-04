@@ -170,6 +170,17 @@ class OneStreamAttentionMAEBatch(OneStreamAttentionMAEFixSize):
             output = output.reshape(inp_img.shape[0], *logits.shape[1:])
         return output
 
+    def predict(self, inp_img, lang_goal):
+        """Forward pass."""
+        
+        # Padding
+        inp_img = inp_img.permute(0, 3, 1, 2)
+        in_data = inp_img
+
+        #FIXME: no rotation here now
+        prediction = self.attn_stream_one.predict(in_data, lang_goal)
+        return prediction
+
 
 class OneStreamAttentionMAEBatchRecon(OneStreamAttentionMAEBatch):
     def forward(self, inp_img, lang_goal, softmax=True):

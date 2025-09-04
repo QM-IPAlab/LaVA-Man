@@ -7,7 +7,7 @@ import numpy as np
 from cliport.tasks.task import Task
 from cliport.utils import utils
 import pandas as pd
-
+import random
 import pybullet as p
 TRAINING_DIR = 'omni_objs_processed'
 INTER_CLASS_DIR = 'omni_objs_processed_inter_class'
@@ -35,8 +35,8 @@ class PackingOmniObjects(Task):
             category_path = os.path.join(self.obj_path, category)
             
             instances = sorted(os.listdir(os.path.join(self.obj_path, category)))
-            if category in INTRA_CLASS_CATEGORY:
-                instances = instances[5:] # keep the first 5 instances for intra-class testing
+            #if category in INTRA_CLASS_CATEGORY:
+            #    instances = instances[5:] # keep the first 5 instances for intra-class testing
             
             instances = instances[:5]
             for instance in instances:
@@ -133,7 +133,7 @@ class PackingOmniObjects(Task):
         bboxes = np.array(bboxes)
         scale_factor = 7
         object_template = 'google/object-template.urdf'
-        selected_objs, repeat_category  = self.choose_objects(len(bboxes))
+        selected_objs, repeat_category  = self.choose_vis_objects(len(bboxes))
 
         object_descs = []
         for i, bbox in enumerate(bboxes):
@@ -256,6 +256,37 @@ class PackingOmniObjects(Task):
         ]
 
         return selected_objects
+
+    def choose_vis_objects(self, k):
+        # 指定加载的对象列表（class_name, instance_name）
+        fixed_objects = [
+            ("bread", "bread_001"),
+            ("garlic", "garlic_001"),
+            ("toy_train", "toy_train_001"),
+            ("broccoli", "broccoli_001"),
+            ("toy_car", "toy_car_001"),
+            ("donut", "donut_001"),
+        ]
+
+        if k > len(fixed_objects):
+            raise ValueError(f"Only {len(fixed_objects)} specified objects available, requested {k}")
+
+        # 随机选取 k 个
+        selected_tuples = random.sample(fixed_objects, k)
+
+        selected_objects = []
+        
+        for class_name, instance_name in selected_tuples:
+            row = self.meta_data[
+                (self.meta_data["class_name"] == class_name) &
+                (self.meta_data["instance_name"] == instance_name)
+            ]
+            if row.empty:
+                raise FileNotFoundError(f"Object ({class_name}, {instance_name}) not found in meta_data.")
+            row = row.iloc[0]
+            selected_objects.append((row["class_name"], row["instance_name"], row["file_path"]))
+
+        return selected_objects, None
 
 
     def set_goals(self, object_descs, object_ids, object_points, repeat_category, zone_pose, zone_size):

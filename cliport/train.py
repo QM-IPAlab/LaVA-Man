@@ -133,6 +133,19 @@ def main(cfg):
         train_ds = torch.utils.data.ConcatDataset([train_ds_sim, train_ds_real_pack_obj, train_ds_real_pick_b])
         val_ds = torch.utils.data.ConcatDataset([val_ds_sim, val_ds_real_pack_obj, val_ds_real_pick_b])
         print("Using mixed dataset")
+    elif 'mix_real' ==  dataset_type: 
+        train_ds_real_pack_a = RealDataset(task_name="pack_objects", data_type='train_all', augment=True)
+        val_ds_a = RealDataset(task_name="pack_objects", data_type='train_all', augment=False)
+        
+        train_ds_real_pick_b = RealAnnDataset(task_name="train_ann", data_type='train', augment=True)
+        val_ds_b = RealAnnDataset(task_name="train_ann",data_type='train', augment=False)
+
+        train_ds_real_pick_c = RealAnnDataset(task_name="train_ann2", data_type='train', augment=True)
+        val_ds_c = RealAnnDataset(task_name="train_ann2", data_type='train', augment=False)
+        
+        train_ds = torch.utils.data.ConcatDataset([train_ds_real_pack_a, train_ds_real_pick_b, train_ds_real_pick_c])
+        val_ds = torch.utils.data.ConcatDataset([val_ds_a, val_ds_b, val_ds_c])
+
     else:
         train_ds = RavensDataset(os.path.join(data_dir, '{}-train'.format(task)), cfg, n_demos=n_demos, augment=augment)
         val_ds = RavensDataset(os.path.join(data_dir, '{}-val'.format(task)), cfg, n_demos=n_val, augment=False)
@@ -144,7 +157,7 @@ def main(cfg):
         ###       Be careful when evaluating the model.
         cfg['train']['batchnorm'] = True
         train_ds = DataLoader(train_ds, batch_size=batch_size, shuffle=True, pin_memory=False, num_workers=2)
-        val_ds = DataLoader(val_ds, batch_size=batch_size, shuffle=False, pin_memory=False, num_workers=2)
+        val_ds = DataLoader(val_ds, batch_size=1, shuffle=False, pin_memory=False, num_workers=2)
 
     # Initialize agent
     if not sep_mode:
@@ -164,6 +177,7 @@ def main(cfg):
         
     # Main training loop
     trainer.fit(agent)
+    #trainer.predict(agent)
     #tuner = Tuner(trainer)
     #tuner.lr_find(agent)
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=fuse
+#SBATCH --job-name=test
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=42
@@ -19,10 +19,10 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 export TOKENIZERS_PARALLELISM=false
 
-agent_name="mae_fuse"
-exps_name="exps_cliport/abla_d/0425_fuse_multisze_m95_100demo"
-train_demos=100
-mae_model="mae_fuse"
+agent_name="mae_sep_base"
+exps_name="exps_cliport/0429_mpi_omni"
+train_demos=1000
+mae_model="mpi"
 
 #tasks for testing
 tasks=("assembling-kits-seq-full"\
@@ -40,7 +40,7 @@ tasks=("assembling-kits-seq-full"\
 for task in "${tasks[@]}"
 do
     echo "Running evaluation for agent: $agent with task: $task"
-    python cliport/eval_sep.py model_task=multi-language-conditioned-full\
+    python cliport/eval_sep.py model_task=packing-omni-objects\
                         eval_task=${task} \
                         agent=${agent_name} \
                         mode=test \
@@ -52,7 +52,7 @@ do
                         disp=False\
                         record.save_video=False
 
-    python cliport/eval_sep.py model_task=multi-language-conditioned-full\
+    python cliport/eval_sep.py model_task=packing-omni-objects\
                         eval_task=${task} \
                         agent=${agent_name} \
                         mode=test \
