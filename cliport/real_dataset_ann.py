@@ -27,12 +27,7 @@ class RealAnnDataset(Dataset):
         print(f"Loading real 207 dataset...") 
 
         self.augment = augment
-        if task_name == "train_ann":
-            self.path = "/home/a/acw694/CLIPort_new_loss/real_annotated"
-        elif task_name == "train_ann2":
-            self.path = "/home/a/acw694/CLIPort_new_loss/real_annotated2"
-        else:
-            print("No valid dataset !!") 
+        self.path = "/media/robot/New Volume/temp_backup/real_annotated_with_goal"
 
         self.annotation_file = os.path.join(self.path, 'annotations.json')
         self.in_shape = (320, 160, 6)
@@ -40,6 +35,7 @@ class RealAnnDataset(Dataset):
 
        # cache
         self._cache = []
+        self.goal_images = []
 
         # load the annotaions dataset
         with open(self.annotation_file, 'r') as f:
@@ -58,10 +54,13 @@ class RealAnnDataset(Dataset):
 
             img_path = os.path.join(self.path, f"{sample_key}.png")
             depth_path = os.path.join(self.path, f"{sample_key}_depth.png")
-            
+            goal_image_path = os.path.join(self.path, f"{sample_key}_goal.png")
+
             # Load image
             img = Image.open(img_path)
             depth = Image.open(depth_path).convert('L')
+            goal_image = Image.open(goal_image_path)
+
             pick_coords = (annotation["pick_coordinates"][0], annotation["pick_coordinates"][1])
             place_coords = (annotation["place_coordinates"][0], annotation["place_coordinates"][1])
 
@@ -81,6 +80,11 @@ class RealAnnDataset(Dataset):
                                 annotation["instruction"],
                                 pick_radius,
                                 place_radius))
+            
+            # for susie training 
+            if goal_image is not None:
+                goal_image = np.array(goal_image)
+                self.goal_images.append(goal_image)
 
     def __len__(self):
         return len(self._cache)
@@ -112,6 +116,15 @@ class RealAnnDataset(Dataset):
             'pick_radius': pick_radius,
             'place_radius': place_radius
         }
+
+        if self.goal_images:
+            goal_image = self.goal_images[idx]
+            goal_image = goal_image[:, :, :3]
+            goal_image = np.float32(goal_image)
+
+            img = img[:, :, :3]
+            img = np.concatenate((img, goal_image), axis=2)
+            sample['img'] = img
 
         return sample, sample
     

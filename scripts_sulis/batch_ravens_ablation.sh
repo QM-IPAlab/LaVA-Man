@@ -11,8 +11,8 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=chaoran.zhu@qmul.ac.uk
 
-module load Miniconda3/4.12.0
-source activate mae-cliport
+#module load Miniconda3/4.12.0
+#source activate mae-cliport
 
 export CLIPORT_ROOT=$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)

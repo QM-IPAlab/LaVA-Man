@@ -16,6 +16,7 @@ from torch.utils.data import random_split, DataLoader
 
 from cliport import agents
 from cliport.dataset import RavensDataset, RavensMultiTaskDataset
+from cliport.test_susie import RavensDatasetSuSIE
 from cliport.real_dataset import RealDataset
 
 import hydra
@@ -133,6 +134,12 @@ def main(cfg):
         train_ds = torch.utils.data.ConcatDataset([train_ds_sim, train_ds_real_pack_obj, train_ds_real_pick_b])
         val_ds = torch.utils.data.ConcatDataset([val_ds_sim, val_ds_real_pack_obj, val_ds_real_pick_b])
         print("Using mixed dataset")
+    elif 'susie_sim' in dataset_type:
+        train_ds = RavensDatasetSuSIE(os.path.join(data_dir, '{}-train'.format(task)), cfg, n_demos=n_demos, augment=augment)
+        val_ds = RavensDatasetSuSIE(os.path.join(data_dir, '{}-test'.format(task)), cfg, n_demos=n_val, augment=False)
+    elif 'susie_real' in dataset_type:
+        train_ds = RealAnnDataset(task_name=task, data_type="train_ann", augment=True)
+        val_ds = RealAnnDataset(task_name=task, data_type='train_ann', augment=False)
     elif 'mix_real' ==  dataset_type: 
         train_ds_real_pack_a = RealDataset(task_name="pack_objects", data_type='train_all', augment=True)
         val_ds_a = RealDataset(task_name="pack_objects", data_type='train_all', augment=False)

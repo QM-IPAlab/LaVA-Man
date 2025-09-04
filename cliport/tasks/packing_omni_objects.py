@@ -255,7 +255,7 @@ class PackingOmniObjects(Task):
             for _, row in selected_rows.iterrows()
         ]
 
-        return selected_objects
+        return selected_objects, None
 
     def choose_vis_objects(self, k):
         # 指定加载的对象列表（class_name, instance_name）
