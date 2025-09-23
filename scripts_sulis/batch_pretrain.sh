@@ -16,16 +16,16 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)
 export PYTHONPATH=$PYTHONPATH:$(pwd)/mae
 export TOKENIZERS_PARALLELISM=false
 
-module load Miniconda3/4.12.0
-source activate mae-cliport
+#module load Miniconda3/4.12.0
+#source activate mae-cliport
 
-export MASTER_ADDR=$(hostname)
-export MASTER_PORT=$(python -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
+#export MASTER_ADDR=$(hostname)
+#export MASTER_PORT=$(python -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
 
-torchrun --nproc_per_node 3 mae/main_pretrain_ours.py \
-    --model mvp \
+torchrun --nproc_per_node 1 mae/main_pretrain_ours.py \
+    --model mae_fuse \
     --batch_size 64 \
     --input_size 224 224  \
-    --output_dir  exps/0425_mpi \
+    --output_dir  exps/0831_ego4d \
     --epochs 400 \
-    --my_log \
+    #--my_log \

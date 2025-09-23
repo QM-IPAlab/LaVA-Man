@@ -26,7 +26,7 @@ class RealDataset(Dataset):
         print(f"Loading real new dataset...") 
 
     
-        self.path = "/jmain02/home/J2AD007/txk47/cxz00-txk47/DiffPort/data-real" # FIXME: hardcoded path
+        self.path = "/home/a/acw694/CLIPort_new_loss/data_real_idiap" # FIXME: hardcoded path
         if data_type == 'train':
             self.path = os.path.join(self.path, task_name, data_type)
             self.augment = True

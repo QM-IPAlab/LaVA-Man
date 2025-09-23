@@ -1466,6 +1466,47 @@ class MAEFuseSeg2ModelAdd(MAESeg2ModelAdd):
         predict = self.conv(out)
         return predict
 
+    def predict(self, x, lang):
+        x = self.preprocess(x, dist='clip')
+
+        in_type = x.dtype
+        in_shape = x.shape
+        device = x.device
+        rgb = x[:, :3]  # select RGB
+        latent1, mask1, ids_restore1 = self.forward_encoder(rgb, mask_ratio=0)
+        latent2, mask2, ids_restore2 = self.forward_encoder(rgb, mask_ratio=1.0)
+        
+        lang_emb = self.get_lang_embed(lang,device)[0]
+        if latent1.shape[0] != lang_emb.shape[0]:
+            lang_emb = lang_emb.repeat([int(latent1.shape[0]//lang_emb.shape[0]), 1, 1])
+        for fuse_block in self.model.fuse_blocks:
+            latent1, lang_emb = fuse_block(latent1, lang_emb, attention_mask_v=None, attention_mask_l=None)
+
+        fea1 = self.model.decoder_embed(latent1)
+        fea2 = self.model.decoder_embed(latent2)
+        
+        masked_tokens = self.model.mask_token.repeat(fea2.shape[0],
+                                               ids_restore2.shape[1] + 1 - fea2.shape[1], 1)
+        fea2_ = torch.cat([fea2[:, 1:, :], masked_tokens], dim=1)  # no cls token
+        fea2_ = torch.gather(fea2_, dim=1,
+                             index=ids_restore2.unsqueeze(-1).repeat(1, 1, fea2.shape[2]))  # unshuffle
+        fea2 = torch.cat([fea2[:, :1, :], fea2_], dim=1)  # append cls token
+
+        decoder_pos_embed = self.model.interpolate_pos_encoding(fea1, self.model.decoder_pos_embed, rgb.shape[2], rgb.shape[3])
+        fea1 = fea1 + decoder_pos_embed
+        fea2 = fea2 + decoder_pos_embed
+
+        out1 = fea1
+        out2 = fea2
+
+        for blk in self.model.decoder_blocks:
+            out1, out2 = blk(out1, out2, None)
+        out = self.model.decoder_norm(out1)
+        recon = self.model.decoder_pred(out)
+        recon = recon[:, 1:, :]  # 1, 200, 768
+        recon = self.unpatchify_img(recon, rgb.shape[2], rgb.shape[3])
+
+        return recon
 
 class MAEFuseSeg2ModelFullMask(MAESeg2ModelFullMask):    
     
@@ -1531,6 +1572,70 @@ class MAEFuseSeg2ModelFullMask(MAESeg2ModelFullMask):
         w = w // p
         x = rearrange(x, 'b (nh nw) c -> b c nh nw', nh=h, nw=w)
         return x
+
+
+class MAEFuseSingleSeg2ModelFullMask(MAESeg2ModelFullMask):    
+    
+    def forward(self, x, lang):
+        x = self.preprocess(x, dist='clip')
+
+        in_type = x.dtype
+        in_shape = x.shape
+        device = x.device
+        rgb = x[:, :3]  # select RGB
+        latent1, mask1, ids_restore1 = self.forward_encoder(rgb, mask_ratio=0)
+        
+        lang_emb = self.get_lang_embed(lang,device)[0]
+        if latent1.shape[0] != lang_emb.shape[0]:
+            lang_emb = lang_emb.repeat([int(latent1.shape[0]//lang_emb.shape[0]), 1, 1])
+        for fuse_block in self.model.fuse_blocks:
+            latent1, lang_emb = fuse_block(latent1, lang_emb, attention_mask_v=None, attention_mask_l=None)
+
+        fea1 = self.model.decoder_embed(latent1)
+        
+        masked_tokens = self.model.mask_token.repeat(fea1.shape[0],
+                                               ids_restore1.shape[1] + 1 - fea1.shape[1], 1)
+        fea1_ = torch.cat([fea1[:, 1:, :], masked_tokens], dim=1)  # no cls token
+        fea1_ = torch.gather(fea1_, dim=1,
+                             index=ids_restore1.unsqueeze(-1).repeat(1, 1, fea1.shape[2]))  # unshuffle
+        fea1 = torch.cat([fea1[:, :1, :], fea1_], dim=1)  # append cls token
+
+        decoder_pos_embed = self.model.interpolate_pos_encoding(fea1, self.model.decoder_pos_embed, rgb.shape[2], rgb.shape[3])
+        fea1 = fea1 + decoder_pos_embed
+
+        out1 = fea1
+        out2 = None
+
+        for blk in self.model.decoder_blocks:
+            out1, out2 = blk(out1, out2, None)
+        out = self.model.decoder_norm(out1)
+       
+        out = out[:, 1:, :]  # 1, 400, 512
+        out = self.unpatchify_feature(out, rgb.shape[2], rgb.shape[3] )
+
+        out = self.layer1(out)
+        out = self.cat1(out, rgb)
+        out = self.layer2(out)
+        out = self.cat2(out, rgb)
+        out = self.layer3(out)
+        out = self.cat3(out, rgb)
+        out = self.layer4(out)
+        out = self.cat4(out, rgb)
+
+        # incase of different size (patch size = 8)
+        if out.shape[-2:] != in_shape[-2:]:
+            out = F.interpolate(out, size=(in_shape[-2], in_shape[-1]), mode='bilinear')
+
+        predict = self.conv(out)
+        return predict
+
+    def unpatchify_feature(self, x, h=0, w=0):
+        p = self.model.patch_embed.patch_size[0]
+        h = h // p
+        w = w // p
+        x = rearrange(x, 'b (nh nw) c -> b c nh nw', nh=h, nw=w)
+        return x
+
 
 
 class MAESeg2ModelCLIPVision(MAESeg2Model):

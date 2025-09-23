@@ -400,7 +400,7 @@ def main(args):
         )
 
         if args.output_dir and (epoch % 20 == 0 or epoch + 1 == args.epochs):
-            if epoch in [160,220,399]:
+            if epoch in [40,80,160,220,399]:
                 misc.save_model(
                     args=args, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer,
                     loss_scaler=loss_scaler, epoch=epoch)

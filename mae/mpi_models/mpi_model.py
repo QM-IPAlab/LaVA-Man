@@ -418,7 +418,7 @@ class MPI(nn.Module):
 
         # Context preparation
         projected_patches = self.encoder2decoder_vis(fused_visual_embed)
-        if imgs.shape[0] > 36 :
+        if imgs.shape[0] >= 36 :
             return projected_patches
         if self.use_text_cross_attention:
             projected_lang = self.encoder2decoder_lang(lang)    # Decoupled Projection

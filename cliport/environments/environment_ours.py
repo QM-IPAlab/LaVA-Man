@@ -114,7 +114,7 @@ class EnvironmentWhite(Environment):
             p.resetDebugVisualizerCamera(
                 cameraDistance=1.1,
                 cameraYaw=90,
-                cameraPitch=-25,
+                cameraPitch=-40,
                 cameraTargetPosition=target)
 
         if task:
