@@ -13,7 +13,6 @@ import numpy as np
 import cv2
 import warnings
 import nltk
-from nltk.corpus import words
 import argparse
 
 os.environ['CURL_CA_BUNDLE'] = '/etc/ssl/certs/ca-bundle.crt'

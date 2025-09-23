@@ -21,6 +21,10 @@ from cliport.models.mae_robot_lang import MAEModel, MAESegModel, MAESeg2Model, M
 from cliport.models.mae_robot_lang import MAESegBaseModel, MAESeg2ModelFullMask, MAESeg3Model, MAEFeatUpModel, MAESegDPTSKModel, MAESeg2ModelDual, MAESeg2ModelFozenE, MAESeg2ModelRecon
 from cliport.models.mae_robot_lang_lat import MAESeg2DepthModel, MAESeg2LatModel, MAESeg2LatModelPlus
 
+# susie
+from cliport.models.susie import MAESusieSeg2ModelAdd
+
+
 names = {
 
     'mae': MAEModel,
@@ -46,6 +50,7 @@ names = {
     'mae_seg2_add_clipv':MAESeg2ModelCLIPVision,
     'mae_fuse':MAEFuseSeg2ModelAdd,
     'mae_fuse_fm':MAEFuseSeg2ModelFullMask,
+    'susie': MAESusieSeg2ModelAdd,
 
 
     # resnet
