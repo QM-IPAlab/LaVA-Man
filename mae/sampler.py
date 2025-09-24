@@ -8,7 +8,6 @@ import math
 import torchvision.transforms as transforms
 from torch.nn.utils.rnn import pad_sequence
 
-# 3️ 自定义 BatchSampler，确保 batch 只从一个数据集里取
 class SameDatasetBatchSampler(Sampler):
     def __init__(self, datasets, batch_size, drop_last=False):
         self.batch_size = batch_size
@@ -16,26 +15,23 @@ class SameDatasetBatchSampler(Sampler):
         self.datasets = datasets
         self.lens = [len(d) for d in datasets]
 
-        # 计算数据集的索引范围
         self.dataset_ranges = np.cumsum([0] + self.lens)
 
-        # 计算 batch 索引
         self.batch_indices = self._create_batches()
 
     def _create_batches(self):
         batch_indices = []
         for dataset_idx, (start, end) in enumerate(zip(self.dataset_ranges[:-1], self.dataset_ranges[1:])):
             indices = np.arange(start, end)
-            np.random.shuffle(indices)  # 打乱数据
+            np.random.shuffle(indices)  
 
-            # 生成 batch
             for i in range(0, len(indices), self.batch_size):
                 batch = indices[i:i + self.batch_size]
                 if self.drop_last and len(batch) < self.batch_size:
-                    continue  # 丢弃最后一个 batch
+                    continue  
                 batch_indices.append(batch)
 
-        np.random.shuffle(batch_indices)  # 打乱 batch 顺序，保证不同数据集的 batch 交替出现
+        np.random.shuffle(batch_indices)  
         return batch_indices
 
     def __iter__(self):
@@ -57,12 +53,10 @@ class DistributedSameDatasetBatchSampler(Sampler):
         self.lens = [len(d) for d in datasets]
         self.shuffle = shuffle
 
-        # 计算数据集的索引范围
         self.dataset_ranges = np.cumsum([0] + self.lens)
 
         self.epoch = 0
 
-        # 计算 batch 索引
         self._create_batches()
 
     def _create_batches(self):
@@ -76,22 +70,21 @@ class DistributedSameDatasetBatchSampler(Sampler):
             total_samples = num_samples * self.num_replicas
             indices = indices[:total_samples]
             
-            if self.shuffle: rng.shuffle(indices)  # 打乱数据
+            if self.shuffle: rng.shuffle(indices)  
 
-            # 生成 batch
             for i in range(0, len(indices), self.batch_size):
                 batch = indices[i:i + self.batch_size]
                 if self.drop_last and len(batch) < self.batch_size:
-                    continue  # 丢弃最后一个 batch
+                    continue  
                 batch_indices.append(batch)
 
-        if self.shuffle: rng.shuffle(batch_indices)  # 打乱 batch 顺序
+        if self.shuffle: rng.shuffle(batch_indices)  
 
         remainder = len(batch_indices) % self.num_replicas
         if remainder != 0:
             pad_count = self.num_replicas - remainder
             for _ in range(pad_count):
-                batch_indices.append(batch_indices[-1])  # 复制最后一个 batch
+                batch_indices.append(batch_indices[-1])  
 
 
         self.batch_indices = batch_indices[self.rank::self.num_replicas]
@@ -105,5 +98,5 @@ class DistributedSameDatasetBatchSampler(Sampler):
     def set_epoch(self, epoch):
         """重新 shuffle 数据并重新生成 batch"""
         self.epoch = epoch
-        self._create_batches()  # 重新生成 batch
+        self._create_batches()  
 

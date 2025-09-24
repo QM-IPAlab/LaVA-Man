@@ -111,48 +111,6 @@ def main(cfg):
     dataset_type = cfg['dataset']['type']
     if 'multi' in dataset_type:
         train_ds = RavensMultiTaskDataset(data_dir, cfg, group=task, mode='train', n_demos=n_demos, augment=True)
-        val_ds = RavensMultiTaskDataset(data_dir, cfg, group=task, mode='val', n_demos=n_val, augment=False)
-    elif 'real' == dataset_type:
-        train_ds = RealDataset(task_name=task, data_type='train', augment=True)
-        val_ds = RealDataset(task_name=task,data_type='train', augment=False)
-    elif 'real_all' == dataset_type:
-        train_ds = RealDataset(task_name=task, data_type='train_all', augment=True)
-        val_ds = RealDataset(task_name=task,data_type='train_all', augment=False)
-    elif 'real_ann' == dataset_type:
-        train_ds = RealAnnDataset(task_name=task, data_type="train_ann", augment=True)
-        val_ds = RealAnnDataset(task_name=task, data_type='train_ann', augment=False)
-    elif 'mix' == dataset_type:
-        train_ds_sim = RavensMultiTaskDataset(data_dir, cfg, group=task, mode='train', n_demos=n_demos, augment=True)
-        val_ds_sim = RavensMultiTaskDataset(data_dir, cfg, group=task, mode='val', n_demos=n_val, augment=False)
-        
-        train_ds_real_pack_obj = RealDataset(task_name="pack_objects", data_type='train', augment=True)
-        val_ds_real_pack_obj = RealDataset(task_name="pack_objects",data_type='train', augment=False)
-
-        train_ds_real_pick_b = RealDataset(task_name="blocks_in_bowl", data_type='train', augment=True)
-        val_ds_real_pick_b = RealDataset(task_name="blocks_in_bowl",data_type='train', augment=False)
-        
-        train_ds = torch.utils.data.ConcatDataset([train_ds_sim, train_ds_real_pack_obj, train_ds_real_pick_b])
-        val_ds = torch.utils.data.ConcatDataset([val_ds_sim, val_ds_real_pack_obj, val_ds_real_pick_b])
-        print("Using mixed dataset")
-    elif 'susie_sim' in dataset_type:
-        train_ds = RavensDatasetSuSIE(os.path.join(data_dir, '{}-train'.format(task)), cfg, n_demos=n_demos, augment=augment)
-        val_ds = RavensDatasetSuSIE(os.path.join(data_dir, '{}-test'.format(task)), cfg, n_demos=n_val, augment=False)
-    elif 'susie_real' in dataset_type:
-        train_ds = RealAnnDataset(task_name=task, data_type="train_ann", augment=True)
-        val_ds = RealAnnDataset(task_name=task, data_type='train_ann', augment=False)
-    elif 'mix_real' ==  dataset_type: 
-        train_ds_real_pack_a = RealDataset(task_name="pack_objects", data_type='train_all', augment=True)
-        val_ds_a = RealDataset(task_name="pack_objects", data_type='train_all', augment=False)
-        
-        train_ds_real_pick_b = RealAnnDataset(task_name="train_ann", data_type='train', augment=True)
-        val_ds_b = RealAnnDataset(task_name="train_ann",data_type='train', augment=False)
-
-        train_ds_real_pick_c = RealAnnDataset(task_name="train_ann2", data_type='train', augment=True)
-        val_ds_c = RealAnnDataset(task_name="train_ann2", data_type='train', augment=False)
-        
-        train_ds = torch.utils.data.ConcatDataset([train_ds_real_pack_a, train_ds_real_pick_b, train_ds_real_pick_c])
-        val_ds = torch.utils.data.ConcatDataset([val_ds_a, val_ds_b, val_ds_c])
-
     else:
         train_ds = RavensDataset(os.path.join(data_dir, '{}-train'.format(task)), cfg, n_demos=n_demos, augment=augment)
         val_ds = RavensDataset(os.path.join(data_dir, '{}-val'.format(task)), cfg, n_demos=n_val, augment=False)
