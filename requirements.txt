@@ -1,0 +1,68 @@
+# ===============================
+# Core Scientific Libraries
+# ===============================
+numpy==1.24.4
+scipy==1.10.1
+pandas==2.0.3
+matplotlib==3.6.0
+tqdm==4.66.4
+bytecode
+hpack
+
+# ===============================
+# Deep Learning Frameworks
+# ===============================
+pytorch-lightning==2.4.0
+lightning==2.3.3
+lightning-utilities==0.11.6
+tfds-nightly==4.9.2.dev202308090034
+einops==0.8.0
+timm==0.3.2
+kornia==0.4.1
+
+# ===============================
+# Hugging Face Ecosystem
+# ===============================
+transformers==4.46.3
+tokenizers==0.20.3
+huggingface-hub==0.23.4
+safetensors==0.4.3
+
+# ===============================
+# Utility and General Tools
+# ===============================
+opencv-python>=4.0
+imageio==2.9.0
+pillow==9.5.0
+ftfy==6.2.0
+regex==2024.4.28
+jsonlines==4.0.0
+pyyaml==6.0.1
+requests==2.31.0
+click==8.1.7
+packaging==24.1
+joblib==1.4.2
+sympy==1.13.1
+protobuf==3.20.3
+
+# ===============================
+# Experiment Management / Config
+# ===============================
+hydra-core==1.1.1
+omegaconf==2.1.2
+submitit==1.5.1
+wandb==0.17.9
+
+# ===============================
+# Robotics / Simulation
+# ===============================
+pybullet==3.0.4
+gym==0.17.3
+meshcat==0.0.18
+transforms3d==0.4.2
+
+# ===============================
+# Custom Repositories (Editable Installs)
+# ===============================
+#-e git+https://github.com/chenzhik/VisualizerX.git@ce804aca8668e3c3c46dc801814bd3ce7e67cf72#egg=visualizerX
+#-e git+https://github.com/siddk/voltron-robotics@1b299bf5cfa06673a3738aa6e15423b92a9922cd#egg=voltron_robotics
